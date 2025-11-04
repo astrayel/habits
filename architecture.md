@@ -1607,39 +1607,130 @@ try {
 
 ---
 
-## 11. Questions ouvertes et décisions à prendre
+## 11. Décisions architecturales validées
 
-### 11.1 Questions en suspens
+> **IMPORTANT :** Toutes les décisions ci-dessous ont été validées le 2025-11-04.
+> Voir [ADR.md](ADR.md) pour le détail complet de chaque décision.
 
-1. **Cosmétiques visuels :**
-   - Utiliser des SVG composés ou des images PNG pré-générées ?
-   - Système de couches pour l'avatar ?
+### 11.1 Décisions techniques
 
-2. **Notifications :**
-   - Ajouter notifications Home Assistant (persistentes) pour rappeler tâches ?
-   - Notifications pour parents quand enfant marque tâche complétée ?
+#### Format des cosmétiques (ADR-001)
+- **Décision :** Images PNG avec transparence (alpha channel)
+- **Raison :** Affichage joli, extensible, support des couches
+- **Implémentation :** Structure de dossiers `assets/avatars/` par catégorie
+- **Spécifications :** 512x512px, optimisation PNG, nommage snake_case
 
-3. **Multi-parent :**
-   - Plusieurs parents peuvent-ils valider ou un seul ?
-   - Historique de qui a validé quoi ?
+#### Notifications Home Assistant (ADR-002)
+- **Décision :** OUI - Notifications HA persistantes
+- **Types :**
+  - Rappels pour enfants (avant deadline de tâche)
+  - Alertes pour parents (tâche en attente de validation)
+- **Implémentation :** Phase 13 (Optimisations)
 
-4. **Sécurité :**
-   - Authentification pour différencier enfant/parent dans HA ?
-   - Utiliser les users HA ou un système de PIN ?
+#### Multi-parent et droits (ADR-003)
+- **Décision :** Tous les administrateurs Home Assistant peuvent valider
+- **Raison :** Simplicité, utilise permissions HA existantes
+- **Implémentation :** Vérifier `hass.user.is_admin` dans les services
+- **Traçabilité :** Enregistrement de l'ID utilisateur validateur
 
-5. **Internationalisation :**
-   - Support multi-langues (i18n) ?
-   - Quelles langues : FR, EN obligatoires ?
+#### Authentification enfant/parent (ADR-004)
+- **Décision :** Sélection d'utilisateur HA simple, sans PIN
+- **Raison :** Principe de confiance, simplicité
+- **Implémentation :**
+  - Carte enfant : sélecteur d'utilisateur au démarrage
+  - Carte supervision/gestion : réservée aux admins HA
+  - Pas de système de PIN (on fait confiance aux enfants)
 
-### 11.2 Décisions validées
+#### Internationalisation (ADR-005)
+- **Décision :** Français uniquement pour MVP
+- **Raison :** Simplicité de développement, focus sur fonctionnalités
+- **Évolution future :** Support EN + FR en v1.0 si demande
 
-- ✅ Deux monnaies : Points et Pièces
+### 11.2 Décisions fonctionnelles
+
+#### Système de pénalités (ADR-006)
+- **Décision :** Pénalités en attente de validation parent (workflow flexible)
+- **Workflow :**
+  1. Tâche non faite → statut `failed` automatique
+  2. Pénalité en attente de validation
+  3. Parent peut approuver (perte) ou annuler (pas de perte)
+- **Raison :** Flexibilité, évite frustrations injustes
+
+#### Niveau de gamification (ADR-007)
+- **Décision :** Gamification équilibrée
+- **Éléments :**
+  - ✅ Niveaux + XP
+  - ✅ Streaks avec bonus progressifs
+  - ✅ Badges de réussite
+  - ✅ Deux monnaies (Points + Pièces)
+  - ✅ Avatar personnalisable
+  - ✅ Animations de célébration
+- **Raison :** Adapté 10-14 ans, équilibre simplicité/richesse
+
+#### Stratégie de développement (ADR-008)
+- **Décision :** MVP simple d'abord (Phases 1-6), puis gamification complète
+- **MVP (priorité HAUTE) :**
+  1. Backend Core
+  2. Validation et Récompenses
+  3. Frontend Base
+  4. Carte de gestion
+  5. Carte de supervision
+  6. Carte enfant (basique, sans cosmétiques)
+- **Gamification (priorité MOYENNE/BASSE) :**
+  7. Cosmétiques Backend
+  8. Cosmétiques Frontend
+  9. Boutique de récompenses
+  10. Système de badges
+  11. Animations
+  12. Cosmétiques avancés
+  13. Optimisations et finitions
+- **Raison :** Validation rapide du concept, réduction des risques
+
+### 11.3 Décisions de conception initiales
+
+- ✅ Deux monnaies : Points (récompenses réelles) et Pièces (cosmétiques)
 - ✅ Validation parent obligatoire pour gains et pertes
-- ✅ Pas de solde négatif
-- ✅ Entités séparées par enfant
+- ✅ Pas de solde négatif (points/pièces >= 0 toujours)
+- ✅ Entités HA séparées par enfant
 - ✅ Tâches assignables à plusieurs enfants
-- ✅ Habitudes avec streaks progressifs
-- ✅ Avatar par défaut = photo person.X
+- ✅ Habitudes avec streaks progressifs (bonus multiplicateur)
+- ✅ Avatar par défaut = photo person.X de Home Assistant
+- ✅ Stockage hybride : JSON (config) + Entités HA (état temps réel)
+
+### 11.4 Structure du catalogue de cosmétiques (ADR-009)
+
+```
+www/habits-manager/assets/avatars/
+├── base/
+│   └── default_avatar.png
+├── clothes/
+│   ├── shirts/
+│   ├── pants/
+│   └── full_outfits/
+├── accessories/
+│   ├── hats/
+│   ├── glasses/
+│   └── jewelry/
+├── pets/
+│   ├── dogs/
+│   ├── cats/
+│   └── fantasy/
+└── animations/
+    ├── sparkles.png
+    └── aura_gold.png
+```
+
+**Catalogue MVP minimum (Phase 8) :**
+- 5 vêtements
+- 3 accessoires
+- 3 pets
+- 3 thèmes de carte
+
+---
+
+**✅ ARCHITECTURE COMPLÈTEMENT VALIDÉE - PRÊTE POUR DÉVELOPPEMENT**
+
+---
 
 ---
 
