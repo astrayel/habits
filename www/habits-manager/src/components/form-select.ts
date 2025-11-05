@@ -4,7 +4,7 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
 
 export interface SelectOption {
   value: string;
@@ -12,7 +12,7 @@ export interface SelectOption {
   disabled?: boolean;
 }
 
-@customElement('hm-form-select')
+
 export class FormSelect extends LitElement {
   @property({ type: String }) label = '';
   @property({ type: String }) value = '';
@@ -144,6 +144,10 @@ export class FormSelect extends LitElement {
   }
 }
 
+
+if (!customElements.get('hm-form-select')) {
+  customElements.define('hm-form-select', FormSelect);
+}
 declare global {
   interface HTMLElementTagNameMap {
     'hm-form-select': FormSelect;

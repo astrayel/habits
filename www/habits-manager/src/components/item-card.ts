@@ -4,9 +4,8 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
 
-@customElement('hm-item-card')
 export class ItemCard extends LitElement {
   @property({ type: String }) icon = '';
   @property({ type: String }) iconColor = '';
@@ -105,6 +104,11 @@ export class ItemCard extends LitElement {
       </div>
     `;
   }
+}
+
+// Définir l'élément seulement s'il n'existe pas déjà
+if (!customElements.get('hm-item-card')) {
+  customElements.define('hm-item-card', ItemCard);
 }
 
 declare global {

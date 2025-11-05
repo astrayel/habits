@@ -4,9 +4,9 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
 
-@customElement('hm-form-textarea')
+
 export class FormTextarea extends LitElement {
   @property({ type: String }) label = '';
   @property({ type: String }) value = '';
@@ -130,6 +130,10 @@ export class FormTextarea extends LitElement {
   }
 }
 
+
+if (!customElements.get('hm-form-textarea')) {
+  customElements.define('hm-form-textarea', FormTextarea);
+}
 declare global {
   interface HTMLElementTagNameMap {
     'hm-form-textarea': FormTextarea;

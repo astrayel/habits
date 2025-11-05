@@ -4,13 +4,13 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import { CosmeticItem, CosmeticCategory, CosmeticRarity, Child } from '../types/models';
 import { RARITY_COLORS } from '../styles/theme';
 import './item-card';
 import './hm-dialog';
 
-@customElement('hm-cosmetics-shop')
+
 export class CosmeticsShop extends LitElement {
   @property({ type: Object }) child!: Child;
   @property({ type: Array }) availableCosmetics: CosmeticItem[] = [];
@@ -524,6 +524,10 @@ export class CosmeticsShop extends LitElement {
   }
 }
 
+
+if (!customElements.get('hm-dialog')) {
+  customElements.define('hm-cosmetics-shop', CosmeticsShop);
+}
 declare global {
   interface HTMLElementTagNameMap {
     'hm-cosmetics-shop': CosmeticsShop;

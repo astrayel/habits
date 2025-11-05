@@ -4,9 +4,8 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
 
-@customElement('hm-dialog')
 export class HMDialog extends LitElement {
   @property({ type: Boolean }) open = false;
   @property({ type: String }) title = '';
@@ -243,6 +242,11 @@ export class HMDialog extends LitElement {
       </div>
     `;
   }
+}
+
+// Définir l'élément seulement s'il n'existe pas déjà
+if (!customElements.get('hm-dialog')) {
+  customElements.define('hm-dialog', HMDialog);
 }
 
 declare global {
