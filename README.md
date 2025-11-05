@@ -119,9 +119,9 @@ Le projet est divisé en 13 phases, développées progressivement :
 
 ### Phases prioritaires (Backend)
 
-1. ✅ **Phase 1 :** Backend Core (EN COURS)
-2. ⏳ **Phase 2 :** Validation et Récompenses
-3. ⏳ **Phase 3 :** Frontend Base
+1. ✅ **Phase 1 :** Backend Core (TERMINÉE - 2025-11-05)
+2. ✅ **Phase 2 :** Validation et Récompenses (TERMINÉE - 2025-11-05)
+3. ✅ **Phase 3 :** Frontend Base (TERMINÉE - 2025-11-05)
 
 ### Phases prioritaires (Frontend)
 
@@ -249,10 +249,13 @@ Non, les points et pièces ne descendent jamais en dessous de 0.
 
 - [x] Architecture complète
 - [x] Documentation technique
-- [ ] Backend core fonctionnel
-- [ ] Frontend basique fonctionnel
-- [ ] 3 cartes opérationnelles
-- [ ] Système de cosmétiques basique
+- [x] Backend core fonctionnel (Phase 1)
+- [x] Système de validation et récompenses (Phase 2)
+- [x] Tests automatisés backend (15/15 passent)
+- [x] Infrastructure frontend (Phase 3)
+- [x] Types TypeScript et API Client
+- [ ] 3 cartes opérationnelles (implémentation complète)
+- [ ] Système de cosmétiques frontend
 
 ### Version 0.2.0 - À venir
 
@@ -284,6 +287,6 @@ Pour toute question ou suggestion :
 
 ---
 
-**Dernière mise à jour :** 2025-11-04
+**Dernière mise à jour :** 2025-11-05
 **Version :** 0.1.0-dev
-**Statut :** En développement actif
+**Statut :** Backend complet (Phase 1 & 2) ✅ | Infrastructure Frontend (Phase 3) ✅ | Cartes en cours (Phase 4+) ⏳

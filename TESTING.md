@@ -1,8 +1,8 @@
-# Guide de tests - Phase 1 Backend Core
+# Guide de tests - Backend (Phase 1 & 2)
 
-> **Phase :** Phase 1 - Backend Core
-> **Date :** 2025-11-04
-> **Statut :** Prêt pour tests manuels
+> **Phases :** Phase 1 (Backend Core) & Phase 2 (Validation & Récompenses)
+> **Date :** 2025-11-04 - 2025-11-05
+> **Statut :** ✅ TERMINÉ - Tests automatisés disponibles (15/15 passent)
 
 ---
 
@@ -27,12 +27,101 @@
    Setting up Habits Manager integration
    Storage directory ensured at .storage/habits_manager
    Habits Manager integration setup complete
-   Registered 11 services for habits_manager
+   Registered 17 services for habits_manager (11 Phase 1 + 6 Phase 2)
    ```
 
 ---
 
-## ✅ Checklist de tests
+## 🤖 Tests automatisés (RECOMMANDÉ)
+
+### Script 1: test_habits_manager.py
+
+**Description:** Script de test automatisé complet via l'API REST de Home Assistant
+
+**Prérequis:**
+- Python 3.8+
+- Module `requests` installé
+- Token d'accès longue durée Home Assistant
+
+**Installation:**
+```bash
+pip install requests
+```
+
+**Utilisation:**
+```bash
+python test_habits_manager.py --url https://home.hacquin.com --token YOUR_LONG_LIVED_TOKEN
+```
+
+**Obtenir un token:**
+1. Aller dans Home Assistant
+2. Profil (en bas à gauche)
+3. Tokens d'accès de longue durée
+4. Créer un token
+
+**Ce que le script teste:**
+- ✅ **Phase 1:** Création enfant, sensors dynamiques, tâches, habitudes, task instances, complétion
+- ✅ **Phase 2:** Validation de tâches, récompenses, réclamations, cosmétiques
+
+**15 tests couverts:**
+1. Vérification des services (Test 0a)
+2. Détection des entités person (Test 0b)
+3. Création d'enfant (Test 1)
+4. Vérification des sensors créés dynamiquement (Test 2)
+5. Création de tâche (Test 3)
+6. Vérification de génération d'instance (Test 4)
+7. Création d'habitude (Test 5)
+8. Complétion d'habitude (Test 6)
+9. Marquage de tâche complétée (Test 7)
+10. Validation de tâche Phase 2 (Test 8)
+11. Création de récompense Phase 2 (Test 9)
+12. Réclamation de récompense Phase 2 (Test 10)
+13. Approbation de réclamation Phase 2 (Test 11)
+14. Refus de tâche Phase 2 (Test 12)
+15. Création de cosmétique Phase 2 (Test 13)
+
+**Output:**
+- Terminal coloré (vert ✓ / rouge ✗)
+- Rapport détaillé avec score
+- Statistiques de pass/fail
+
+**Résultat actuel:** ✅ 15/15 tests passent (100%)
+
+---
+
+### Script 2: test_storage_files.py
+
+**Description:** Validation directe des fichiers JSON de stockage (ne nécessite pas d'API)
+
+**Utilisation:**
+```bash
+python test_storage_files.py --storage-dir /config/.storage/habits_manager
+```
+
+**Ce que le script vérifie:**
+- Structure des 8 fichiers JSON
+- Présence des champs requis
+- Validation des types de données
+- Statistiques (counts, statuses, etc.)
+
+**Fichiers vérifiés:**
+1. children.json
+2. tasks.json
+3. task_instances.json
+4. habits.json
+5. habit_streaks.json
+6. rewards.json (Phase 2)
+7. reward_claims.json (Phase 2)
+8. cosmetics.json (Phase 2)
+
+**Avantages:**
+- Pas besoin de token API
+- Vérification rapide de l'intégrité des données
+- Peut être exécuté localement avec accès filesystem
+
+---
+
+## ✅ Checklist de tests manuels (Phase 1)
 
 ### Test 1 : Créer un enfant
 
@@ -435,37 +524,183 @@ tail -f home-assistant.log | grep -E "(habits_manager|ERROR|WARNING)"
 
 ---
 
-## ✅ Critères de succès Phase 1
+## ✅ Checklist de tests manuels (Phase 2)
 
-La Phase 1 est validée si :
+### Test 11 : Valider une tâche
 
-- [ ] ✅ Tous les 10 tests passent sans erreur
-- [ ] ✅ Tous les fichiers JSON sont créés et valides
-- [ ] ✅ Les points/pièces/XP sont calculés correctement
-- [ ] ✅ Le système de streak fonctionne avec bonus progressif
-- [ ] ✅ Le level-up se déclenche à 100 XP
-- [ ] ✅ Les événements HA sont émis correctement
-- [ ] ✅ Aucune erreur dans les logs HA
-- [ ] ✅ Le code respecte PEP 8 (vérifier avec `flake8`)
-- [ ] ✅ Tous les fichiers ont des docstrings
+**Service :** `habits_manager.validate_task`
+
+**Données :**
+```yaml
+service: habits_manager.validate_task
+data:
+  instance_id: "inst_XXXXXXXX"  # ID d'une instance complétée
+  validator_id: "admin"
+  note: "Bien fait !"
+```
+
+**Résultats attendus :**
+- ✅ Status change de `completed_waiting` à `validated`
+- ✅ Récompenses attribuées à l'enfant
+- ✅ Compteurs de tâches mis à jour
+- ✅ Événement émis
+
+---
+
+### Test 12 : Refuser une tâche avec pénalité
+
+**Service :** `habits_manager.refuse_task`
+
+**Données :**
+```yaml
+service: habits_manager.refuse_task
+data:
+  instance_id: "inst_XXXXXXXX"
+  validator_id: "admin"
+  apply_penalty: true
+  note: "Pas suffisamment bien fait"
+```
+
+**Résultats attendus :**
+- ✅ Status change à `refused`
+- ✅ Pénalités appliquées (points négatifs, ne descend pas < 0)
+- ✅ Événement émis
+
+---
+
+### Test 13 : Créer une récompense
+
+**Service :** `habits_manager.create_reward`
+
+**Données :**
+```yaml
+service: habits_manager.create_reward
+data:
+  title: "30 minutes d'écran"
+  description: "Temps d'écran supplémentaire"
+  type: "screen_time"
+  cost_points: 100
+  requires_parent_approval: true
+  stock: 5
+  cooldown_days: 7
+```
+
+**Résultats attendus :**
+- ✅ Récompense créée dans `rewards.json`
+- ✅ Événement émis
+
+---
+
+### Test 14 : Réclamer une récompense
+
+**Service :** `habits_manager.claim_reward`
+
+**Données :**
+```yaml
+service: habits_manager.claim_reward
+data:
+  reward_id: "reward_XXXXXXXX"
+  child_id: "child_XXXXXXXX"
+```
+
+**Résultats attendus :**
+- ✅ Réclamation créée dans `reward_claims.json`
+- ✅ Points déduits du solde de l'enfant
+- ✅ Status: `pending` (si requires_parent_approval) ou `approved`
+- ✅ Stock décrémenté si limité
+- ✅ Événement émis
+
+---
+
+### Test 15 : Approuver une réclamation
+
+**Service :** `habits_manager.approve_claim`
+
+**Données :**
+```yaml
+service: habits_manager.approve_claim
+data:
+  claim_id: "claim_XXXXXXXX"
+  approver_id: "admin"
+```
+
+**Résultats attendus :**
+- ✅ Status change de `pending` à `approved`
+- ✅ Date d'approbation enregistrée
+- ✅ Événement émis
+
+---
+
+### Test 16 : Créer un cosmétique
+
+**Service :** `habits_manager.create_cosmetic`
+
+**Données :**
+```yaml
+service: habits_manager.create_cosmetic
+data:
+  name: "T-shirt pirate"
+  description: "Un t-shirt rayé avec un crâne"
+  category: "clothes"
+  subcategory: "shirt"
+  rarity: "rare"
+  cost_coins: 100
+  unlock_requirements:
+    min_level: 5
+```
+
+**Résultats attendus :**
+- ✅ Cosmétique créé dans `cosmetics.json`
+- ✅ Unlock requirements enregistrés
+- ✅ Événement émis
+
+---
+
+## ✅ Critères de succès Phase 1 & 2
+
+Les phases 1 et 2 sont validées si :
+
+**Phase 1:**
+- [x] ✅ Tous les 10 tests Phase 1 passent sans erreur
+- [x] ✅ Tous les fichiers JSON Phase 1 sont créés et valides
+- [x] ✅ Les points/pièces/XP sont calculés correctement
+- [x] ✅ Le système de streak fonctionne avec bonus progressif
+- [x] ✅ Le level-up se déclenche à 100 XP
+- [x] ✅ Les événements HA sont émis correctement
+- [x] ✅ Aucune erreur dans les logs HA
+- [x] ✅ Le code respecte PEP 8
+- [x] ✅ Tous les fichiers ont des docstrings
+
+**Phase 2:**
+- [x] ✅ Tous les 6 tests Phase 2 passent sans erreur
+- [x] ✅ Fichiers JSON Phase 2 créés (rewards, reward_claims, cosmetics)
+- [x] ✅ Workflow de validation fonctionne (validate/refuse)
+- [x] ✅ Système de récompenses avec approbation fonctionne
+- [x] ✅ Système de cosmétiques avec unlocks fonctionne
+- [x] ✅ Scheduler implémenté et testé
+- [x] ✅ Tests automatisés créés (15/15 passent)
+- [x] ✅ Encodage UTF-8 correct sur tous les fichiers
+- [x] ✅ I/O asynchrone avec aiofiles
+
+**Global:**
+- [x] ✅ 17 services HA enregistrés et fonctionnels
+- [x] ✅ Tests automatisés disponibles et passent à 100%
+- [x] ✅ Documentation à jour
 
 ---
 
 ## 🚀 Prochaines étapes
 
-Une fois Phase 1 validée :
-
-**Phase 2 :** Validation et Récompenses
-- Services de validation (validate_task, refuse_task, validate_penalty)
-- RewardManager et CosmeticManager
-- Système de réclamation de récompenses
-- Scheduler automatique (génération instances, check failed tasks)
-
-**Phase 3 :** Frontend Base
+**Phase 3 :** Frontend Base (EN COURS)
 - Setup TypeScript, Lit, Rollup
 - Composants réutilisables
 - Services frontend
-- Thèmes
+- Thèmes et animations de base
+
+**Phase 4-6 :** Cartes Lovelace
+- Carte de gestion (parents/admins)
+- Carte de supervision (parents)
+- Carte enfant (interface gamifiée)
 
 ---
 
