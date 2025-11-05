@@ -125,9 +125,10 @@ Le projet est divisé en 13 phases, développées progressivement :
 
 ### Phases prioritaires (Frontend)
 
-4. ⏳ **Phase 4 :** Carte de gestion
-5. ⏳ **Phase 5 :** Carte de supervision
-6. ⏳ **Phase 6 :** Carte enfant (basique)
+4. ✅ **Phase 4 :** Cartes Lovelace (TERMINÉE - 2025-11-05)
+   - Carte de gestion (CRUD complet)
+   - Carte de supervision (validation)
+   - Carte enfant (interface ludique)
 
 ### Phases cosmétiques et gamification
 
@@ -254,7 +255,9 @@ Non, les points et pièces ne descendent jamais en dessous de 0.
 - [x] Tests automatisés backend (15/15 passent)
 - [x] Infrastructure frontend (Phase 3)
 - [x] Types TypeScript et API Client
-- [ ] 3 cartes opérationnelles (implémentation complète)
+- [x] 3 cartes Lovelace opérationnelles (Phase 4)
+- [x] Store centralisé et composants réutilisables
+- [ ] Tests frontend en conditions réelles
 - [ ] Système de cosmétiques frontend
 
 ### Version 0.2.0 - À venir
@@ -289,4 +292,4 @@ Pour toute question ou suggestion :
 
 **Dernière mise à jour :** 2025-11-05
 **Version :** 0.1.0-dev
-**Statut :** Backend complet (Phase 1 & 2) ✅ | Infrastructure Frontend (Phase 3) ✅ | Cartes en cours (Phase 4+) ⏳
+**Statut :** Backend (Phase 1-2) ✅ | Frontend (Phase 3-4) ✅ | 3 Cartes Lovelace opérationnelles ✅ | Tests HA restants ⏳
