@@ -146,6 +146,11 @@ class HabitsManagerTester:
         print("╚════════════════════════════════════════════════════════════╝")
         print(f"{Colors.RESET}")
 
+        # Pré-vérifications
+        print(f"\n{Colors.BOLD}{Colors.YELLOW}═══ PRÉ-VÉRIFICATIONS ═══{Colors.RESET}\n")
+        self.run_test("Test 0a", "Vérifier que le service habits_manager.create_child existe", self.test_00_verify_service)
+        self.run_test("Test 0b", "Lister les entités person disponibles", self.test_00_list_persons)
+
         # Phase 1 Tests
         print(f"\n{Colors.BOLD}{Colors.YELLOW}═══ PHASE 1 TESTS ═══{Colors.RESET}\n")
         self.run_test("Test 1", "Créer un enfant de test", self.test_01_create_child)
@@ -168,11 +173,55 @@ class HabitsManagerTester:
         # Afficher le rapport
         self.print_report()
 
+    def test_00_verify_service(self):
+        """Test: Vérifier que le service existe."""
+        url = f"{self.ha_url}/api/services"
+        try:
+            response = requests.get(url, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            services = response.json()
+
+            # Chercher habits_manager
+            habits_services = [s for s in services if s.get('domain') == 'habits_manager']
+            if habits_services:
+                service_names = [svc['services'] for svc in habits_services]
+                print(f"  → Services habits_manager trouvés: {service_names}")
+                return True
+            else:
+                print(f"  {Colors.RED}✗ Domain habits_manager non trouvé{Colors.RESET}")
+                return False
+        except Exception as e:
+            print(f"  {Colors.RED}✗ Erreur: {e}{Colors.RESET}")
+            return False
+
+    def test_00_list_persons(self):
+        """Test: Lister les entités person."""
+        states = self.get_states()
+        if not states:
+            return False
+
+        persons = [s for s in states if s.get('entity_id', '').startswith('person.')]
+        print(f"  → {len(persons)} entités person trouvées:")
+        for person in persons[:5]:  # Afficher max 5
+            print(f"    - {person['entity_id']}: {person.get('attributes', {}).get('friendly_name', 'N/A')}")
+
+        if persons:
+            # Stocker la première entité person pour les tests
+            self.test_data['person_entity'] = persons[0]['entity_id']
+            print(f"  → Utilisation de {self.test_data['person_entity']} pour les tests")
+            return True
+        else:
+            print(f"  {Colors.YELLOW}⚠ Aucune entité person trouvée{Colors.RESET}")
+            return False
+
     def test_01_create_child(self):
         """Test: Créer un enfant."""
+        # Utiliser une entité person réelle si disponible
+        person_entity = self.test_data.get('person_entity', 'person.testbot')
+
         service_data = {
             'name': 'Test Bot',
-            'person_entity': 'person.testbot'
+            'person_entity': person_entity
         }
         print(f"  → Appel du service avec: {json.dumps(service_data, indent=2)}")
 
