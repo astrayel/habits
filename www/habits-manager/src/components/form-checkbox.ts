@@ -4,9 +4,9 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
 
-@customElement('hm-form-checkbox')
+
 export class FormCheckbox extends LitElement {
   @property({ type: String }) label = '';
   @property({ type: Boolean }) checked = false;
@@ -87,6 +87,10 @@ export class FormCheckbox extends LitElement {
   }
 }
 
+
+if (!customElements.get('hm-form-checkbox')) {
+  customElements.define('hm-form-checkbox', FormCheckbox);
+}
 declare global {
   interface HTMLElementTagNameMap {
     'hm-form-checkbox': FormCheckbox;

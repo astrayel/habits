@@ -4,9 +4,8 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { property } from 'lit/decorators.js';
 
-@customElement('hm-form-input')
 export class FormInput extends LitElement {
   @property({ type: String }) label = '';
   @property({ type: String }) value = '';
@@ -119,6 +118,10 @@ export class FormInput extends LitElement {
       </div>
     `;
   }
+}
+
+if (!customElements.get('hm-form-input')) {
+  customElements.define('hm-form-input', FormInput);
 }
 
 declare global {

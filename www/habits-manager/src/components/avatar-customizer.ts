@@ -4,10 +4,10 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import { Child, CosmeticItem, CosmeticCategory, Avatar } from '../types/models';
 
-@customElement('hm-avatar-customizer')
+
 export class AvatarCustomizer extends LitElement {
   @property({ type: Object }) child!: Child;
   @property({ type: Array }) ownedCosmetics: CosmeticItem[] = [];
@@ -521,6 +521,10 @@ export class AvatarCustomizer extends LitElement {
   }
 }
 
+
+if (!customElements.get('hm-avatar-customizer')) {
+  customElements.define('hm-avatar-customizer', AvatarCustomizer);
+}
 declare global {
   interface HTMLElementTagNameMap {
     'hm-avatar-customizer': AvatarCustomizer;
