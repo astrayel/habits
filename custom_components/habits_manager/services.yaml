@@ -1,0 +1,286 @@
+# Services pour Habits Manager
+# Phase 1: Services de base (CRUD pour enfants, tâches, habitudes)
+
+# ========================================================================
+# SERVICES ENFANTS
+# ========================================================================
+
+create_child:
+  name: Créer un enfant
+  description: Crée un nouveau profil d'enfant dans le système
+  fields:
+    name:
+      name: Nom
+      description: Nom de l'enfant
+      required: true
+      example: "Sophie"
+      selector:
+        text:
+    person_entity:
+      name: Entité personne
+      description: Entité person.* de Home Assistant associée à l'enfant
+      required: true
+      example: "person.sophie"
+      selector:
+        entity:
+          domain: person
+
+update_child:
+  name: Mettre à jour un enfant
+  description: Modifie les informations d'un enfant existant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant unique de l'enfant
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    name:
+      name: Nom
+      description: Nouveau nom de l'enfant
+      required: false
+      example: "Sophie Martin"
+      selector:
+        text:
+
+delete_child:
+  name: Supprimer un enfant
+  description: Supprime définitivement un profil d'enfant et toutes ses données
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant unique de l'enfant à supprimer
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES TÂCHES
+# ========================================================================
+
+create_task:
+  name: Créer une tâche
+  description: Crée une nouvelle tâche assignée à un ou plusieurs enfants
+  fields:
+    title:
+      name: Titre
+      description: Titre de la tâche
+      required: true
+      example: "Ranger sa chambre"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Description détaillée de la tâche
+      required: false
+      example: "Ranger les jouets, faire son lit, passer l'aspirateur"
+      selector:
+        text:
+          multiline: true
+    assigned_to:
+      name: Assignée à
+      description: Liste des IDs d'enfants auxquels assigner la tâche
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    difficulty:
+      name: Difficulté
+      description: Niveau de difficulté (1=facile, 2=moyen, 3=difficile)
+      required: true
+      default: 1
+      example: 2
+      selector:
+        number:
+          min: 1
+          max: 3
+          mode: box
+    task_type:
+      name: Type
+      description: Type de tâche (mandatory=obligatoire, bonus=optionnelle)
+      required: true
+      default: "mandatory"
+      example: "mandatory"
+      selector:
+        select:
+          options:
+            - label: "Obligatoire"
+              value: "mandatory"
+            - label: "Bonus"
+              value: "bonus"
+
+update_task:
+  name: Mettre à jour une tâche
+  description: Modifie les informations d'une tâche existante
+  fields:
+    task_id:
+      name: ID tâche
+      description: Identifiant unique de la tâche
+      required: true
+      example: "task_456def"
+      selector:
+        text:
+    title:
+      name: Titre
+      description: Nouveau titre de la tâche
+      required: false
+      example: "Ranger sa chambre et son bureau"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Nouvelle description
+      required: false
+      selector:
+        text:
+          multiline: true
+    is_active:
+      name: Active
+      description: Activer ou désactiver la tâche
+      required: false
+      example: true
+      selector:
+        boolean:
+
+delete_task:
+  name: Supprimer une tâche
+  description: Supprime définitivement une tâche
+  fields:
+    task_id:
+      name: ID tâche
+      description: Identifiant unique de la tâche à supprimer
+      required: true
+      example: "task_456def"
+      selector:
+        text:
+
+mark_task_completed:
+  name: Marquer tâche complétée
+  description: Marque une instance de tâche comme complétée (en attente de validation parent)
+  fields:
+    instance_id:
+      name: ID instance
+      description: Identifiant unique de l'instance de tâche
+      required: true
+      example: "instance_789ghi"
+      selector:
+        text:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant qui a complété la tâche
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES HABITUDES
+# ========================================================================
+
+create_habit:
+  name: Créer une habitude
+  description: Crée une nouvelle habitude avec système de streaks
+  fields:
+    title:
+      name: Titre
+      description: Titre de l'habitude
+      required: true
+      example: "Pratiquer Duolingo"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Description détaillée de l'habitude
+      required: false
+      example: "Faire au moins une leçon de 5 minutes"
+      selector:
+        text:
+          multiline: true
+    assigned_to:
+      name: Assignée à
+      description: Liste des IDs d'enfants auxquels assigner l'habitude
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    frequency:
+      name: Fréquence
+      description: Fréquence de l'habitude (daily, weekly, monthly)
+      required: true
+      default: "daily"
+      example: "daily"
+      selector:
+        select:
+          options:
+            - label: "Quotidienne"
+              value: "daily"
+            - label: "Hebdomadaire"
+              value: "weekly"
+            - label: "Mensuelle"
+              value: "monthly"
+
+update_habit:
+  name: Mettre à jour une habitude
+  description: Modifie les informations d'une habitude existante
+  fields:
+    habit_id:
+      name: ID habitude
+      description: Identifiant unique de l'habitude
+      required: true
+      example: "habit_321jkl"
+      selector:
+        text:
+    title:
+      name: Titre
+      description: Nouveau titre de l'habitude
+      required: false
+      example: "Pratiquer Duolingo 10 minutes"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Nouvelle description
+      required: false
+      selector:
+        text:
+          multiline: true
+    is_active:
+      name: Active
+      description: Activer ou désactiver l'habitude
+      required: false
+      example: true
+      selector:
+        boolean:
+
+delete_habit:
+  name: Supprimer une habitude
+  description: Supprime définitivement une habitude
+  fields:
+    habit_id:
+      name: ID habitude
+      description: Identifiant unique de l'habitude à supprimer
+      required: true
+      example: "habit_321jkl"
+      selector:
+        text:
+
+complete_habit:
+  name: Compléter une habitude
+  description: Enregistre la complétion d'une habitude pour aujourd'hui et calcule les récompenses avec bonus de streak
+  fields:
+    habit_id:
+      name: ID habitude
+      description: Identifiant unique de l'habitude
+      required: true
+      example: "habit_321jkl"
+      selector:
+        text:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant qui complète l'habitude
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
