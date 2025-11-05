@@ -45,7 +45,7 @@ class RewardManager:
             id=reward_id,
             title=reward_data["title"],
             description=reward_data.get("description", ""),
-            type=RewardType(reward_data.get("type", "real_reward")),
+            type=RewardType(reward_data.get("type", "other")),
             cost_points=reward_data.get("cost_points", 0),
             cost_coins=reward_data.get("cost_coins", 0),
             icon=reward_data.get("icon", "mdi:gift"),
