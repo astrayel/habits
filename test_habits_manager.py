@@ -66,6 +66,13 @@ class HabitsManagerTester:
             return response.json() if response.text else {}
         except requests.exceptions.RequestException as e:
             print(f"{Colors.RED}✗ Erreur HTTP: {e}{Colors.RESET}")
+            # Afficher le contenu de la réponse pour debug
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_detail = e.response.json()
+                    print(f"{Colors.YELLOW}Détails: {json.dumps(error_detail, indent=2)}{Colors.RESET}")
+                except:
+                    print(f"{Colors.YELLOW}Réponse: {e.response.text}{Colors.RESET}")
             return None
 
     def get_states(self, entity_id: str = None) -> Optional[Dict]:
@@ -163,10 +170,13 @@ class HabitsManagerTester:
 
     def test_01_create_child(self):
         """Test: Créer un enfant."""
-        result = self.call_service('habits_manager.create_child', {
+        service_data = {
             'name': 'Test Bot',
             'person_entity': 'person.testbot'
-        })
+        }
+        print(f"  → Appel du service avec: {json.dumps(service_data, indent=2)}")
+
+        result = self.call_service('habits_manager.create_child', service_data)
 
         if result is not None:
             print(f"  → Enfant créé (vérifiez les logs pour l'ID)")
