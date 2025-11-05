@@ -37,6 +37,7 @@ from .core.exceptions import (
     HabitNotFoundError,
     ValidationError,
 )
+from .sensor import async_create_child_sensors
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -113,21 +114,24 @@ async def register_services(hass: HomeAssistant):
     # ========================================================================
 
     async def handle_create_child(call: ServiceCall):
-        """Service: Cr�er un enfant."""
+        """Service: Créer un enfant."""
         try:
             name = call.data["name"]
             person_entity = call.data["person_entity"]
 
             child = await child_mgr.create_child(name, person_entity)
 
-            # �mettre un �v�nement
+            # Créer dynamiquement les sensors pour ce nouvel enfant
+            await async_create_child_sensors(hass, child.id)
+
+            # Émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "child_created",
                 "child_id": child.id,
                 "child_name": child.name,
             })
 
-            _LOGGER.info(f"Service call: Child created - {child.name}")
+            _LOGGER.info(f"Service call: Child created - {child.name} with {8} sensors")
 
         except ValidationError as err:
             _LOGGER.error(f"Validation error in create_child: {err}")
@@ -189,12 +193,26 @@ async def register_services(hass: HomeAssistant):
     # ========================================================================
 
     async def handle_create_task(call: ServiceCall):
-        """Service: Cr�er une t�che."""
+        """Service: Créer une tâche."""
         try:
             task_data = dict(call.data)
             task = await task_mgr.create_task(task_data)
 
-            # �mettre un �v�nement
+            # Générer les instances pour aujourd'hui dynamiquement
+            today = date.today()
+            new_instances = await task_mgr.generate_task_instances(today)
+            _LOGGER.info(f"Generated {len(new_instances)} task instances for today")
+
+            # Mettre à jour les compteurs de tâches pour chaque enfant concerné
+            entity_mgr = hass.data[DOMAIN]["entity_manager"]
+            for child_id in task.assigned_to:
+                # Compter les tâches en attente pour cet enfant
+                all_instances = await task_mgr.get_task_instances(child_id=child_id)
+                pending_count = sum(1 for inst in all_instances if inst.status.value == "pending")
+                waiting_count = sum(1 for inst in all_instances if inst.status.value == "completed_waiting")
+                await entity_mgr.update_task_counts(child_id, pending_count, waiting_count)
+
+            # Émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "task_created",
                 "task_id": task.id,

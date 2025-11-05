@@ -33,24 +33,77 @@ async def async_setup_platform(
         _LOGGER.warning("No children entities data found")
         return
 
+    # Stocker le callback pour création dynamique ultérieure
+    hass.data[DOMAIN]["sensor_add_entities"] = async_add_entities
+
     entities = []
     children_data = hass.data[DOMAIN]["children_entities"]
 
     # Créer les sensors pour chaque enfant
     for child_id, child_data in children_data.items():
-        entities.extend([
-            ChildPointsSensor(hass, child_id, child_data),
-            ChildCoinsSensor(hass, child_id, child_data),
-            ChildLevelSensor(hass, child_id, child_data),
-            ChildExperienceSensor(hass, child_id, child_data),
-            ChildTasksPendingSensor(hass, child_id, child_data),
-            ChildTasksWaitingSensor(hass, child_id, child_data),
-            ChildLongestStreakSensor(hass, child_id, child_data),
-            ChildHasPendingValidationSensor(hass, child_id, child_data),
-        ])
+        entities.extend(_create_child_sensors(hass, child_id, child_data))
 
     async_add_entities(entities, True)
     _LOGGER.info(f"Created {len(entities)} sensor entities for {len(children_data)} children")
+
+
+def _create_child_sensors(hass: HomeAssistant, child_id: str, child_data: dict) -> list:
+    """Crée la liste des 8 sensors pour un enfant.
+
+    Args:
+        hass: Instance Home Assistant
+        child_id: ID de l'enfant
+        child_data: Données de l'enfant
+
+    Returns:
+        Liste des sensors créés
+    """
+    return [
+        ChildPointsSensor(hass, child_id, child_data),
+        ChildCoinsSensor(hass, child_id, child_data),
+        ChildLevelSensor(hass, child_id, child_data),
+        ChildExperienceSensor(hass, child_id, child_data),
+        ChildTasksPendingSensor(hass, child_id, child_data),
+        ChildTasksWaitingSensor(hass, child_id, child_data),
+        ChildLongestStreakSensor(hass, child_id, child_data),
+        ChildHasPendingValidationSensor(hass, child_id, child_data),
+    ]
+
+
+async def async_create_child_sensors(hass: HomeAssistant, child_id: str) -> None:
+    """Crée dynamiquement les sensors pour un nouvel enfant.
+
+    Appelé après la création d'un enfant via le service create_child.
+
+    Args:
+        hass: Instance Home Assistant
+        child_id: ID de l'enfant pour lequel créer les sensors
+    """
+    if DOMAIN not in hass.data:
+        _LOGGER.error("Domain not found in hass.data, cannot create sensors")
+        return
+
+    if "sensor_add_entities" not in hass.data[DOMAIN]:
+        _LOGGER.warning("sensor_add_entities callback not available, sensors will be created on next restart")
+        return
+
+    if "children_entities" not in hass.data[DOMAIN]:
+        _LOGGER.error("children_entities not found in hass.data")
+        return
+
+    child_data = hass.data[DOMAIN]["children_entities"].get(child_id)
+    if not child_data:
+        _LOGGER.error(f"Child data not found for {child_id}")
+        return
+
+    # Créer les sensors
+    sensors = _create_child_sensors(hass, child_id, child_data)
+
+    # Ajouter les sensors via le callback
+    add_entities = hass.data[DOMAIN]["sensor_add_entities"]
+    add_entities(sensors, True)
+
+    _LOGGER.info(f"Dynamically created {len(sensors)} sensors for child {child_id}")
 
 
 class BaseChildSensor(SensorEntity):
