@@ -377,3 +377,30 @@ class TaskManager:
                 return instance
 
         raise TaskNotFoundError(f"Task instance {instance_id} not found")
+
+    async def get_task_instances(self, child_id: str = None, task_id: str = None, status: TaskInstanceStatus = None) -> List[TaskInstance]:
+        """Récupère les instances de tâches avec filtres optionnels.
+
+        Args:
+            child_id: Filtrer par enfant (optionnel)
+            task_id: Filtrer par tâche (optionnel)
+            status: Filtrer par statut (optionnel)
+
+        Returns:
+            Liste des instances correspondantes
+        """
+        all_instances = await self.storage.load_task_instances()
+
+        # Appliquer les filtres
+        filtered = all_instances
+
+        if child_id:
+            filtered = [inst for inst in filtered if inst.child_id == child_id]
+
+        if task_id:
+            filtered = [inst for inst in filtered if inst.task_id == task_id]
+
+        if status:
+            filtered = [inst for inst in filtered if inst.status == status]
+
+        return filtered
