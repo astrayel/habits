@@ -109,32 +109,27 @@ class HabitsManagerTester:
             print(f"{Colors.YELLOW}⚠ Impossible de lire {filename}: {e}{Colors.RESET}")
             return None
 
-    def test(self, name: str, description: str):
-        """Décorateur pour marquer une méthode comme test.
+    def run_test(self, name: str, description: str, test_func):
+        """Exécute un test et enregistre le résultat.
 
         Args:
             name: Nom du test
             description: Description du test
+            test_func: Fonction de test à exécuter
         """
-        def decorator(func):
-            def wrapper(*args, **kwargs):
-                print(f"\n{Colors.BOLD}{Colors.CYAN}━━━ Test: {name} ━━━{Colors.RESET}")
-                print(f"{Colors.BLUE}{description}{Colors.RESET}")
-                try:
-                    result = func(*args, **kwargs)
-                    if result:
-                        print(f"{Colors.GREEN}✓ Test réussi{Colors.RESET}")
-                        self.test_results.append((name, True, None))
-                    else:
-                        print(f"{Colors.RED}✗ Test échoué{Colors.RESET}")
-                        self.test_results.append((name, False, "Assertion failed"))
-                    return result
-                except Exception as e:
-                    print(f"{Colors.RED}✗ Test échoué: {e}{Colors.RESET}")
-                    self.test_results.append((name, False, str(e)))
-                    return False
-            return wrapper
-        return decorator
+        print(f"\n{Colors.BOLD}{Colors.CYAN}━━━ {name} ━━━{Colors.RESET}")
+        print(f"{Colors.BLUE}{description}{Colors.RESET}")
+        try:
+            result = test_func()
+            if result:
+                print(f"{Colors.GREEN}✓ Test réussi{Colors.RESET}")
+                self.test_results.append((name, True, None))
+            else:
+                print(f"{Colors.RED}✗ Test échoué{Colors.RESET}")
+                self.test_results.append((name, False, "Assertion failed"))
+        except Exception as e:
+            print(f"{Colors.RED}✗ Test échoué: {e}{Colors.RESET}")
+            self.test_results.append((name, False, str(e)))
 
     def run_all_tests(self):
         """Exécute tous les tests dans l'ordre."""
@@ -146,27 +141,26 @@ class HabitsManagerTester:
 
         # Phase 1 Tests
         print(f"\n{Colors.BOLD}{Colors.YELLOW}═══ PHASE 1 TESTS ═══{Colors.RESET}\n")
-        self.test_01_create_child()
-        self.test_02_verify_sensors()
-        self.test_03_create_task()
-        self.test_04_verify_task_instance()
-        self.test_05_create_habit()
-        self.test_06_complete_habit()
-        self.test_07_mark_task_completed()
+        self.run_test("Test 1", "Créer un enfant de test", self.test_01_create_child)
+        self.run_test("Test 2", "Vérifier les sensors créés dynamiquement", self.test_02_verify_sensors)
+        self.run_test("Test 3", "Créer une tâche quotidienne", self.test_03_create_task)
+        self.run_test("Test 4", "Vérifier génération d'instance", self.test_04_verify_task_instance)
+        self.run_test("Test 5", "Créer une habitude", self.test_05_create_habit)
+        self.run_test("Test 6", "Compléter une habitude", self.test_06_complete_habit)
+        self.run_test("Test 7", "Marquer tâche complétée", self.test_07_mark_task_completed)
 
         # Phase 2 Tests
         print(f"\n{Colors.BOLD}{Colors.YELLOW}═══ PHASE 2 TESTS ═══{Colors.RESET}\n")
-        self.test_08_validate_task()
-        self.test_09_create_reward()
-        self.test_10_claim_reward()
-        self.test_11_approve_claim()
-        self.test_12_refuse_task()
-        self.test_13_create_cosmetic()
+        self.run_test("Test 8", "Valider une tâche (Phase 2)", self.test_08_validate_task)
+        self.run_test("Test 9", "Créer une récompense (Phase 2)", self.test_09_create_reward)
+        self.run_test("Test 10", "Réclamer une récompense (Phase 2)", self.test_10_claim_reward)
+        self.run_test("Test 11", "Approuver une réclamation (Phase 2)", self.test_11_approve_claim)
+        self.run_test("Test 12", "Refuser une tâche (Phase 2)", self.test_12_refuse_task)
+        self.run_test("Test 13", "Créer un cosmétique (Phase 2)", self.test_13_create_cosmetic)
 
         # Afficher le rapport
         self.print_report()
 
-    @test("Test 1", "Créer un enfant de test")
     def test_01_create_child(self):
         """Test: Créer un enfant."""
         result = self.call_service('habits_manager.create_child', {
@@ -181,7 +175,6 @@ class HabitsManagerTester:
             return True
         return False
 
-    @test("Test 2", "Vérifier les sensors créés dynamiquement")
     def test_02_verify_sensors(self):
         """Test: Vérifier que les sensors ont été créés."""
         # Chercher les sensors test_bot
@@ -203,7 +196,6 @@ class HabitsManagerTester:
             print(f"  {Colors.RED}✗ Seulement {len(sensors_found)}/8 sensors{Colors.RESET}")
             return False
 
-    @test("Test 3", "Créer une tâche quotidienne")
     def test_03_create_task(self):
         """Test: Créer une tâche."""
         # Note: Il faudra récupérer le child_id du test 1
@@ -222,7 +214,6 @@ class HabitsManagerTester:
             return True
         return False
 
-    @test("Test 4", "Vérifier génération d'instance")
     def test_04_verify_task_instance(self):
         """Test: Vérifier que l'instance a été générée."""
         # Vérifier le sensor tasks_pending
@@ -237,7 +228,6 @@ class HabitsManagerTester:
             return count > 0
         return False
 
-    @test("Test 5", "Créer une habitude")
     def test_05_create_habit(self):
         """Test: Créer une habitude."""
         result = self.call_service('habits_manager.create_habit', {
@@ -252,26 +242,22 @@ class HabitsManagerTester:
             return True
         return False
 
-    @test("Test 6", "Compléter une habitude")
     def test_06_complete_habit(self):
         """Test: Compléter une habitude."""
         # Note: Nécessite habit_id et child_id réels
         print(f"  {Colors.YELLOW}⚠ Test manuel requis - IDs nécessaires{Colors.RESET}")
         return True  # Skip pour l'instant
 
-    @test("Test 7", "Marquer tâche complétée")
     def test_07_mark_task_completed(self):
         """Test: Marquer une tâche comme complétée."""
         print(f"  {Colors.YELLOW}⚠ Test manuel requis - IDs nécessaires{Colors.RESET}")
         return True  # Skip pour l'instant
 
-    @test("Test 8", "Valider une tâche (Phase 2)")
     def test_08_validate_task(self):
         """Test: Valider une tâche complétée."""
         print(f"  {Colors.YELLOW}⚠ Test manuel requis - IDs nécessaires{Colors.RESET}")
         return True  # Skip pour l'instant
 
-    @test("Test 9", "Créer une récompense (Phase 2)")
     def test_09_create_reward(self):
         """Test: Créer une récompense."""
         result = self.call_service('habits_manager.create_reward', {
@@ -286,25 +272,21 @@ class HabitsManagerTester:
             return True
         return False
 
-    @test("Test 10", "Réclamer une récompense (Phase 2)")
     def test_10_claim_reward(self):
         """Test: Réclamer une récompense."""
         print(f"  {Colors.YELLOW}⚠ Test manuel requis - IDs nécessaires{Colors.RESET}")
         return True  # Skip pour l'instant
 
-    @test("Test 11", "Approuver une réclamation (Phase 2)")
     def test_11_approve_claim(self):
         """Test: Approuver une réclamation."""
         print(f"  {Colors.YELLOW}⚠ Test manuel requis - IDs nécessaires{Colors.RESET}")
         return True  # Skip pour l'instant
 
-    @test("Test 12", "Refuser une tâche (Phase 2)")
     def test_12_refuse_task(self):
         """Test: Refuser une tâche."""
         print(f"  {Colors.YELLOW}⚠ Test manuel requis - IDs nécessaires{Colors.RESET}")
         return True  # Skip pour l'instant
 
-    @test("Test 13", "Créer un cosmétique (Phase 2)")
     def test_13_create_cosmetic(self):
         """Test: Créer un cosmétique."""
         result = self.call_service('habits_manager.create_cosmetic', {
