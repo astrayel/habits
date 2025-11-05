@@ -54,14 +54,14 @@ from .sensor import async_create_child_sensors
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Setup de l'int�gration Habits Manager.
+    """Setup de l'intégration Habits Manager.
 
     Args:
         hass: Instance Home Assistant
         config: Configuration
 
     Returns:
-        True si le setup r�ussit
+        True si le setup réussit
     """
     _LOGGER.info("Setting up Habits Manager integration")
 
@@ -98,14 +98,14 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         "level_calculator": LevelCalculator(),
     }
 
-    # Charger les enfants existants et cr�er leurs entit�s
+    # Charger les enfants existants et créer leurs entités
     children = await child_mgr.get_all_children()
     for child in children:
         await entity_mgr.create_child_entities(child)
 
     _LOGGER.info(f"Loaded {len(children)} children")
 
-    # G�n�rer les task instances pour aujourd'hui
+    # Générer les task instances pour aujourd'hui
     today = date.today()
     await task_mgr.generate_task_instances(today)
 
@@ -139,17 +139,17 @@ async def register_services(hass: HomeAssistant):
     # ========================================================================
 
     async def handle_create_child(call: ServiceCall):
-        """Service: Créer un enfant."""
+        """Service: CrÃ©er un enfant."""
         try:
             name = call.data["name"]
             person_entity = call.data["person_entity"]
 
             child = await child_mgr.create_child(name, person_entity)
 
-            # Créer dynamiquement les sensors pour ce nouvel enfant
+            # CrÃ©er dynamiquement les sensors pour ce nouvel enfant
             await async_create_child_sensors(hass, child.id)
 
-            # Émettre un événement
+            # Ãmettre un Ã©vÃ©nement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "child_created",
                 "child_id": child.id,
@@ -166,18 +166,18 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to create child: {err}")
 
     async def handle_update_child(call: ServiceCall):
-        """Service: Mettre � jour un enfant."""
+        """Service: Mettre é jour un enfant."""
         try:
             child_id = call.data["child_id"]
             child = await child_mgr.get_child(child_id)
 
-            # Mettre � jour les champs fournis
+            # Mettre é jour les champs fournis
             if "name" in call.data:
                 child.name = call.data["name"]
 
             child = await child_mgr.update_child(child)
 
-            # �mettre un �v�nement
+            # émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "child_updated",
                 "child_id": child.id,
@@ -198,7 +198,7 @@ async def register_services(hass: HomeAssistant):
             child_id = call.data["child_id"]
             await child_mgr.delete_child(child_id)
 
-            # �mettre un �v�nement
+            # émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "child_deleted",
                 "child_id": child_id,
@@ -214,30 +214,30 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to delete child: {err}")
 
     # ========================================================================
-    # SERVICES T�CHES
+    # SERVICES TéCHES
     # ========================================================================
 
     async def handle_create_task(call: ServiceCall):
-        """Service: Créer une tâche."""
+        """Service: CrÃ©er une tÃ¢che."""
         try:
             task_data = dict(call.data)
             task = await task_mgr.create_task(task_data)
 
-            # Générer les instances pour aujourd'hui dynamiquement
+            # GÃ©nÃ©rer les instances pour aujourd'hui dynamiquement
             today = date.today()
             new_instances = await task_mgr.generate_task_instances(today)
             _LOGGER.info(f"Generated {len(new_instances)} task instances for today")
 
-            # Mettre à jour les compteurs de tâches pour chaque enfant concerné
+            # Mettre Ã  jour les compteurs de tÃ¢ches pour chaque enfant concernÃ©
             entity_mgr = hass.data[DOMAIN]["entity_manager"]
             for child_id in task.assigned_to:
-                # Compter les tâches en attente pour cet enfant
+                # Compter les tÃ¢ches en attente pour cet enfant
                 all_instances = await task_mgr.get_task_instances(child_id=child_id)
                 pending_count = sum(1 for inst in all_instances if inst.status.value == "pending")
                 waiting_count = sum(1 for inst in all_instances if inst.status.value == "completed_waiting")
                 await entity_mgr.update_task_counts(child_id, pending_count, waiting_count)
 
-            # Émettre un événement
+            # Ãmettre un Ã©vÃ©nement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "task_created",
                 "task_id": task.id,
@@ -254,12 +254,12 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to create task: {err}")
 
     async def handle_update_task(call: ServiceCall):
-        """Service: Mettre � jour une t�che."""
+        """Service: Mettre é jour une tâche."""
         try:
             task_id = call.data["task_id"]
             task = await task_mgr.get_task(task_id)
 
-            # Mettre � jour les champs fournis
+            # Mettre é jour les champs fournis
             if "title" in call.data:
                 task.title = call.data["title"]
             if "description" in call.data:
@@ -269,7 +269,7 @@ async def register_services(hass: HomeAssistant):
 
             task = await task_mgr.update_task(task)
 
-            # �mettre un �v�nement
+            # émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "task_updated",
                 "task_id": task.id,
@@ -285,12 +285,12 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to update task: {err}")
 
     async def handle_delete_task(call: ServiceCall):
-        """Service: Supprimer une t�che."""
+        """Service: Supprimer une tâche."""
         try:
             task_id = call.data["task_id"]
             await task_mgr.delete_task(task_id)
 
-            # �mettre un �v�nement
+            # émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "task_deleted",
                 "task_id": task_id,
@@ -306,21 +306,21 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to delete task: {err}")
 
     async def handle_mark_task_completed(call: ServiceCall):
-        """Service: Marquer une tâche comme complétée (en attente de validation)."""
+        """Service: Marquer une tÃ¢che comme complÃ©tÃ©e (en attente de validation)."""
         try:
             instance_id = call.data["instance_id"]
             child_id = call.data["child_id"]
 
             instance = await task_mgr.mark_completed(instance_id)
 
-            # Mettre à jour les compteurs de tâches dynamiquement
+            # Mettre Ã  jour les compteurs de tÃ¢ches dynamiquement
             entity_mgr = hass.data[DOMAIN]["entity_manager"]
             all_instances = await task_mgr.get_task_instances(child_id=child_id)
             pending_count = sum(1 for inst in all_instances if inst.status.value == "pending")
             waiting_count = sum(1 for inst in all_instances if inst.status.value == "completed_waiting")
             await entity_mgr.update_task_counts(child_id, pending_count, waiting_count)
 
-            # Émettre un événement
+            # Ãmettre un Ã©vÃ©nement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "task_completed",
                 "instance_id": instance.id,
@@ -342,12 +342,12 @@ async def register_services(hass: HomeAssistant):
     # ========================================================================
 
     async def handle_create_habit(call: ServiceCall):
-        """Service: Cr�er une habitude."""
+        """Service: Créer une habitude."""
         try:
             habit_data = dict(call.data)
             habit = await habit_mgr.create_habit(habit_data)
 
-            # �mettre un �v�nement
+            # émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "habit_created",
                 "habit_id": habit.id,
@@ -364,12 +364,12 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to create habit: {err}")
 
     async def handle_update_habit(call: ServiceCall):
-        """Service: Mettre � jour une habitude."""
+        """Service: Mettre é jour une habitude."""
         try:
             habit_id = call.data["habit_id"]
             habit = await habit_mgr.get_habit(habit_id)
 
-            # Mettre � jour les champs fournis
+            # Mettre é jour les champs fournis
             if "title" in call.data:
                 habit.title = call.data["title"]
             if "description" in call.data:
@@ -379,7 +379,7 @@ async def register_services(hass: HomeAssistant):
 
             habit = await habit_mgr.update_habit(habit)
 
-            # �mettre un �v�nement
+            # émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "habit_updated",
                 "habit_id": habit.id,
@@ -400,7 +400,7 @@ async def register_services(hass: HomeAssistant):
             habit_id = call.data["habit_id"]
             await habit_mgr.delete_habit(habit_id)
 
-            # �mettre un �v�nement
+            # émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "habit_deleted",
                 "habit_id": habit_id,
@@ -416,18 +416,18 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to delete habit: {err}")
 
     async def handle_complete_habit(call: ServiceCall):
-        """Service: Compléter une habitude."""
+        """Service: ComplÃ©ter une habitude."""
         try:
             habit_id = call.data["habit_id"]
             child_id = call.data["child_id"]
 
-            # Enregistrer la complétion
+            # Enregistrer la complÃ©tion
             streak, streak_increased = await habit_mgr.record_completion(habit_id, child_id)
 
-            # Calculer les récompenses avec bonus
+            # Calculer les rÃ©compenses avec bonus
             rewards = await habit_mgr.calculate_streak_bonus(habit_id, child_id)
 
-            # Appliquer les récompenses (met à jour points/coins/level/xp automatiquement)
+            # Appliquer les rÃ©compenses (met Ã  jour points/coins/level/xp automatiquement)
             await child_mgr.update_points(
                 child_id,
                 points=rewards["points"],
@@ -435,12 +435,12 @@ async def register_services(hass: HomeAssistant):
                 xp=rewards["experience"]
             )
 
-            # Mettre à jour le longest_streak dynamiquement
+            # Mettre Ã  jour le longest_streak dynamiquement
             entity_mgr = hass.data[DOMAIN]["entity_manager"]
             longest_streak = await habit_mgr.get_child_longest_streak(child_id)
             await entity_mgr.update_longest_streak(child_id, longest_streak)
 
-            # Émettre un événement
+            # Ãmettre un Ã©vÃ©nement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "habit_completed",
                 "habit_id": habit_id,
@@ -468,7 +468,7 @@ async def register_services(hass: HomeAssistant):
     # ========================================================================
 
     async def handle_validate_task(call: ServiceCall):
-        """Service: Valider une tâche complétée."""
+        """Service: Valider une tÃ¢che complÃ©tÃ©e."""
         try:
             instance_id = call.data["instance_id"]
             validator_id = call.data.get("validator_id", "admin")
@@ -476,12 +476,12 @@ async def register_services(hass: HomeAssistant):
 
             validation_mgr = hass.data[DOMAIN]["validation_manager"]
 
-            # Valider et récupérer les récompenses
+            # Valider et rÃ©cupÃ©rer les rÃ©compenses
             instance, task, rewards = await validation_mgr.validate_task(
                 instance_id, validator_id, note
             )
 
-            # Appliquer les récompenses
+            # Appliquer les rÃ©compenses
             await child_mgr.update_points(
                 instance.child_id,
                 points=rewards["points"],
@@ -489,14 +489,14 @@ async def register_services(hass: HomeAssistant):
                 xp=rewards["experience"]
             )
 
-            # Mettre à jour les compteurs
+            # Mettre Ã  jour les compteurs
             entity_mgr = hass.data[DOMAIN]["entity_manager"]
             all_instances = await task_mgr.get_task_instances(child_id=instance.child_id)
             pending_count = sum(1 for inst in all_instances if inst.status.value == "pending")
             waiting_count = sum(1 for inst in all_instances if inst.status.value == "completed_waiting")
             await entity_mgr.update_task_counts(instance.child_id, pending_count, waiting_count)
 
-            # Émettre un événement
+            # Ãmettre un Ã©vÃ©nement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "task_validated",
                 "instance_id": instance.id,
@@ -518,7 +518,7 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to validate task: {err}")
 
     async def handle_refuse_task(call: ServiceCall):
-        """Service: Refuser une tâche complétée."""
+        """Service: Refuser une tÃ¢che complÃ©tÃ©e."""
         try:
             instance_id = call.data["instance_id"]
             validator_id = call.data.get("validator_id", "admin")
@@ -527,12 +527,12 @@ async def register_services(hass: HomeAssistant):
 
             validation_mgr = hass.data[DOMAIN]["validation_manager"]
 
-            # Refuser et récupérer les pénalités si applicables
+            # Refuser et rÃ©cupÃ©rer les pÃ©nalitÃ©s si applicables
             instance, penalties = await validation_mgr.refuse_task(
                 instance_id, validator_id, apply_penalty, note
             )
 
-            # Appliquer les pénalités si présentes
+            # Appliquer les pÃ©nalitÃ©s si prÃ©sentes
             if penalties:
                 await child_mgr.update_points(
                     instance.child_id,
@@ -541,14 +541,14 @@ async def register_services(hass: HomeAssistant):
                     xp=0
                 )
 
-            # Mettre à jour les compteurs
+            # Mettre Ã  jour les compteurs
             entity_mgr = hass.data[DOMAIN]["entity_manager"]
             all_instances = await task_mgr.get_task_instances(child_id=instance.child_id)
             pending_count = sum(1 for inst in all_instances if inst.status.value == "pending")
             waiting_count = sum(1 for inst in all_instances if inst.status.value == "completed_waiting")
             await entity_mgr.update_task_counts(instance.child_id, pending_count, waiting_count)
 
-            # Émettre un événement
+            # Ãmettre un Ã©vÃ©nement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "task_refused",
                 "instance_id": instance.id,
@@ -573,7 +573,7 @@ async def register_services(hass: HomeAssistant):
     # ========================================================================
 
     async def handle_create_reward(call: ServiceCall):
-        """Service: Créer une récompense."""
+        """Service: CrÃ©er une rÃ©compense."""
         try:
             reward_data = dict(call.data)
             reward_mgr = hass.data[DOMAIN]["reward_manager"]
@@ -592,17 +592,17 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to create reward: {err}")
 
     async def handle_claim_reward(call: ServiceCall):
-        """Service: Réclamer une récompense."""
+        """Service: RÃ©clamer une rÃ©compense."""
         try:
             reward_id = call.data["reward_id"]
             child_id = call.data["child_id"]
 
             reward_mgr = hass.data[DOMAIN]["reward_manager"]
 
-            # Réclamer la récompense
+            # RÃ©clamer la rÃ©compense
             claim, points_cost, coins_cost = await reward_mgr.claim_reward(reward_id, child_id)
 
-            # Déduire les points/coins
+            # DÃ©duire les points/coins
             await child_mgr.update_points(child_id, points=-points_cost, coins=-coins_cost, xp=0)
 
             hass.bus.fire(EVENT_UPDATE, {
@@ -629,7 +629,7 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to claim reward: {err}")
 
     async def handle_approve_claim(call: ServiceCall):
-        """Service: Approuver une réclamation."""
+        """Service: Approuver une rÃ©clamation."""
         try:
             claim_id = call.data["claim_id"]
             approver_id = call.data.get("approver_id", "admin")
@@ -658,7 +658,7 @@ async def register_services(hass: HomeAssistant):
     # ========================================================================
 
     async def handle_create_cosmetic(call: ServiceCall):
-        """Service: Créer un cosmétique."""
+        """Service: CrÃ©er un cosmÃ©tique."""
         try:
             cosmetic_data = dict(call.data)
             cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
@@ -703,14 +703,14 @@ async def register_services(hass: HomeAssistant):
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload de l'int�gration.
+    """Unload de l'intégration.
 
     Args:
         hass: Instance Home Assistant
         entry: Config entry
 
     Returns:
-        True si succ�s
+        True si succés
     """
     hass.data.pop(DOMAIN)
     return True

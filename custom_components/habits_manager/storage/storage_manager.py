@@ -37,20 +37,20 @@ from ..core.exceptions import StorageError
 
 
 class StorageManager:
-    """Gère le stockage persistant des données."""
+    """GÃ¨re le stockage persistant des donnÃ©es."""
 
     def __init__(self, hass: HomeAssistant, base_path: str = STORAGE_DIR):
         """Initialise le storage manager.
 
         Args:
             hass: Instance Home Assistant
-            base_path: Chemin du répertoire de stockage
+            base_path: Chemin du rÃ©pertoire de stockage
         """
         self.hass = hass
         self.base_path = hass.config.path(base_path)
 
     async def ensure_storage_dir(self) -> None:
-        """Cr�e le r�pertoire de stockage s'il n'existe pas."""
+        """Crée le répertoire de stockage s'il n'existe pas."""
         try:
             await self.hass.async_add_executor_job(partial(os.makedirs, self.base_path, exist_ok=True))
             _LOGGER.info(f"Storage directory ensured at {self.base_path}")
@@ -65,10 +65,10 @@ class StorageManager:
             filename: Nom du fichier (sans chemin)
 
         Returns:
-            Dictionnaire avec les donn�es, ou {} si le fichier n'existe pas
+            Dictionnaire avec les données, ou {} si le fichier n'existe pas
 
         Raises:
-            StorageError: Si la lecture �choue
+            StorageError: Si la lecture échoue
         """
         file_path = os.path.join(self.base_path, filename)
 
@@ -94,10 +94,10 @@ class StorageManager:
 
         Args:
             filename: Nom du fichier (sans chemin)
-            data: Donn�es � sauvegarder
+            data: Données é sauvegarder
 
         Raises:
-            StorageError: Si l'�criture �choue
+            StorageError: Si l'écriture échoue
         """
         file_path = os.path.join(self.base_path, filename)
 
@@ -168,7 +168,7 @@ class StorageManager:
         """Sauvegarde un enfant.
 
         Args:
-            child: Enfant � sauvegarder
+            child: Enfant é sauvegarder
         """
         data = await self.load_json(FILE_CHILDREN)
         child.updated_at = datetime.now()
@@ -187,13 +187,13 @@ class StorageManager:
             await self.save_json(FILE_CHILDREN, data)
 
     async def get_child(self, child_id: str) -> Optional[Child]:
-        """R�cup�re un enfant par son ID.
+        """Récupére un enfant par son ID.
 
         Args:
             child_id: ID de l'enfant
 
         Returns:
-            Child ou None si non trouv�
+            Child ou None si non trouvé
         """
         children = await self.load_children()
         for child in children:
@@ -206,10 +206,10 @@ class StorageManager:
     # ========================================================================
 
     async def load_tasks(self) -> List[Task]:
-        """Charge toutes les t�ches.
+        """Charge toutes les tâches.
 
         Returns:
-            Liste des t�ches
+            Liste des tâches
         """
         data = await self.load_json(FILE_TASKS)
         tasks = []
@@ -265,20 +265,20 @@ class StorageManager:
         return tasks
 
     async def save_task(self, task: Task) -> None:
-        """Sauvegarde une t�che.
+        """Sauvegarde une tâche.
 
         Args:
-            task: T�che � sauvegarder
+            task: Téche é sauvegarder
         """
         data = await self.load_json(FILE_TASKS)
         data[task.id] = task.to_dict()
         await self.save_json(FILE_TASKS, data)
 
     async def delete_task(self, task_id: str) -> None:
-        """Supprime une t�che.
+        """Supprime une tâche.
 
         Args:
-            task_id: ID de la t�che
+            task_id: ID de la tâche
         """
         data = await self.load_json(FILE_TASKS)
         if task_id in data:
@@ -340,7 +340,7 @@ class StorageManager:
         """Sauvegarde une habitude.
 
         Args:
-            habit: Habitude � sauvegarder
+            habit: Habitude é sauvegarder
         """
         data = await self.load_json(FILE_HABITS)
         data[habit.id] = habit.to_dict()
@@ -362,17 +362,17 @@ class StorageManager:
     # ========================================================================
 
     async def save_task_instance(self, instance: TaskInstance) -> None:
-        """Sauvegarde une instance de t�che.
+        """Sauvegarde une instance de tâche.
 
         Args:
-            instance: Instance � sauvegarder
+            instance: Instance é sauvegarder
         """
         data = await self.load_json(FILE_TASK_INSTANCES)
         data[instance.id] = instance.to_dict()
         await self.save_json(FILE_TASK_INSTANCES, data)
 
     async def load_task_instances(self, child_id: Optional[str] = None, date_filter: Optional[date] = None) -> List[TaskInstance]:
-        """Charge les instances de t�ches avec filtres optionnels.
+        """Charge les instances de tâches avec filtres optionnels.
 
         Args:
             child_id: Filtrer par enfant (optionnel)
@@ -422,7 +422,7 @@ class StorageManager:
         """Sauvegarde un streak d'habitude.
 
         Args:
-            streak: Streak � sauvegarder
+            streak: Streak é sauvegarder
         """
         data = await self.load_json(FILE_HABIT_STREAKS)
         data[streak.id] = streak.to_dict()
@@ -470,10 +470,10 @@ class StorageManager:
     # ========================================================================
 
     async def load_rewards(self) -> List[Reward]:
-        """Charge toutes les récompenses.
+        """Charge toutes les rÃ©compenses.
 
         Returns:
-            Liste des récompenses
+            Liste des rÃ©compenses
         """
         data = await self.load_json(FILE_REWARDS)
         rewards = []
@@ -502,20 +502,20 @@ class StorageManager:
         return rewards
 
     async def save_reward(self, reward: Reward) -> None:
-        """Sauvegarde une récompense.
+        """Sauvegarde une rÃ©compense.
 
         Args:
-            reward: Récompense à sauvegarder
+            reward: RÃ©compense Ã  sauvegarder
         """
         data = await self.load_json(FILE_REWARDS)
         data[reward.id] = reward.to_dict()
         await self.save_json(FILE_REWARDS, data)
 
     async def delete_reward(self, reward_id: str) -> None:
-        """Supprime une récompense.
+        """Supprime une rÃ©compense.
 
         Args:
-            reward_id: ID de la récompense
+            reward_id: ID de la rÃ©compense
         """
         data = await self.load_json(FILE_REWARDS)
         if reward_id in data:
@@ -527,10 +527,10 @@ class StorageManager:
     # ========================================================================
 
     async def load_reward_claims(self) -> List[RewardClaim]:
-        """Charge toutes les réclamations de récompenses.
+        """Charge toutes les rÃ©clamations de rÃ©compenses.
 
         Returns:
-            Liste des réclamations
+            Liste des rÃ©clamations
         """
         data = await self.load_json(FILE_REWARD_CLAIMS)
         claims = []
@@ -556,10 +556,10 @@ class StorageManager:
         return claims
 
     async def save_reward_claim(self, claim: RewardClaim) -> None:
-        """Sauvegarde une réclamation de récompense.
+        """Sauvegarde une rÃ©clamation de rÃ©compense.
 
         Args:
-            claim: Réclamation à sauvegarder
+            claim: RÃ©clamation Ã  sauvegarder
         """
         data = await self.load_json(FILE_REWARD_CLAIMS)
         data[claim.id] = claim.to_dict()
@@ -570,10 +570,10 @@ class StorageManager:
     # ========================================================================
 
     async def load_cosmetics(self) -> List[CosmeticItem]:
-        """Charge tous les cosmétiques.
+        """Charge tous les cosmÃ©tiques.
 
         Returns:
-            Liste des cosmétiques
+            Liste des cosmÃ©tiques
         """
         data = await self.load_json(FILE_COSMETICS)
         cosmetics = []
@@ -582,7 +582,7 @@ class StorageManager:
             try:
                 from ..core.models import CosmeticCategory, CosmeticRarity, CosmeticUnlockRequirements
 
-                # Gérer les unlock requirements
+                # GÃ©rer les unlock requirements
                 unlock_reqs = None
                 if "unlock_requirements" in cosmetic_data and cosmetic_data["unlock_requirements"]:
                     reqs_data = cosmetic_data["unlock_requirements"]
@@ -611,20 +611,20 @@ class StorageManager:
         return cosmetics
 
     async def save_cosmetic(self, cosmetic: CosmeticItem) -> None:
-        """Sauvegarde un cosmétique.
+        """Sauvegarde un cosmÃ©tique.
 
         Args:
-            cosmetic: Cosmétique à sauvegarder
+            cosmetic: CosmÃ©tique Ã  sauvegarder
         """
         data = await self.load_json(FILE_COSMETICS)
         data[cosmetic.id] = cosmetic.to_dict()
         await self.save_json(FILE_COSMETICS, data)
 
     async def delete_cosmetic(self, cosmetic_id: str) -> None:
-        """Supprime un cosmétique.
+        """Supprime un cosmÃ©tique.
 
         Args:
-            cosmetic_id: ID du cosmétique
+            cosmetic_id: ID du cosmÃ©tique
         """
         data = await self.load_json(FILE_COSMETICS)
         if cosmetic_id in data:
