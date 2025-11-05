@@ -2,21 +2,17 @@
 
 ## 📦 Installation de l'intégration
 
-### Méthode 1: Installation manuelle
+### Installation manuelle
 
 1. Copiez le dossier `custom_components/habits_manager` dans votre dossier `config/custom_components/`
 2. Redémarrez Home Assistant
 3. L'intégration sera chargée automatiquement (pas de configuration nécessaire)
 
-### Méthode 2: Via HACS (recommandé)
+**Note**: Les cartes Lovelace sont automatiquement intégrées dans l'intégration (dossier `custom_components/habits_manager/www/`). Pas besoin de copie manuelle!
 
-*Note: L'intégration doit d'abord être publiée sur HACS*
+### Via HACS (futur)
 
-1. Ouvrez HACS dans Home Assistant
-2. Allez dans "Integrations"
-3. Recherchez "Habits Manager"
-4. Cliquez sur "Install"
-5. Redémarrez Home Assistant
+*Note: L'intégration n'est pas encore publiée sur HACS. Cette méthode sera disponible ultérieurement.*
 
 ---
 
@@ -33,15 +29,15 @@ Les cartes Lovelace sont automatiquement servies par l'intégration, mais vous d
 3. Ajoutez ces 3 ressources une par une:
 
 **Ressource 1 - Carte de Gestion:**
-- **URL**: `/hacsfiles/habits_manager/habits-manager-card.js`
+- **URL**: `/habits_manager_static/habits-manager-card.js`
 - **Type**: JavaScript Module
 
 **Ressource 2 - Carte de Supervision:**
-- **URL**: `/hacsfiles/habits_manager/habits-supervision-card.js`
+- **URL**: `/habits_manager_static/habits-supervision-card.js`
 - **Type**: JavaScript Module
 
 **Ressource 3 - Carte Enfant:**
-- **URL**: `/hacsfiles/habits_manager/habits-child-card.js`
+- **URL**: `/habits_manager_static/habits-child-card.js`
 - **Type**: JavaScript Module
 
 #### Option B: Via configuration.yaml
@@ -52,11 +48,11 @@ Ajoutez dans votre `configuration.yaml`:
 lovelace:
   mode: yaml
   resources:
-    - url: /hacsfiles/habits_manager/habits-manager-card.js
+    - url: /habits_manager_static/habits-manager-card.js
       type: module
-    - url: /hacsfiles/habits_manager/habits-supervision-card.js
+    - url: /habits_manager_static/habits-supervision-card.js
       type: module
-    - url: /hacsfiles/habits_manager/habits-child-card.js
+    - url: /habits_manager_static/habits-child-card.js
       type: module
 ```
 

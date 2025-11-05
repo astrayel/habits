@@ -139,20 +139,20 @@ async def register_frontend_resources(hass: HomeAssistant):
     integration_dir = os.path.dirname(__file__)
     www_dir = os.path.join(integration_dir, "www")
 
-    # Enregistrer le chemin statique
-    # Les fichiers seront accessibles via /hacsfiles/habits_manager/*
+    # Enregistrer le chemin statique avec un path custom (pas /hacsfiles car pas sur HACS)
+    # Les fichiers seront accessibles via /habits_manager_static/*
     hass.http.register_static_path(
-        f"/hacsfiles/{DOMAIN}",
+        f"/{DOMAIN}_static",
         www_dir,
         cache_headers=True
     )
 
-    _LOGGER.info(f"Registered static path: /hacsfiles/{DOMAIN} -> {www_dir}")
+    _LOGGER.info(f"Registered static path: /{DOMAIN}_static -> {www_dir}")
 
     # Les cartes sont maintenant disponibles aux URLs suivantes:
-    # - /hacsfiles/habits_manager/habits-manager-card.js
-    # - /hacsfiles/habits_manager/habits-supervision-card.js
-    # - /hacsfiles/habits_manager/habits-child-card.js
+    # - /habits_manager_static/habits-manager-card.js
+    # - /habits_manager_static/habits-supervision-card.js
+    # - /habits_manager_static/habits-child-card.js
 
     # L'utilisateur doit les ajouter manuellement dans:
     # Configuration > Lovelace Dashboards > Resources
