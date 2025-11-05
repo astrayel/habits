@@ -26,13 +26,9 @@ from .const import (
     SERVICE_DELETE_HABIT,
     SERVICE_COMPLETE_HABIT,
     SERVICE_CREATE_REWARD,
-    SERVICE_UPDATE_REWARD,
-    SERVICE_DELETE_REWARD,
     SERVICE_CLAIM_REWARD,
     SERVICE_APPROVE_CLAIM,
     SERVICE_CREATE_COSMETIC,
-    SERVICE_UPDATE_COSMETIC,
-    SERVICE_DELETE_COSMETIC,
 )
 from .storage.storage_manager import StorageManager
 from .storage.entity_manager import EntityManager
