@@ -12,7 +12,7 @@ from ..storage.storage_manager import StorageManager
 
 
 class CosmeticManager:
-    """Gère les cosmétiques et leur disponibilité."""
+    """GÃ¨re les cosmÃ©tiques et leur disponibilitÃ©."""
 
     def __init__(self, storage: StorageManager):
         """Initialise le cosmetic manager.
@@ -23,18 +23,18 @@ class CosmeticManager:
         self.storage = storage
 
     async def create_cosmetic(self, cosmetic_data: dict) -> CosmeticItem:
-        """Crée un nouveau cosmétique.
+        """CrÃ©e un nouveau cosmÃ©tique.
 
         Args:
-            cosmetic_data: Données du cosmétique
+            cosmetic_data: DonnÃ©es du cosmÃ©tique
 
         Returns:
-            CosmeticItem créé
+            CosmeticItem crÃ©Ã©
         """
-        # Générer ID
+        # GÃ©nÃ©rer ID
         cosmetic_id = f"cosmetic_{uuid.uuid4().hex[:8]}"
 
-        # Gérer les unlock requirements si présents
+        # GÃ©rer les unlock requirements si prÃ©sents
         unlock_reqs = None
         if "unlock_requirements" in cosmetic_data:
             reqs_data = cosmetic_data["unlock_requirements"]
@@ -44,7 +44,7 @@ class CosmeticManager:
                 min_streak=reqs_data.get("min_streak"),
             )
 
-        # Créer le cosmétique
+        # CrÃ©er le cosmÃ©tique
         cosmetic = CosmeticItem(
             id=cosmetic_id,
             name=cosmetic_data["name"],
@@ -66,16 +66,16 @@ class CosmeticManager:
         return cosmetic
 
     async def get_cosmetic(self, cosmetic_id: str) -> CosmeticItem:
-        """Récupère un cosmétique par son ID.
+        """RÃ©cupÃ¨re un cosmÃ©tique par son ID.
 
         Args:
-            cosmetic_id: ID du cosmétique
+            cosmetic_id: ID du cosmÃ©tique
 
         Returns:
             CosmeticItem
 
         Raises:
-            CosmeticNotFoundError: Si le cosmétique n'existe pas
+            CosmeticNotFoundError: Si le cosmÃ©tique n'existe pas
         """
         cosmetics = await self.storage.load_cosmetics()
         for cosmetic in cosmetics:
@@ -89,14 +89,14 @@ class CosmeticManager:
         active_only: bool = False,
         category: Optional[CosmeticCategory] = None
     ) -> List[CosmeticItem]:
-        """Récupère tous les cosmétiques avec filtres optionnels.
+        """RÃ©cupÃ¨re tous les cosmÃ©tiques avec filtres optionnels.
 
         Args:
-            active_only: Si True, ne retourne que les cosmétiques actifs
-            category: Filtrer par catégorie (optionnel)
+            active_only: Si True, ne retourne que les cosmÃ©tiques actifs
+            category: Filtrer par catÃ©gorie (optionnel)
 
         Returns:
-            Liste des cosmétiques
+            Liste des cosmÃ©tiques
         """
         cosmetics = await self.storage.load_cosmetics()
 
@@ -115,31 +115,31 @@ class CosmeticManager:
         child_longest_streak: int,
         owned_cosmetics: List[str]
     ) -> List[CosmeticItem]:
-        """Récupère les cosmétiques disponibles pour un enfant.
+        """RÃ©cupÃ¨re les cosmÃ©tiques disponibles pour un enfant.
 
-        Un cosmétique est disponible si:
+        Un cosmÃ©tique est disponible si:
         - Il est actif
-        - L'enfant ne le possède pas déjà
+        - L'enfant ne le possÃ¨de pas dÃ©jÃ 
         - L'enfant remplit les unlock requirements
 
         Args:
             child_level: Niveau de l'enfant
-            child_badges: Badges possédés par l'enfant
+            child_badges: Badges possÃ©dÃ©s par l'enfant
             child_longest_streak: Plus long streak de l'enfant
-            owned_cosmetics: IDs des cosmétiques déjà possédés
+            owned_cosmetics: IDs des cosmÃ©tiques dÃ©jÃ  possÃ©dÃ©s
 
         Returns:
-            Liste des cosmétiques disponibles à l'achat
+            Liste des cosmÃ©tiques disponibles Ã  l'achat
         """
         all_cosmetics = await self.get_all_cosmetics(active_only=True)
         available = []
 
         for cosmetic in all_cosmetics:
-            # Déjà possédé ?
+            # DÃ©jÃ  possÃ©dÃ© ?
             if cosmetic.id in owned_cosmetics:
                 continue
 
-            # Vérifier unlock requirements
+            # VÃ©rifier unlock requirements
             if cosmetic.unlock_requirements:
                 reqs = cosmetic.unlock_requirements
 
@@ -160,28 +160,28 @@ class CosmeticManager:
         return available
 
     async def update_cosmetic(self, cosmetic: CosmeticItem) -> CosmeticItem:
-        """Met à jour un cosmétique.
+        """Met Ã  jour un cosmÃ©tique.
 
         Args:
-            cosmetic: Cosmétique à mettre à jour
+            cosmetic: CosmÃ©tique Ã  mettre Ã  jour
 
         Returns:
-            CosmeticItem mis à jour
+            CosmeticItem mis Ã  jour
         """
         await self.storage.save_cosmetic(cosmetic)
         _LOGGER.debug(f"Cosmetic updated: {cosmetic.name} ({cosmetic.id})")
         return cosmetic
 
     async def delete_cosmetic(self, cosmetic_id: str) -> None:
-        """Supprime un cosmétique.
+        """Supprime un cosmÃ©tique.
 
         Args:
-            cosmetic_id: ID du cosmétique
+            cosmetic_id: ID du cosmÃ©tique
 
         Raises:
-            CosmeticNotFoundError: Si le cosmétique n'existe pas
+            CosmeticNotFoundError: Si le cosmÃ©tique n'existe pas
         """
-        # Vérifier que le cosmétique existe
+        # VÃ©rifier que le cosmÃ©tique existe
         await self.get_cosmetic(cosmetic_id)
 
         # Supprimer
@@ -189,24 +189,24 @@ class CosmeticManager:
         _LOGGER.info(f"Cosmetic deleted: {cosmetic_id}")
 
     async def get_cosmetics_by_category(self, category: CosmeticCategory) -> List[CosmeticItem]:
-        """Récupère tous les cosmétiques d'une catégorie.
+        """RÃ©cupÃ¨re tous les cosmÃ©tiques d'une catÃ©gorie.
 
         Args:
-            category: Catégorie de cosmétiques
+            category: CatÃ©gorie de cosmÃ©tiques
 
         Returns:
-            Liste des cosmétiques de la catégorie
+            Liste des cosmÃ©tiques de la catÃ©gorie
         """
         return await self.get_all_cosmetics(active_only=True, category=category)
 
     async def get_cosmetics_by_rarity(self, rarity: CosmeticRarity) -> List[CosmeticItem]:
-        """Récupère tous les cosmétiques d'une rareté donnée.
+        """RÃ©cupÃ¨re tous les cosmÃ©tiques d'une raretÃ© donnÃ©e.
 
         Args:
-            rarity: Rareté des cosmétiques
+            rarity: RaretÃ© des cosmÃ©tiques
 
         Returns:
-            Liste des cosmétiques de la rareté
+            Liste des cosmÃ©tiques de la raretÃ©
         """
         all_cosmetics = await self.get_all_cosmetics(active_only=True)
         return [c for c in all_cosmetics if c.rarity == rarity]

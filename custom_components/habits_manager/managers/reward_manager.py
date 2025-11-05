@@ -18,7 +18,7 @@ from ..storage.storage_manager import StorageManager
 
 
 class RewardManager:
-    """Gère les récompenses réelles et leur réclamation."""
+    """GÃ¨re les rÃ©compenses rÃ©elles et leur rÃ©clamation."""
 
     def __init__(self, storage: StorageManager):
         """Initialise le reward manager.
@@ -29,18 +29,18 @@ class RewardManager:
         self.storage = storage
 
     async def create_reward(self, reward_data: dict) -> Reward:
-        """Crée une nouvelle récompense.
+        """CrÃ©e une nouvelle rÃ©compense.
 
         Args:
-            reward_data: Données de la récompense
+            reward_data: DonnÃ©es de la rÃ©compense
 
         Returns:
-            Reward créée
+            Reward crÃ©Ã©e
         """
-        # Générer ID
+        # GÃ©nÃ©rer ID
         reward_id = f"reward_{uuid.uuid4().hex[:8]}"
 
-        # Créer la récompense
+        # CrÃ©er la rÃ©compense
         reward = Reward(
             id=reward_id,
             title=reward_data["title"],
@@ -64,16 +64,16 @@ class RewardManager:
         return reward
 
     async def get_reward(self, reward_id: str) -> Reward:
-        """Récupère une récompense par son ID.
+        """RÃ©cupÃ¨re une rÃ©compense par son ID.
 
         Args:
-            reward_id: ID de la récompense
+            reward_id: ID de la rÃ©compense
 
         Returns:
             Reward
 
         Raises:
-            RewardNotFoundError: Si la récompense n'existe pas
+            RewardNotFoundError: Si la rÃ©compense n'existe pas
         """
         rewards = await self.storage.load_rewards()
         for reward in rewards:
@@ -83,13 +83,13 @@ class RewardManager:
         raise RewardNotFoundError(f"Reward {reward_id} not found")
 
     async def get_all_rewards(self, active_only: bool = False) -> List[Reward]:
-        """Récupère toutes les récompenses.
+        """RÃ©cupÃ¨re toutes les rÃ©compenses.
 
         Args:
-            active_only: Si True, ne retourne que les récompenses actives
+            active_only: Si True, ne retourne que les rÃ©compenses actives
 
         Returns:
-            Liste des récompenses
+            Liste des rÃ©compenses
         """
         rewards = await self.storage.load_rewards()
 
@@ -99,28 +99,28 @@ class RewardManager:
         return rewards
 
     async def update_reward(self, reward: Reward) -> Reward:
-        """Met à jour une récompense.
+        """Met Ã  jour une rÃ©compense.
 
         Args:
-            reward: Récompense à mettre à jour
+            reward: RÃ©compense Ã  mettre Ã  jour
 
         Returns:
-            Reward mise à jour
+            Reward mise Ã  jour
         """
         await self.storage.save_reward(reward)
         _LOGGER.debug(f"Reward updated: {reward.title} ({reward.id})")
         return reward
 
     async def delete_reward(self, reward_id: str) -> None:
-        """Supprime une récompense.
+        """Supprime une rÃ©compense.
 
         Args:
-            reward_id: ID de la récompense
+            reward_id: ID de la rÃ©compense
 
         Raises:
-            RewardNotFoundError: Si la récompense n'existe pas
+            RewardNotFoundError: Si la rÃ©compense n'existe pas
         """
-        # Vérifier que la récompense existe
+        # VÃ©rifier que la rÃ©compense existe
         await self.get_reward(reward_id)
 
         # Supprimer
@@ -128,29 +128,29 @@ class RewardManager:
         _LOGGER.info(f"Reward deleted: {reward_id}")
 
     async def claim_reward(self, reward_id: str, child_id: str) -> tuple[RewardClaim, int, int]:
-        """Un enfant réclame une récompense.
+        """Un enfant rÃ©clame une rÃ©compense.
 
         Args:
-            reward_id: ID de la récompense
+            reward_id: ID de la rÃ©compense
             child_id: ID de l'enfant
 
         Returns:
-            Tuple (claim créé, points déduits, coins déduits)
+            Tuple (claim crÃ©Ã©, points dÃ©duits, coins dÃ©duits)
 
         Raises:
-            RewardNotFoundError: Si la récompense n'existe pas
+            RewardNotFoundError: Si la rÃ©compense n'existe pas
             ChildNotFoundError: Si l'enfant n'existe pas
             InsufficientPointsError: Si l'enfant n'a pas assez de points/coins
-            ValidationError: Si le stock est épuisé ou cooldown actif
+            ValidationError: Si le stock est Ã©puisÃ© ou cooldown actif
         """
-        # Charger la récompense
+        # Charger la rÃ©compense
         reward = await self.get_reward(reward_id)
 
-        # Vérifier que la récompense est active
+        # VÃ©rifier que la rÃ©compense est active
         if not reward.active:
             raise ValidationError(f"Reward {reward_id} is not active")
 
-        # Vérifier le stock
+        # VÃ©rifier le stock
         if reward.stock is not None and reward.stock <= 0:
             raise ValidationError(f"Reward {reward_id} is out of stock")
 
@@ -159,7 +159,7 @@ class RewardManager:
         if child is None:
             raise ChildNotFoundError(f"Child {child_id} not found")
 
-        # Vérifier les points/coins
+        # VÃ©rifier les points/coins
         if child.points < reward.cost_points:
             raise InsufficientPointsError(
                 f"Child {child_id} has {child.points} points, needs {reward.cost_points}"
@@ -170,7 +170,7 @@ class RewardManager:
                 f"Child {child_id} has {child.coins} coins, needs {reward.cost_coins}"
             )
 
-        # Vérifier le cooldown
+        # VÃ©rifier le cooldown
         if reward.cooldown_days > 0:
             claims = await self.get_claims_for_child(child_id)
             recent_claims = [
@@ -185,7 +185,7 @@ class RewardManager:
                     f"Reward {reward_id} is in cooldown for {reward.cooldown_days} days"
                 )
 
-        # Créer le claim
+        # CrÃ©er le claim
         claim_id = f"claim_{uuid.uuid4().hex[:8]}"
         claim = RewardClaim(
             id=claim_id,
@@ -203,7 +203,7 @@ class RewardManager:
         # Sauvegarder le claim
         await self.storage.save_reward_claim(claim)
 
-        # Déduire le stock si défini
+        # DÃ©duire le stock si dÃ©fini
         if reward.stock is not None:
             reward.stock -= 1
             await self.storage.save_reward(reward)
@@ -216,14 +216,14 @@ class RewardManager:
         return claim, reward.cost_points, reward.cost_coins
 
     async def approve_claim(self, claim_id: str, approver_id: str) -> RewardClaim:
-        """Approuve une réclamation de récompense.
+        """Approuve une rÃ©clamation de rÃ©compense.
 
         Args:
-            claim_id: ID de la réclamation
+            claim_id: ID de la rÃ©clamation
             approver_id: ID de l'approbateur (parent/admin)
 
         Returns:
-            RewardClaim approuvé
+            RewardClaim approuvÃ©
 
         Raises:
             ValidationError: Si le claim n'est pas en attente
@@ -239,7 +239,7 @@ class RewardManager:
         if claim is None:
             raise ValidationError(f"Reward claim {claim_id} not found")
 
-        # Vérifier le statut
+        # VÃ©rifier le statut
         if claim.status != RewardClaimStatus.PENDING:
             raise ValidationError(
                 f"Cannot approve claim {claim_id}: status is {claim.status.value}"
@@ -258,16 +258,16 @@ class RewardManager:
         return claim
 
     async def refuse_claim(self, claim_id: str, refuser_id: str) -> RewardClaim:
-        """Refuse une réclamation de récompense.
+        """Refuse une rÃ©clamation de rÃ©compense.
 
         Remet le stock et les points/coins en place.
 
         Args:
-            claim_id: ID de la réclamation
+            claim_id: ID de la rÃ©clamation
             refuser_id: ID du refuseur (parent/admin)
 
         Returns:
-            RewardClaim refusé
+            RewardClaim refusÃ©
         """
         # Charger le claim
         claims = await self.storage.load_reward_claims()
@@ -280,13 +280,13 @@ class RewardManager:
         if claim is None:
             raise ValidationError(f"Reward claim {claim_id} not found")
 
-        # Vérifier le statut
+        # VÃ©rifier le statut
         if claim.status != RewardClaimStatus.PENDING:
             raise ValidationError(
                 f"Cannot refuse claim {claim_id}: status is {claim.status.value}"
             )
 
-        # Charger la récompense pour remettre le stock
+        # Charger la rÃ©compense pour remettre le stock
         reward = await self.get_reward(claim.reward_id)
         if reward.stock is not None:
             reward.stock += 1
@@ -305,13 +305,13 @@ class RewardManager:
         return claim
 
     async def mark_claim_used(self, claim_id: str) -> RewardClaim:
-        """Marque une réclamation comme utilisée.
+        """Marque une rÃ©clamation comme utilisÃ©e.
 
         Args:
-            claim_id: ID de la réclamation
+            claim_id: ID de la rÃ©clamation
 
         Returns:
-            RewardClaim marqué comme utilisé
+            RewardClaim marquÃ© comme utilisÃ©
         """
         # Charger le claim
         claims = await self.storage.load_reward_claims()
@@ -324,13 +324,13 @@ class RewardManager:
         if claim is None:
             raise ValidationError(f"Reward claim {claim_id} not found")
 
-        # Vérifier le statut
+        # VÃ©rifier le statut
         if claim.status != RewardClaimStatus.APPROVED:
             raise ValidationError(
                 f"Cannot mark claim {claim_id} as used: status is {claim.status.value}"
             )
 
-        # Marquer comme utilisé
+        # Marquer comme utilisÃ©
         claim.status = RewardClaimStatus.USED
         claim.used_at = datetime.now()
 
@@ -342,22 +342,22 @@ class RewardManager:
         return claim
 
     async def get_claims_for_child(self, child_id: str) -> List[RewardClaim]:
-        """Récupère toutes les réclamations d'un enfant.
+        """RÃ©cupÃ¨re toutes les rÃ©clamations d'un enfant.
 
         Args:
             child_id: ID de l'enfant
 
         Returns:
-            Liste des réclamations
+            Liste des rÃ©clamations
         """
         all_claims = await self.storage.load_reward_claims()
         return [c for c in all_claims if c.child_id == child_id]
 
     async def get_pending_claims(self) -> List[RewardClaim]:
-        """Récupère toutes les réclamations en attente.
+        """RÃ©cupÃ¨re toutes les rÃ©clamations en attente.
 
         Returns:
-            Liste des réclamations en attente
+            Liste des rÃ©clamations en attente
         """
         all_claims = await self.storage.load_reward_claims()
         return [c for c in all_claims if c.status == RewardClaimStatus.PENDING]

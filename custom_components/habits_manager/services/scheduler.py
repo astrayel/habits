@@ -13,32 +13,32 @@ from ..storage.entity_manager import EntityManager
 
 
 class Scheduler:
-    """Gère les tâches planifiées automatiques."""
+    """GÃ¨re les tÃ¢ches planifiÃ©es automatiques."""
 
     def __init__(self, task_mgr: TaskManager, habit_mgr: HabitManager, entity_mgr: EntityManager):
         """Initialise le scheduler.
 
         Args:
-            task_mgr: Manager de tâches
+            task_mgr: Manager de tÃ¢ches
             habit_mgr: Manager d'habitudes
-            entity_mgr: Manager d'entités HA
+            entity_mgr: Manager d'entitÃ©s HA
         """
         self.task_mgr = task_mgr
         self.habit_mgr = habit_mgr
         self.entity_mgr = entity_mgr
 
     async def run_daily_tasks(self, target_date: date = None) -> dict:
-        """Exécute toutes les tâches quotidiennes automatiques.
+        """ExÃ©cute toutes les tÃ¢ches quotidiennes automatiques.
 
-        1. Génère les task instances pour la journée
-        2. Vérifie les tâches échouées (deadline dépassée)
-        3. Vérifie les streaks cassés
+        1. GÃ©nÃ¨re les task instances pour la journÃ©e
+        2. VÃ©rifie les tÃ¢ches Ã©chouÃ©es (deadline dÃ©passÃ©e)
+        3. VÃ©rifie les streaks cassÃ©s
 
         Args:
-            target_date: Date cible (par défaut aujourd'hui)
+            target_date: Date cible (par dÃ©faut aujourd'hui)
 
         Returns:
-            Dictionnaire avec les résultats de chaque tâche
+            Dictionnaire avec les rÃ©sultats de chaque tÃ¢che
         """
         if target_date is None:
             target_date = date.today()
@@ -47,15 +47,15 @@ class Scheduler:
 
         results = {}
 
-        # 1. Générer les instances de tâches
+        # 1. GÃ©nÃ©rer les instances de tÃ¢ches
         new_instances = await self.generate_instances(target_date)
         results["instances_generated"] = len(new_instances)
 
-        # 2. Vérifier les tâches échouées
+        # 2. VÃ©rifier les tÃ¢ches Ã©chouÃ©es
         failed_tasks = await self.check_failed_tasks(target_date)
         results["tasks_failed"] = len(failed_tasks)
 
-        # 3. Vérifier les streaks cassés
+        # 3. VÃ©rifier les streaks cassÃ©s
         broken_streaks = await self.check_broken_streaks(target_date)
         results["streaks_broken"] = len(broken_streaks)
 
@@ -67,19 +67,19 @@ class Scheduler:
         return results
 
     async def generate_instances(self, target_date: date) -> List[TaskInstance]:
-        """Génère les task instances pour une date donnée.
+        """GÃ©nÃ¨re les task instances pour une date donnÃ©e.
 
         Args:
-            target_date: Date pour laquelle générer les instances
+            target_date: Date pour laquelle gÃ©nÃ©rer les instances
 
         Returns:
-            Liste des instances générées
+            Liste des instances gÃ©nÃ©rÃ©es
         """
         _LOGGER.debug(f"Generating task instances for {target_date}")
 
         instances = await self.task_mgr.generate_task_instances(target_date)
 
-        # Mettre à jour les compteurs pour chaque enfant concerné
+        # Mettre Ã  jour les compteurs pour chaque enfant concernÃ©
         child_ids = set(inst.child_id for inst in instances)
         for child_id in child_ids:
             all_instances = await self.task_mgr.get_task_instances(child_id=child_id)
@@ -92,13 +92,13 @@ class Scheduler:
         return instances
 
     async def check_failed_tasks(self, check_date: date = None) -> List[TaskInstance]:
-        """Vérifie et marque les tâches échouées (deadline dépassée).
+        """VÃ©rifie et marque les tÃ¢ches Ã©chouÃ©es (deadline dÃ©passÃ©e).
 
         Args:
-            check_date: Date à vérifier (par défaut aujourd'hui)
+            check_date: Date Ã  vÃ©rifier (par dÃ©faut aujourd'hui)
 
         Returns:
-            Liste des instances marquées comme échouées
+            Liste des instances marquÃ©es comme Ã©chouÃ©es
         """
         if check_date is None:
             check_date = date.today()
@@ -107,7 +107,7 @@ class Scheduler:
 
         failed_instances = await self.task_mgr.check_failed_tasks(check_date)
 
-        # Mettre à jour les compteurs pour chaque enfant concerné
+        # Mettre Ã  jour les compteurs pour chaque enfant concernÃ©
         child_ids = set(inst.child_id for inst in failed_instances)
         for child_id in child_ids:
             all_instances = await self.task_mgr.get_task_instances(child_id=child_id)
@@ -121,13 +121,13 @@ class Scheduler:
         return failed_instances
 
     async def check_broken_streaks(self, check_date: date = None) -> List[Tuple[HabitStreak, Habit]]:
-        """Vérifie et réinitialise les streaks cassés.
+        """VÃ©rifie et rÃ©initialise les streaks cassÃ©s.
 
         Args:
-            check_date: Date à vérifier (par défaut aujourd'hui)
+            check_date: Date Ã  vÃ©rifier (par dÃ©faut aujourd'hui)
 
         Returns:
-            Liste de tuples (streak cassé, habitude)
+            Liste de tuples (streak cassÃ©, habitude)
         """
         if check_date is None:
             check_date = date.today()
@@ -136,7 +136,7 @@ class Scheduler:
 
         broken = await self.habit_mgr.check_streak_breaks(check_date)
 
-        # Mettre à jour longest_streak pour chaque enfant concerné
+        # Mettre Ã  jour longest_streak pour chaque enfant concernÃ©
         child_ids = set(streak.child_id for streak, _ in broken)
         for child_id in child_ids:
             longest_streak = await self.habit_mgr.get_child_longest_streak(child_id)

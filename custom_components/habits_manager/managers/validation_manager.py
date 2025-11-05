@@ -13,14 +13,14 @@ from ..storage.entity_manager import EntityManager
 
 
 class ValidationManager:
-    """Gère la validation des tâches et pénalités par les parents."""
+    """GÃ¨re la validation des tÃ¢ches et pÃ©nalitÃ©s par les parents."""
 
     def __init__(self, storage: StorageManager, entity_mgr: EntityManager):
         """Initialise le validation manager.
 
         Args:
             storage: Manager de stockage
-            entity_mgr: Manager d'entités HA
+            entity_mgr: Manager d'entitÃ©s HA
         """
         self.storage = storage
         self.entity_mgr = entity_mgr
@@ -31,19 +31,19 @@ class ValidationManager:
         validator_id: str,
         note: str = ""
     ) -> tuple[TaskInstance, Task, dict]:
-        """Valide une tâche complétée et retourne les récompenses à appliquer.
+        """Valide une tÃ¢che complÃ©tÃ©e et retourne les rÃ©compenses Ã  appliquer.
 
         Args:
-            instance_id: ID de l'instance de tâche
+            instance_id: ID de l'instance de tÃ¢che
             validator_id: ID du validateur (parent/admin)
             note: Note optionnelle de validation
 
         Returns:
-            Tuple (instance validée, tâche, récompenses à appliquer)
+            Tuple (instance validÃ©e, tÃ¢che, rÃ©compenses Ã  appliquer)
 
         Raises:
-            TaskNotFoundError: Si l'instance ou la tâche n'existe pas
-            ValidationError: Si l'instance n'est pas dans l'état correct
+            TaskNotFoundError: Si l'instance ou la tÃ¢che n'existe pas
+            ValidationError: Si l'instance n'est pas dans l'Ã©tat correct
         """
         # Charger l'instance
         all_instances = await self.storage.load_task_instances()
@@ -56,14 +56,14 @@ class ValidationManager:
         if instance is None:
             raise TaskNotFoundError(f"Task instance {instance_id} not found")
 
-        # Vérifier le statut
+        # VÃ©rifier le statut
         if instance.status != TaskInstanceStatus.COMPLETED_WAITING:
             raise ValidationError(
                 f"Cannot validate task instance {instance_id}: "
                 f"status is {instance.status.value}, expected {TaskInstanceStatus.COMPLETED_WAITING.value}"
             )
 
-        # Charger la tâche pour récupérer les récompenses
+        # Charger la tÃ¢che pour rÃ©cupÃ©rer les rÃ©compenses
         tasks = await self.storage.load_tasks()
         task = None
         for t in tasks:
@@ -74,7 +74,7 @@ class ValidationManager:
         if task is None:
             raise TaskNotFoundError(f"Task {instance.task_id} not found")
 
-        # Mettre à jour l'instance
+        # Mettre Ã  jour l'instance
         instance.status = TaskInstanceStatus.VALIDATED
         instance.validated_at = datetime.now()
         instance.validator_id = validator_id
@@ -83,7 +83,7 @@ class ValidationManager:
         # Sauvegarder
         await self.storage.save_task_instance(instance)
 
-        # Préparer les récompenses à appliquer
+        # PrÃ©parer les rÃ©compenses Ã  appliquer
         rewards = {
             "points": task.rewards.points,
             "coins": task.rewards.coins,
@@ -104,20 +104,20 @@ class ValidationManager:
         apply_penalty: bool = False,
         note: str = ""
     ) -> tuple[TaskInstance, Optional[dict]]:
-        """Refuse une tâche complétée et optionnellement applique des pénalités.
+        """Refuse une tÃ¢che complÃ©tÃ©e et optionnellement applique des pÃ©nalitÃ©s.
 
         Args:
-            instance_id: ID de l'instance de tâche
+            instance_id: ID de l'instance de tÃ¢che
             validator_id: ID du validateur (parent/admin)
-            apply_penalty: Si True, applique les pénalités définies dans la tâche
+            apply_penalty: Si True, applique les pÃ©nalitÃ©s dÃ©finies dans la tÃ¢che
             note: Note optionnelle de refus
 
         Returns:
-            Tuple (instance refusée, pénalités à appliquer ou None)
+            Tuple (instance refusÃ©e, pÃ©nalitÃ©s Ã  appliquer ou None)
 
         Raises:
-            TaskNotFoundError: Si l'instance ou la tâche n'existe pas
-            ValidationError: Si l'instance n'est pas dans l'état correct
+            TaskNotFoundError: Si l'instance ou la tÃ¢che n'existe pas
+            ValidationError: Si l'instance n'est pas dans l'Ã©tat correct
         """
         # Charger l'instance
         all_instances = await self.storage.load_task_instances()
@@ -130,14 +130,14 @@ class ValidationManager:
         if instance is None:
             raise TaskNotFoundError(f"Task instance {instance_id} not found")
 
-        # Vérifier le statut
+        # VÃ©rifier le statut
         if instance.status != TaskInstanceStatus.COMPLETED_WAITING:
             raise ValidationError(
                 f"Cannot refuse task instance {instance_id}: "
                 f"status is {instance.status.value}, expected {TaskInstanceStatus.COMPLETED_WAITING.value}"
             )
 
-        # Mettre à jour l'instance
+        # Mettre Ã  jour l'instance
         instance.status = TaskInstanceStatus.REFUSED
         instance.validated_at = datetime.now()
         instance.validator_id = validator_id
@@ -145,9 +145,9 @@ class ValidationManager:
 
         penalties = None
 
-        # Appliquer les pénalités si demandé
+        # Appliquer les pÃ©nalitÃ©s si demandÃ©
         if apply_penalty:
-            # Charger la tâche pour récupérer les pénalités
+            # Charger la tÃ¢che pour rÃ©cupÃ©rer les pÃ©nalitÃ©s
             tasks = await self.storage.load_tasks()
             task = None
             for t in tasks:
@@ -183,22 +183,22 @@ class ValidationManager:
         validator_id: str,
         note: str = ""
     ) -> tuple[TaskInstance, dict]:
-        """Valide l'application d'une pénalité pour une tâche échouée.
+        """Valide l'application d'une pÃ©nalitÃ© pour une tÃ¢che Ã©chouÃ©e.
 
-        Utilisé quand une tâche est marquée FAILED et que le parent confirme
-        l'application des pénalités.
+        UtilisÃ© quand une tÃ¢che est marquÃ©e FAILED et que le parent confirme
+        l'application des pÃ©nalitÃ©s.
 
         Args:
-            instance_id: ID de l'instance de tâche
+            instance_id: ID de l'instance de tÃ¢che
             validator_id: ID du validateur (parent/admin)
             note: Note optionnelle
 
         Returns:
-            Tuple (instance, pénalités à appliquer)
+            Tuple (instance, pÃ©nalitÃ©s Ã  appliquer)
 
         Raises:
-            TaskNotFoundError: Si l'instance ou la tâche n'existe pas
-            ValidationError: Si l'instance n'est pas FAILED ou pénalité déjà appliquée
+            TaskNotFoundError: Si l'instance ou la tÃ¢che n'existe pas
+            ValidationError: Si l'instance n'est pas FAILED ou pÃ©nalitÃ© dÃ©jÃ  appliquÃ©e
         """
         # Charger l'instance
         all_instances = await self.storage.load_task_instances()
@@ -211,18 +211,18 @@ class ValidationManager:
         if instance is None:
             raise TaskNotFoundError(f"Task instance {instance_id} not found")
 
-        # Vérifier le statut
+        # VÃ©rifier le statut
         if instance.status != TaskInstanceStatus.FAILED:
             raise ValidationError(
                 f"Cannot validate penalty for instance {instance_id}: "
                 f"status is {instance.status.value}, expected {TaskInstanceStatus.FAILED.value}"
             )
 
-        # Vérifier que la pénalité n'a pas déjà été appliquée
+        # VÃ©rifier que la pÃ©nalitÃ© n'a pas dÃ©jÃ  Ã©tÃ© appliquÃ©e
         if instance.is_penalty_applied:
             raise ValidationError(f"Penalty already applied for instance {instance_id}")
 
-        # Charger la tâche pour récupérer les pénalités
+        # Charger la tÃ¢che pour rÃ©cupÃ©rer les pÃ©nalitÃ©s
         tasks = await self.storage.load_tasks()
         task = None
         for t in tasks:
@@ -233,13 +233,13 @@ class ValidationManager:
         if task is None:
             raise TaskNotFoundError(f"Task {instance.task_id} not found")
 
-        # Préparer les pénalités
+        # PrÃ©parer les pÃ©nalitÃ©s
         penalties = {
             "points": task.penalties.points,
             "coins": task.penalties.coins,
         }
 
-        # Marquer la pénalité comme appliquée
+        # Marquer la pÃ©nalitÃ© comme appliquÃ©e
         instance.is_penalty_applied = True
         instance.validator_id = validator_id
         instance.validation_note = note
