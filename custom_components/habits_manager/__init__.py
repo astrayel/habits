@@ -142,10 +142,11 @@ async def register_frontend_resources(hass: HomeAssistant):
 
     # Enregistrer le chemin statique avec un path custom (pas /hacsfiles car pas sur HACS)
     # Les fichiers seront accessibles via /habits_manager_static/*
-    hass.http.register_static_path(
+    # Utiliser directement l'API aiohttp pour ajouter un chemin statique
+    hass.http.app.router.add_static(
         f"/{DOMAIN}_static",
         www_dir,
-        cache_headers=True
+        name=f"{DOMAIN}_static"
     )
 
     _LOGGER.info(f"Registered static path: /{DOMAIN}_static -> {www_dir}")

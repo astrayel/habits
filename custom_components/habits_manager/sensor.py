@@ -48,7 +48,7 @@ async def async_setup_platform(
 
 
 def _create_child_sensors(hass: HomeAssistant, child_id: str, child_data: dict) -> list:
-    """Crée la liste des 12 sensors pour un enfant.
+    """Crée la liste des 8 sensors pour un enfant.
 
     Args:
         hass: Instance Home Assistant
@@ -71,11 +71,12 @@ def _create_child_sensors(hass: HomeAssistant, child_id: str, child_data: dict) 
         ChildLongestStreakSensor(hass, child_id, child_data),
         # Binary sensor (1 sensor)
         ChildHasPendingValidationSensor(hass, child_id, child_data),
-        # Nouveaux sensors avec listes complètes (4 sensors)
-        ChildTasksWaitingValidationListSensor(hass, child_id, child_data),
-        ChildPendingClaimsSensor(hass, child_id, child_data),
-        ChildDailyTasksSensor(hass, child_id, child_data),
-        ChildHabitsListSensor(hass, child_id, child_data),
+        # Nouveaux sensors avec listes complètes - DÉSACTIVÉS (problèmes async)
+        # TODO: Réécrire ces sensors avec async_update() pour gérer correctement les coroutines
+        # ChildTasksWaitingValidationListSensor(hass, child_id, child_data),
+        # ChildPendingClaimsSensor(hass, child_id, child_data),
+        # ChildDailyTasksSensor(hass, child_id, child_data),
+        # ChildHabitsListSensor(hass, child_id, child_data),
     ]
 
 
