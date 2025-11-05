@@ -12,3 +12,7 @@ export * from './form-checkbox';
 // UI components
 export * from './hm-dialog';
 export * from './item-card';
+
+// Cosmetics components
+export * from './cosmetics-shop';
+export * from './avatar-customizer';

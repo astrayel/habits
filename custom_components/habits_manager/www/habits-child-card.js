@@ -1,4 +1,4 @@
-function t(t,e,s,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPropertyDescriptor(e,s):i;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)n=Reflect.decorate(t,e,s,i);else for(var o=t.length-1;o>=0;o--)(r=t[o])&&(n=(a<3?r(n):a>3?r(e,s,n):r(e,s))||n);return a>3&&n&&Object.defineProperty(e,s,n),n}"function"==typeof SuppressedError&&SuppressedError;const e=globalThis,s=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,i=Symbol(),r=new WeakMap;let a=class{constructor(t,e,s){if(this._$cssResult$=!0,s!==i)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=t,this.t=e}get styleSheet(){let t=this.o;const e=this.t;if(s&&void 0===t){const s=void 0!==e&&1===e.length;s&&(t=r.get(e)),void 0===t&&((this.o=t=new CSSStyleSheet).replaceSync(this.cssText),s&&r.set(e,t))}return t}toString(){return this.cssText}};const n=(t,...e)=>{const s=1===t.length?t[0]:e.reduce((e,s,i)=>e+(t=>{if(!0===t._$cssResult$)return t.cssText;if("number"==typeof t)return t;throw Error("Value passed to 'css' function must be a 'css' function result: "+t+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(s)+t[i+1],t[0]);return new a(s,t,i)},o=s?t=>t:t=>t instanceof CSSStyleSheet?(t=>{let e="";for(const s of t.cssRules)e+=s.cssText;return(t=>new a("string"==typeof t?t:t+"",void 0,i))(e)})(t):t,{is:c,defineProperty:d,getOwnPropertyDescriptor:h,getOwnPropertyNames:l,getOwnPropertySymbols:p,getPrototypeOf:u}=Object,_=globalThis,g=_.trustedTypes,m=g?g.emptyScript:"",f=_.reactiveElementPolyfillSupport,y=(t,e)=>t,v={toAttribute(t,e){switch(e){case Boolean:t=t?m:null;break;case Object:case Array:t=null==t?t:JSON.stringify(t)}return t},fromAttribute(t,e){let s=t;switch(e){case Boolean:s=null!==t;break;case Number:s=null===t?null:Number(t);break;case Object:case Array:try{s=JSON.parse(t)}catch(t){s=null}}return s}},b=(t,e)=>!c(t,e),$={attribute:!0,type:String,converter:v,reflect:!1,useDefault:!1,hasChanged:b};Symbol.metadata??=Symbol("metadata"),_.litPropertyMetadata??=new WeakMap;let x=class extends HTMLElement{static addInitializer(t){this._$Ei(),(this.l??=[]).push(t)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(t,e=$){if(e.state&&(e.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(t)&&((e=Object.create(e)).wrapped=!0),this.elementProperties.set(t,e),!e.noAccessor){const s=Symbol(),i=this.getPropertyDescriptor(t,s,e);void 0!==i&&d(this.prototype,t,i)}}static getPropertyDescriptor(t,e,s){const{get:i,set:r}=h(this.prototype,t)??{get(){return this[e]},set(t){this[e]=t}};return{get:i,set(e){const a=i?.call(this);r?.call(this,e),this.requestUpdate(t,a,s)},configurable:!0,enumerable:!0}}static getPropertyOptions(t){return this.elementProperties.get(t)??$}static _$Ei(){if(this.hasOwnProperty(y("elementProperties")))return;const t=u(this);t.finalize(),void 0!==t.l&&(this.l=[...t.l]),this.elementProperties=new Map(t.elementProperties)}static finalize(){if(this.hasOwnProperty(y("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(y("properties"))){const t=this.properties,e=[...l(t),...p(t)];for(const s of e)this.createProperty(s,t[s])}const t=this[Symbol.metadata];if(null!==t){const e=litPropertyMetadata.get(t);if(void 0!==e)for(const[t,s]of e)this.elementProperties.set(t,s)}this._$Eh=new Map;for(const[t,e]of this.elementProperties){const s=this._$Eu(t,e);void 0!==s&&this._$Eh.set(s,t)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(t){const e=[];if(Array.isArray(t)){const s=new Set(t.flat(1/0).reverse());for(const t of s)e.unshift(o(t))}else void 0!==t&&e.push(o(t));return e}static _$Eu(t,e){const s=e.attribute;return!1===s?void 0:"string"==typeof s?s:"string"==typeof t?t.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(t=>this.enableUpdating=t),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(t=>t(this))}addController(t){(this._$EO??=new Set).add(t),void 0!==this.renderRoot&&this.isConnected&&t.hostConnected?.()}removeController(t){this._$EO?.delete(t)}_$E_(){const t=new Map,e=this.constructor.elementProperties;for(const s of e.keys())this.hasOwnProperty(s)&&(t.set(s,this[s]),delete this[s]);t.size>0&&(this._$Ep=t)}createRenderRoot(){const t=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return((t,i)=>{if(s)t.adoptedStyleSheets=i.map(t=>t instanceof CSSStyleSheet?t:t.styleSheet);else for(const s of i){const i=document.createElement("style"),r=e.litNonce;void 0!==r&&i.setAttribute("nonce",r),i.textContent=s.cssText,t.appendChild(i)}})(t,this.constructor.elementStyles),t}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(t=>t.hostConnected?.())}enableUpdating(t){}disconnectedCallback(){this._$EO?.forEach(t=>t.hostDisconnected?.())}attributeChangedCallback(t,e,s){this._$AK(t,s)}_$ET(t,e){const s=this.constructor.elementProperties.get(t),i=this.constructor._$Eu(t,s);if(void 0!==i&&!0===s.reflect){const r=(void 0!==s.converter?.toAttribute?s.converter:v).toAttribute(e,s.type);this._$Em=t,null==r?this.removeAttribute(i):this.setAttribute(i,r),this._$Em=null}}_$AK(t,e){const s=this.constructor,i=s._$Eh.get(t);if(void 0!==i&&this._$Em!==i){const t=s.getPropertyOptions(i),r="function"==typeof t.converter?{fromAttribute:t.converter}:void 0!==t.converter?.fromAttribute?t.converter:v;this._$Em=i;const a=r.fromAttribute(e,t.type);this[i]=a??this._$Ej?.get(i)??a,this._$Em=null}}requestUpdate(t,e,s){if(void 0!==t){const i=this.constructor,r=this[t];if(s??=i.getPropertyOptions(t),!((s.hasChanged??b)(r,e)||s.useDefault&&s.reflect&&r===this._$Ej?.get(t)&&!this.hasAttribute(i._$Eu(t,s))))return;this.C(t,e,s)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(t,e,{useDefault:s,reflect:i,wrapped:r},a){s&&!(this._$Ej??=new Map).has(t)&&(this._$Ej.set(t,a??e??this[t]),!0!==r||void 0!==a)||(this._$AL.has(t)||(this.hasUpdated||s||(e=void 0),this._$AL.set(t,e)),!0===i&&this._$Em!==t&&(this._$Eq??=new Set).add(t))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(t){Promise.reject(t)}const t=this.scheduleUpdate();return null!=t&&await t,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(const[t,e]of this._$Ep)this[t]=e;this._$Ep=void 0}const t=this.constructor.elementProperties;if(t.size>0)for(const[e,s]of t){const{wrapped:t}=s,i=this[e];!0!==t||this._$AL.has(e)||void 0===i||this.C(e,void 0,s,i)}}let t=!1;const e=this._$AL;try{t=this.shouldUpdate(e),t?(this.willUpdate(e),this._$EO?.forEach(t=>t.hostUpdate?.()),this.update(e)):this._$EM()}catch(e){throw t=!1,this._$EM(),e}t&&this._$AE(e)}willUpdate(t){}_$AE(t){this._$EO?.forEach(t=>t.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(t)),this.updated(t)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(t){return!0}update(t){this._$Eq&&=this._$Eq.forEach(t=>this._$ET(t,this[t])),this._$EM()}updated(t){}firstUpdated(t){}};x.elementStyles=[],x.shadowRootOptions={mode:"open"},x[y("elementProperties")]=new Map,x[y("finalized")]=new Map,f?.({ReactiveElement:x}),(_.reactiveElementVersions??=[]).push("2.1.1");const w=globalThis,A=w.trustedTypes,E=A?A.createPolicy("lit-html",{createHTML:t=>t}):void 0,S="$lit$",C=`lit$${Math.random().toFixed(9).slice(2)}$`,k="?"+C,T=`<${k}>`,P=document,O=()=>P.createComment(""),H=t=>null===t||"object"!=typeof t&&"function"!=typeof t,R=Array.isArray,U="[ \t\n\f\r]",M=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,N=/-->/g,I=/>/g,D=RegExp(`>|${U}(?:([^\\s"'>=/]+)(${U}*=${U}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),z=/'/g,L=/"/g,j=/^(?:script|style|textarea|title)$/i,B=(t=>(e,...s)=>({_$litType$:t,strings:e,values:s}))(1),F=Symbol.for("lit-noChange"),Y=Symbol.for("lit-nothing"),W=new WeakMap,V=P.createTreeWalker(P,129);function G(t,e){if(!R(t)||!t.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==E?E.createHTML(e):e}const q=(t,e)=>{const s=t.length-1,i=[];let r,a=2===e?"<svg>":3===e?"<math>":"",n=M;for(let e=0;e<s;e++){const s=t[e];let o,c,d=-1,h=0;for(;h<s.length&&(n.lastIndex=h,c=n.exec(s),null!==c);)h=n.lastIndex,n===M?"!--"===c[1]?n=N:void 0!==c[1]?n=I:void 0!==c[2]?(j.test(c[2])&&(r=RegExp("</"+c[2],"g")),n=D):void 0!==c[3]&&(n=D):n===D?">"===c[0]?(n=r??M,d=-1):void 0===c[1]?d=-2:(d=n.lastIndex-c[2].length,o=c[1],n=void 0===c[3]?D:'"'===c[3]?L:z):n===L||n===z?n=D:n===N||n===I?n=M:(n=D,r=void 0);const l=n===D&&t[e+1].startsWith("/>")?" ":"";a+=n===M?s+T:d>=0?(i.push(o),s.slice(0,d)+S+s.slice(d)+C+l):s+C+(-2===d?e:l)}return[G(t,a+(t[s]||"<?>")+(2===e?"</svg>":3===e?"</math>":"")),i]};class K{constructor({strings:t,_$litType$:e},s){let i;this.parts=[];let r=0,a=0;const n=t.length-1,o=this.parts,[c,d]=q(t,e);if(this.el=K.createElement(c,s),V.currentNode=this.el.content,2===e||3===e){const t=this.el.content.firstChild;t.replaceWith(...t.childNodes)}for(;null!==(i=V.nextNode())&&o.length<n;){if(1===i.nodeType){if(i.hasAttributes())for(const t of i.getAttributeNames())if(t.endsWith(S)){const e=d[a++],s=i.getAttribute(t).split(C),n=/([.?@])?(.*)/.exec(e);o.push({type:1,index:r,name:n[2],strings:s,ctor:"."===n[1]?tt:"?"===n[1]?et:"@"===n[1]?st:Q}),i.removeAttribute(t)}else t.startsWith(C)&&(o.push({type:6,index:r}),i.removeAttribute(t));if(j.test(i.tagName)){const t=i.textContent.split(C),e=t.length-1;if(e>0){i.textContent=A?A.emptyScript:"";for(let s=0;s<e;s++)i.append(t[s],O()),V.nextNode(),o.push({type:2,index:++r});i.append(t[e],O())}}}else if(8===i.nodeType)if(i.data===k)o.push({type:2,index:r});else{let t=-1;for(;-1!==(t=i.data.indexOf(C,t+1));)o.push({type:7,index:r}),t+=C.length-1}r++}}static createElement(t,e){const s=P.createElement("template");return s.innerHTML=t,s}}function X(t,e,s=t,i){if(e===F)return e;let r=void 0!==i?s._$Co?.[i]:s._$Cl;const a=H(e)?void 0:e._$litDirective$;return r?.constructor!==a&&(r?._$AO?.(!1),void 0===a?r=void 0:(r=new a(t),r._$AT(t,s,i)),void 0!==i?(s._$Co??=[])[i]=r:s._$Cl=r),void 0!==r&&(e=X(t,r._$AS(t,e.values),r,i)),e}class J{constructor(t,e){this._$AV=[],this._$AN=void 0,this._$AD=t,this._$AM=e}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(t){const{el:{content:e},parts:s}=this._$AD,i=(t?.creationScope??P).importNode(e,!0);V.currentNode=i;let r=V.nextNode(),a=0,n=0,o=s[0];for(;void 0!==o;){if(a===o.index){let e;2===o.type?e=new Z(r,r.nextSibling,this,t):1===o.type?e=new o.ctor(r,o.name,o.strings,this,t):6===o.type&&(e=new it(r,this,t)),this._$AV.push(e),o=s[++n]}a!==o?.index&&(r=V.nextNode(),a++)}return V.currentNode=P,i}p(t){let e=0;for(const s of this._$AV)void 0!==s&&(void 0!==s.strings?(s._$AI(t,s,e),e+=s.strings.length-2):s._$AI(t[e])),e++}}class Z{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(t,e,s,i){this.type=2,this._$AH=Y,this._$AN=void 0,this._$AA=t,this._$AB=e,this._$AM=s,this.options=i,this._$Cv=i?.isConnected??!0}get parentNode(){let t=this._$AA.parentNode;const e=this._$AM;return void 0!==e&&11===t?.nodeType&&(t=e.parentNode),t}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(t,e=this){t=X(this,t,e),H(t)?t===Y||null==t||""===t?(this._$AH!==Y&&this._$AR(),this._$AH=Y):t!==this._$AH&&t!==F&&this._(t):void 0!==t._$litType$?this.$(t):void 0!==t.nodeType?this.T(t):(t=>R(t)||"function"==typeof t?.[Symbol.iterator])(t)?this.k(t):this._(t)}O(t){return this._$AA.parentNode.insertBefore(t,this._$AB)}T(t){this._$AH!==t&&(this._$AR(),this._$AH=this.O(t))}_(t){this._$AH!==Y&&H(this._$AH)?this._$AA.nextSibling.data=t:this.T(P.createTextNode(t)),this._$AH=t}$(t){const{values:e,_$litType$:s}=t,i="number"==typeof s?this._$AC(t):(void 0===s.el&&(s.el=K.createElement(G(s.h,s.h[0]),this.options)),s);if(this._$AH?._$AD===i)this._$AH.p(e);else{const t=new J(i,this),s=t.u(this.options);t.p(e),this.T(s),this._$AH=t}}_$AC(t){let e=W.get(t.strings);return void 0===e&&W.set(t.strings,e=new K(t)),e}k(t){R(this._$AH)||(this._$AH=[],this._$AR());const e=this._$AH;let s,i=0;for(const r of t)i===e.length?e.push(s=new Z(this.O(O()),this.O(O()),this,this.options)):s=e[i],s._$AI(r),i++;i<e.length&&(this._$AR(s&&s._$AB.nextSibling,i),e.length=i)}_$AR(t=this._$AA.nextSibling,e){for(this._$AP?.(!1,!0,e);t!==this._$AB;){const e=t.nextSibling;t.remove(),t=e}}setConnected(t){void 0===this._$AM&&(this._$Cv=t,this._$AP?.(t))}}class Q{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(t,e,s,i,r){this.type=1,this._$AH=Y,this._$AN=void 0,this.element=t,this.name=e,this._$AM=i,this.options=r,s.length>2||""!==s[0]||""!==s[1]?(this._$AH=Array(s.length-1).fill(new String),this.strings=s):this._$AH=Y}_$AI(t,e=this,s,i){const r=this.strings;let a=!1;if(void 0===r)t=X(this,t,e,0),a=!H(t)||t!==this._$AH&&t!==F,a&&(this._$AH=t);else{const i=t;let n,o;for(t=r[0],n=0;n<r.length-1;n++)o=X(this,i[s+n],e,n),o===F&&(o=this._$AH[n]),a||=!H(o)||o!==this._$AH[n],o===Y?t=Y:t!==Y&&(t+=(o??"")+r[n+1]),this._$AH[n]=o}a&&!i&&this.j(t)}j(t){t===Y?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,t??"")}}class tt extends Q{constructor(){super(...arguments),this.type=3}j(t){this.element[this.name]=t===Y?void 0:t}}class et extends Q{constructor(){super(...arguments),this.type=4}j(t){this.element.toggleAttribute(this.name,!!t&&t!==Y)}}class st extends Q{constructor(t,e,s,i,r){super(t,e,s,i,r),this.type=5}_$AI(t,e=this){if((t=X(this,t,e,0)??Y)===F)return;const s=this._$AH,i=t===Y&&s!==Y||t.capture!==s.capture||t.once!==s.once||t.passive!==s.passive,r=t!==Y&&(s===Y||i);i&&this.element.removeEventListener(this.name,this,s),r&&this.element.addEventListener(this.name,this,t),this._$AH=t}handleEvent(t){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,t):this._$AH.handleEvent(t)}}class it{constructor(t,e,s){this.element=t,this.type=6,this._$AN=void 0,this._$AM=e,this.options=s}get _$AU(){return this._$AM._$AU}_$AI(t){X(this,t)}}const rt=w.litHtmlPolyfillSupport;rt?.(K,Z),(w.litHtmlVersions??=[]).push("3.3.1");const at=globalThis;class nt extends x{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){const e=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=((t,e,s)=>{const i=s?.renderBefore??e;let r=i._$litPart$;if(void 0===r){const t=s?.renderBefore??null;i._$litPart$=r=new Z(e.insertBefore(O(),t),t,void 0,s??{})}return r._$AI(t),r})(e,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return F}}nt._$litElement$=!0,nt.finalized=!0,at.litElementHydrateSupport?.({LitElement:nt});const ot=at.litElementPolyfillSupport;ot?.({LitElement:nt}),(at.litElementVersions??=[]).push("4.2.1");const ct=t=>(e,s)=>{void 0!==s?s.addInitializer(()=>{customElements.define(t,e)}):customElements.define(t,e)},dt={attribute:!0,type:String,converter:v,reflect:!1,hasChanged:b},ht=(t=dt,e,s)=>{const{kind:i,metadata:r}=s;let a=globalThis.litPropertyMetadata.get(r);if(void 0===a&&globalThis.litPropertyMetadata.set(r,a=new Map),"setter"===i&&((t=Object.create(t)).wrapped=!0),a.set(s.name,t),"accessor"===i){const{name:i}=s;return{set(s){const r=e.get.call(this);e.set.call(this,s),this.requestUpdate(i,r,t)},init(e){return void 0!==e&&this.C(i,void 0,t,e),e}}}if("setter"===i){const{name:i}=s;return function(s){const r=this[i];e.call(this,s),this.requestUpdate(i,r,t)}}throw Error("Unsupported decorator location: "+i)};function lt(t){return(e,s)=>"object"==typeof s?ht(t,e,s):((t,e,s)=>{const i=e.hasOwnProperty(s);return e.constructor.createProperty(s,t),i?Object.getOwnPropertyDescriptor(e,s):void 0})(t,e,s)}function pt(t){return lt({...t,state:!0,attribute:!1})}const ut="habits_manager",_t="create_child",gt="update_child",mt="delete_child",ft="create_task",yt="update_task",vt="delete_task",bt="mark_task_completed",$t="validate_task",xt="refuse_task",wt="validate_penalty",At="create_habit",Et="update_habit",St="delete_habit",Ct="complete_habit",kt="create_reward",Tt="claim_reward",Pt="approve_claim",Ot="create_cosmetic",Ht="purchase_cosmetic";class Rt{constructor(t){this.hass=t}async callService(t,e={}){return this.hass.callService(ut,t,e)}async createChild(t){return this.callService(_t,t)}async updateChild(t,e){return this.callService(gt,{child_id:t,...e})}async deleteChild(t){return this.callService(mt,{child_id:t})}async createTask(t){return this.callService(ft,t)}async updateTask(t,e){return this.callService(yt,{task_id:t,...e})}async deleteTask(t){return this.callService(vt,{task_id:t})}async markTaskCompleted(t,e){return this.callService(bt,{instance_id:t,child_id:e})}async validateTask(t,e,s){return this.callService($t,{instance_id:t,validator_id:e,note:s})}async refuseTask(t,e,s=!1,i){return this.callService(xt,{instance_id:t,validator_id:e,apply_penalty:s,note:i})}async validatePenalty(t,e){return this.callService(wt,{instance_id:t,validator_id:e})}async createHabit(t){return this.callService(At,t)}async updateHabit(t,e){return this.callService(Et,{habit_id:t,...e})}async deleteHabit(t){return this.callService(St,{habit_id:t})}async completeHabit(t,e){return this.callService(Ct,{habit_id:t,child_id:e})}async createReward(t){return this.callService(kt,t)}async claimReward(t,e){return this.callService(Tt,{reward_id:t,child_id:e})}async approveClaim(t,e){return this.callService(Pt,{claim_id:t,approver_id:e})}async createCosmetic(t){return this.callService(Ot,t)}async purchaseCosmetic(t,e){return this.callService(Ht,{cosmetic_id:t,child_id:e})}getChildren(){const t=[],e=Object.values(this.hass.states).filter(t=>t.entity_id.startsWith(`sensor.${ut}_`)&&t.entity_id.endsWith("_points"));for(const s of e){const e=s.attributes.child_id;if(e){const s=this.getChildData(e);s&&t.push(s)}}return t}getChildData(t){const e=this.hass.states[`sensor.${ut}_${t}_points`];if(!e)return null;const s=this.hass.states[`sensor.${ut}_${t}_coins`],i=this.hass.states[`sensor.${ut}_${t}_level`],r=this.hass.states[`sensor.${ut}_${t}_experience`];return{id:t,name:e.attributes.child_name||"Unknown",person_entity:e.attributes.person_entity||"",points:parseInt(e.state)||0,coins:s&&parseInt(s.state)||0,level:i&&parseInt(i.state)||1,experience:r&&parseInt(r.state)||0,experience_to_next_level:r?.attributes.experience_to_next_level||100,avatar:e.attributes.avatar||{photo_url:"",customization:{clothes:null,accessory:null,pet:null,theme:"default"}},badges:e.attributes.badges||[],owned_cosmetics:e.attributes.owned_cosmetics||[],created_at:e.attributes.created_at||(new Date).toISOString(),updated_at:e.attributes.updated_at||(new Date).toISOString()}}getTaskCounts(t){const e=this.hass.states[`sensor.${ut}_${t}_tasks_pending`],s=this.hass.states[`sensor.${ut}_${t}_tasks_completed_waiting`];return{pending:e&&parseInt(e.state)||0,waiting:s&&parseInt(s.state)||0}}getHabitStats(t){const e=this.hass.states[`sensor.${ut}_${t}_habits_count`],s=this.hass.states[`sensor.${ut}_${t}_longest_streak`];return{count:e&&parseInt(e.state)||0,longest_streak:s&&parseInt(s.state)||0}}async subscribeToUpdates(t){return this.hass.connection.subscribeEvents(t,`${ut}_update`)}}class Ut{constructor(t){this.listeners=new Set,this.state={children:[],tasks:[],taskInstances:[],habits:[],habitStreaks:[],rewards:[],rewardClaims:[],cosmetics:[],loading:!0,error:null},this.hass=t,this.api=new Rt(t),this.initialize()}async initialize(){try{await this.loadAllData(),this.unsubscribe=await this.api.subscribeToUpdates(t=>{this.handleUpdate(t)}),this.state.loading=!1,this.notifyListeners()}catch(t){this.state.error=t instanceof Error?t.message:"Unknown error",this.state.loading=!1,this.notifyListeners()}}async loadAllData(){this.state.children=this.api.getChildren()}handleUpdate(t){const{update_type:e}=t;switch(e){case"child_created":case"child_updated":case"child_deleted":case"reward_claimed":case"reward_approved":case"cosmetic_purchased":case"level_up":case"badge_earned":case"points_changed":case"coins_changed":this.state.children=this.api.getChildren();break;case"task_completed":case"task_validated":case"task_refused":case"task_failed":case"habit_completed":case"streak_increased":case"streak_broken":t.child_id&&(this.state.children=this.api.getChildren())}this.notifyListeners()}subscribe(t){return this.listeners.add(t),()=>this.listeners.delete(t)}notifyListeners(){this.listeners.forEach(t=>t())}getState(){return{...this.state}}async refresh(){this.state.loading=!0,this.notifyListeners();try{await this.loadAllData(),this.state.loading=!1,this.state.error=null}catch(t){this.state.error=t instanceof Error?t.message:"Unknown error",this.state.loading=!1}this.notifyListeners()}getChildren(){return this.state.children}getChild(t){return this.state.children.find(e=>e.id===t)}async createChild(t){try{await this.api.createChild(t),await this.refresh()}catch(t){throw t}}async updateChild(t,e){try{await this.api.updateChild(t,e),await this.refresh()}catch(t){throw t}}async deleteChild(t){try{await this.api.deleteChild(t),await this.refresh()}catch(t){throw t}}getTaskCounts(t){return this.api.getTaskCounts(t)}async createTask(t){try{await this.api.createTask(t),await this.refresh()}catch(t){throw t}}async updateTask(t,e){try{await this.api.updateTask(t,e),await this.refresh()}catch(t){throw t}}async deleteTask(t){try{await this.api.deleteTask(t),await this.refresh()}catch(t){throw t}}async markTaskCompleted(t,e){try{await this.api.markTaskCompleted(t,e),await this.refresh()}catch(t){throw t}}async validateTask(t,e,s){try{await this.api.validateTask(t,e,s),await this.refresh()}catch(t){throw t}}async refuseTask(t,e,s,i){try{await this.api.refuseTask(t,e,s,i),await this.refresh()}catch(t){throw t}}getHabitStats(t){return this.api.getHabitStats(t)}async createHabit(t){try{await this.api.createHabit(t),await this.refresh()}catch(t){throw t}}async updateHabit(t,e){try{await this.api.updateHabit(t,e),await this.refresh()}catch(t){throw t}}async deleteHabit(t){try{await this.api.deleteHabit(t),await this.refresh()}catch(t){throw t}}async completeHabit(t,e){try{await this.api.completeHabit(t,e),await this.refresh()}catch(t){throw t}}async createReward(t){try{await this.api.createReward(t),await this.refresh()}catch(t){throw t}}async claimReward(t,e){try{await this.api.claimReward(t,e),await this.refresh()}catch(t){throw t}}async approveClaim(t,e){try{await this.api.approveClaim(t,e),await this.refresh()}catch(t){throw t}}async createCosmetic(t){try{await this.api.createCosmetic(t),await this.refresh()}catch(t){throw t}}async purchaseCosmetic(t,e){try{await this.api.purchaseCosmetic(t,e),await this.refresh()}catch(t){throw t}}destroy(){this.unsubscribe&&this.unsubscribe(),this.listeners.clear()}}const Mt=n`
+function t(t,e,i,s){var r,a=arguments.length,o=a<3?e:null===s?s=Object.getOwnPropertyDescriptor(e,i):s;if("object"==typeof Reflect&&"function"==typeof Reflect.decorate)o=Reflect.decorate(t,e,i,s);else for(var n=t.length-1;n>=0;n--)(r=t[n])&&(o=(a<3?r(o):a>3?r(e,i,o):r(e,i))||o);return a>3&&o&&Object.defineProperty(e,i,o),o}"function"==typeof SuppressedError&&SuppressedError;const e=globalThis,i=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,s=Symbol(),r=new WeakMap;let a=class{constructor(t,e,i){if(this._$cssResult$=!0,i!==s)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=t,this.t=e}get styleSheet(){let t=this.o;const e=this.t;if(i&&void 0===t){const i=void 0!==e&&1===e.length;i&&(t=r.get(e)),void 0===t&&((this.o=t=new CSSStyleSheet).replaceSync(this.cssText),i&&r.set(e,t))}return t}toString(){return this.cssText}};const o=(t,...e)=>{const i=1===t.length?t[0]:e.reduce((e,i,s)=>e+(t=>{if(!0===t._$cssResult$)return t.cssText;if("number"==typeof t)return t;throw Error("Value passed to 'css' function must be a 'css' function result: "+t+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+t[s+1],t[0]);return new a(i,t,s)},n=i?t=>t:t=>t instanceof CSSStyleSheet?(t=>{let e="";for(const i of t.cssRules)e+=i.cssText;return(t=>new a("string"==typeof t?t:t+"",void 0,s))(e)})(t):t,{is:c,defineProperty:d,getOwnPropertyDescriptor:l,getOwnPropertyNames:h,getOwnPropertySymbols:p,getPrototypeOf:u}=Object,g=globalThis,m=g.trustedTypes,v=m?m.emptyScript:"",b=g.reactiveElementPolyfillSupport,y=(t,e)=>t,f={toAttribute(t,e){switch(e){case Boolean:t=t?v:null;break;case Object:case Array:t=null==t?t:JSON.stringify(t)}return t},fromAttribute(t,e){let i=t;switch(e){case Boolean:i=null!==t;break;case Number:i=null===t?null:Number(t);break;case Object:case Array:try{i=JSON.parse(t)}catch(t){i=null}}return i}},x=(t,e)=>!c(t,e),_={attribute:!0,type:String,converter:f,reflect:!1,useDefault:!1,hasChanged:x};Symbol.metadata??=Symbol("metadata"),g.litPropertyMetadata??=new WeakMap;let w=class extends HTMLElement{static addInitializer(t){this._$Ei(),(this.l??=[]).push(t)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(t,e=_){if(e.state&&(e.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(t)&&((e=Object.create(e)).wrapped=!0),this.elementProperties.set(t,e),!e.noAccessor){const i=Symbol(),s=this.getPropertyDescriptor(t,i,e);void 0!==s&&d(this.prototype,t,s)}}static getPropertyDescriptor(t,e,i){const{get:s,set:r}=l(this.prototype,t)??{get(){return this[e]},set(t){this[e]=t}};return{get:s,set(e){const a=s?.call(this);r?.call(this,e),this.requestUpdate(t,a,i)},configurable:!0,enumerable:!0}}static getPropertyOptions(t){return this.elementProperties.get(t)??_}static _$Ei(){if(this.hasOwnProperty(y("elementProperties")))return;const t=u(this);t.finalize(),void 0!==t.l&&(this.l=[...t.l]),this.elementProperties=new Map(t.elementProperties)}static finalize(){if(this.hasOwnProperty(y("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(y("properties"))){const t=this.properties,e=[...h(t),...p(t)];for(const i of e)this.createProperty(i,t[i])}const t=this[Symbol.metadata];if(null!==t){const e=litPropertyMetadata.get(t);if(void 0!==e)for(const[t,i]of e)this.elementProperties.set(t,i)}this._$Eh=new Map;for(const[t,e]of this.elementProperties){const i=this._$Eu(t,e);void 0!==i&&this._$Eh.set(i,t)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(t){const e=[];if(Array.isArray(t)){const i=new Set(t.flat(1/0).reverse());for(const t of i)e.unshift(n(t))}else void 0!==t&&e.push(n(t));return e}static _$Eu(t,e){const i=e.attribute;return!1===i?void 0:"string"==typeof i?i:"string"==typeof t?t.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(t=>this.enableUpdating=t),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(t=>t(this))}addController(t){(this._$EO??=new Set).add(t),void 0!==this.renderRoot&&this.isConnected&&t.hostConnected?.()}removeController(t){this._$EO?.delete(t)}_$E_(){const t=new Map,e=this.constructor.elementProperties;for(const i of e.keys())this.hasOwnProperty(i)&&(t.set(i,this[i]),delete this[i]);t.size>0&&(this._$Ep=t)}createRenderRoot(){const t=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return((t,s)=>{if(i)t.adoptedStyleSheets=s.map(t=>t instanceof CSSStyleSheet?t:t.styleSheet);else for(const i of s){const s=document.createElement("style"),r=e.litNonce;void 0!==r&&s.setAttribute("nonce",r),s.textContent=i.cssText,t.appendChild(s)}})(t,this.constructor.elementStyles),t}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(t=>t.hostConnected?.())}enableUpdating(t){}disconnectedCallback(){this._$EO?.forEach(t=>t.hostDisconnected?.())}attributeChangedCallback(t,e,i){this._$AK(t,i)}_$ET(t,e){const i=this.constructor.elementProperties.get(t),s=this.constructor._$Eu(t,i);if(void 0!==s&&!0===i.reflect){const r=(void 0!==i.converter?.toAttribute?i.converter:f).toAttribute(e,i.type);this._$Em=t,null==r?this.removeAttribute(s):this.setAttribute(s,r),this._$Em=null}}_$AK(t,e){const i=this.constructor,s=i._$Eh.get(t);if(void 0!==s&&this._$Em!==s){const t=i.getPropertyOptions(s),r="function"==typeof t.converter?{fromAttribute:t.converter}:void 0!==t.converter?.fromAttribute?t.converter:f;this._$Em=s;const a=r.fromAttribute(e,t.type);this[s]=a??this._$Ej?.get(s)??a,this._$Em=null}}requestUpdate(t,e,i){if(void 0!==t){const s=this.constructor,r=this[t];if(i??=s.getPropertyOptions(t),!((i.hasChanged??x)(r,e)||i.useDefault&&i.reflect&&r===this._$Ej?.get(t)&&!this.hasAttribute(s._$Eu(t,i))))return;this.C(t,e,i)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(t,e,{useDefault:i,reflect:s,wrapped:r},a){i&&!(this._$Ej??=new Map).has(t)&&(this._$Ej.set(t,a??e??this[t]),!0!==r||void 0!==a)||(this._$AL.has(t)||(this.hasUpdated||i||(e=void 0),this._$AL.set(t,e)),!0===s&&this._$Em!==t&&(this._$Eq??=new Set).add(t))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(t){Promise.reject(t)}const t=this.scheduleUpdate();return null!=t&&await t,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(const[t,e]of this._$Ep)this[t]=e;this._$Ep=void 0}const t=this.constructor.elementProperties;if(t.size>0)for(const[e,i]of t){const{wrapped:t}=i,s=this[e];!0!==t||this._$AL.has(e)||void 0===s||this.C(e,void 0,i,s)}}let t=!1;const e=this._$AL;try{t=this.shouldUpdate(e),t?(this.willUpdate(e),this._$EO?.forEach(t=>t.hostUpdate?.()),this.update(e)):this._$EM()}catch(e){throw t=!1,this._$EM(),e}t&&this._$AE(e)}willUpdate(t){}_$AE(t){this._$EO?.forEach(t=>t.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(t)),this.updated(t)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(t){return!0}update(t){this._$Eq&&=this._$Eq.forEach(t=>this._$ET(t,this[t])),this._$EM()}updated(t){}firstUpdated(t){}};w.elementStyles=[],w.shadowRootOptions={mode:"open"},w[y("elementProperties")]=new Map,w[y("finalized")]=new Map,b?.({ReactiveElement:w}),(g.reactiveElementVersions??=[]).push("2.1.1");const $=globalThis,C=$.trustedTypes,k=C?C.createPolicy("lit-html",{createHTML:t=>t}):void 0,A="$lit$",E=`lit$${Math.random().toFixed(9).slice(2)}$`,S="?"+E,T=`<${S}>`,z=document,P=()=>z.createComment(""),O=t=>null===t||"object"!=typeof t&&"function"!=typeof t,I=Array.isArray,R="[ \t\n\f\r]",H=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,M=/-->/g,U=/>/g,N=RegExp(`>|${R}(?:([^\\s"'>=/]+)(${R}*=${R}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),D=/'/g,L=/"/g,j=/^(?:script|style|textarea|title)$/i,B=(t=>(e,...i)=>({_$litType$:t,strings:e,values:i}))(1),q=Symbol.for("lit-noChange"),F=Symbol.for("lit-nothing"),V=new WeakMap,Y=z.createTreeWalker(z,129);function W(t,e){if(!I(t)||!t.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==k?k.createHTML(e):e}const G=(t,e)=>{const i=t.length-1,s=[];let r,a=2===e?"<svg>":3===e?"<math>":"",o=H;for(let e=0;e<i;e++){const i=t[e];let n,c,d=-1,l=0;for(;l<i.length&&(o.lastIndex=l,c=o.exec(i),null!==c);)l=o.lastIndex,o===H?"!--"===c[1]?o=M:void 0!==c[1]?o=U:void 0!==c[2]?(j.test(c[2])&&(r=RegExp("</"+c[2],"g")),o=N):void 0!==c[3]&&(o=N):o===N?">"===c[0]?(o=r??H,d=-1):void 0===c[1]?d=-2:(d=o.lastIndex-c[2].length,n=c[1],o=void 0===c[3]?N:'"'===c[3]?L:D):o===L||o===D?o=N:o===M||o===U?o=H:(o=N,r=void 0);const h=o===N&&t[e+1].startsWith("/>")?" ":"";a+=o===H?i+T:d>=0?(s.push(n),i.slice(0,d)+A+i.slice(d)+E+h):i+E+(-2===d?e:h)}return[W(t,a+(t[i]||"<?>")+(2===e?"</svg>":3===e?"</math>":"")),s]};class J{constructor({strings:t,_$litType$:e},i){let s;this.parts=[];let r=0,a=0;const o=t.length-1,n=this.parts,[c,d]=G(t,e);if(this.el=J.createElement(c,i),Y.currentNode=this.el.content,2===e||3===e){const t=this.el.content.firstChild;t.replaceWith(...t.childNodes)}for(;null!==(s=Y.nextNode())&&n.length<o;){if(1===s.nodeType){if(s.hasAttributes())for(const t of s.getAttributeNames())if(t.endsWith(A)){const e=d[a++],i=s.getAttribute(t).split(E),o=/([.?@])?(.*)/.exec(e);n.push({type:1,index:r,name:o[2],strings:i,ctor:"."===o[1]?tt:"?"===o[1]?et:"@"===o[1]?it:Q}),s.removeAttribute(t)}else t.startsWith(E)&&(n.push({type:6,index:r}),s.removeAttribute(t));if(j.test(s.tagName)){const t=s.textContent.split(E),e=t.length-1;if(e>0){s.textContent=C?C.emptyScript:"";for(let i=0;i<e;i++)s.append(t[i],P()),Y.nextNode(),n.push({type:2,index:++r});s.append(t[e],P())}}}else if(8===s.nodeType)if(s.data===S)n.push({type:2,index:r});else{let t=-1;for(;-1!==(t=s.data.indexOf(E,t+1));)n.push({type:7,index:r}),t+=E.length-1}r++}}static createElement(t,e){const i=z.createElement("template");return i.innerHTML=t,i}}function K(t,e,i=t,s){if(e===q)return e;let r=void 0!==s?i._$Co?.[s]:i._$Cl;const a=O(e)?void 0:e._$litDirective$;return r?.constructor!==a&&(r?._$AO?.(!1),void 0===a?r=void 0:(r=new a(t),r._$AT(t,i,s)),void 0!==s?(i._$Co??=[])[s]=r:i._$Cl=r),void 0!==r&&(e=K(t,r._$AS(t,e.values),r,s)),e}class X{constructor(t,e){this._$AV=[],this._$AN=void 0,this._$AD=t,this._$AM=e}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(t){const{el:{content:e},parts:i}=this._$AD,s=(t?.creationScope??z).importNode(e,!0);Y.currentNode=s;let r=Y.nextNode(),a=0,o=0,n=i[0];for(;void 0!==n;){if(a===n.index){let e;2===n.type?e=new Z(r,r.nextSibling,this,t):1===n.type?e=new n.ctor(r,n.name,n.strings,this,t):6===n.type&&(e=new st(r,this,t)),this._$AV.push(e),n=i[++o]}a!==n?.index&&(r=Y.nextNode(),a++)}return Y.currentNode=z,s}p(t){let e=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(t,i,e),e+=i.strings.length-2):i._$AI(t[e])),e++}}class Z{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(t,e,i,s){this.type=2,this._$AH=F,this._$AN=void 0,this._$AA=t,this._$AB=e,this._$AM=i,this.options=s,this._$Cv=s?.isConnected??!0}get parentNode(){let t=this._$AA.parentNode;const e=this._$AM;return void 0!==e&&11===t?.nodeType&&(t=e.parentNode),t}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(t,e=this){t=K(this,t,e),O(t)?t===F||null==t||""===t?(this._$AH!==F&&this._$AR(),this._$AH=F):t!==this._$AH&&t!==q&&this._(t):void 0!==t._$litType$?this.$(t):void 0!==t.nodeType?this.T(t):(t=>I(t)||"function"==typeof t?.[Symbol.iterator])(t)?this.k(t):this._(t)}O(t){return this._$AA.parentNode.insertBefore(t,this._$AB)}T(t){this._$AH!==t&&(this._$AR(),this._$AH=this.O(t))}_(t){this._$AH!==F&&O(this._$AH)?this._$AA.nextSibling.data=t:this.T(z.createTextNode(t)),this._$AH=t}$(t){const{values:e,_$litType$:i}=t,s="number"==typeof i?this._$AC(t):(void 0===i.el&&(i.el=J.createElement(W(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===s)this._$AH.p(e);else{const t=new X(s,this),i=t.u(this.options);t.p(e),this.T(i),this._$AH=t}}_$AC(t){let e=V.get(t.strings);return void 0===e&&V.set(t.strings,e=new J(t)),e}k(t){I(this._$AH)||(this._$AH=[],this._$AR());const e=this._$AH;let i,s=0;for(const r of t)s===e.length?e.push(i=new Z(this.O(P()),this.O(P()),this,this.options)):i=e[s],i._$AI(r),s++;s<e.length&&(this._$AR(i&&i._$AB.nextSibling,s),e.length=s)}_$AR(t=this._$AA.nextSibling,e){for(this._$AP?.(!1,!0,e);t!==this._$AB;){const e=t.nextSibling;t.remove(),t=e}}setConnected(t){void 0===this._$AM&&(this._$Cv=t,this._$AP?.(t))}}class Q{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(t,e,i,s,r){this.type=1,this._$AH=F,this._$AN=void 0,this.element=t,this.name=e,this._$AM=s,this.options=r,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=F}_$AI(t,e=this,i,s){const r=this.strings;let a=!1;if(void 0===r)t=K(this,t,e,0),a=!O(t)||t!==this._$AH&&t!==q,a&&(this._$AH=t);else{const s=t;let o,n;for(t=r[0],o=0;o<r.length-1;o++)n=K(this,s[i+o],e,o),n===q&&(n=this._$AH[o]),a||=!O(n)||n!==this._$AH[o],n===F?t=F:t!==F&&(t+=(n??"")+r[o+1]),this._$AH[o]=n}a&&!s&&this.j(t)}j(t){t===F?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,t??"")}}class tt extends Q{constructor(){super(...arguments),this.type=3}j(t){this.element[this.name]=t===F?void 0:t}}class et extends Q{constructor(){super(...arguments),this.type=4}j(t){this.element.toggleAttribute(this.name,!!t&&t!==F)}}class it extends Q{constructor(t,e,i,s,r){super(t,e,i,s,r),this.type=5}_$AI(t,e=this){if((t=K(this,t,e,0)??F)===q)return;const i=this._$AH,s=t===F&&i!==F||t.capture!==i.capture||t.once!==i.once||t.passive!==i.passive,r=t!==F&&(i===F||s);s&&this.element.removeEventListener(this.name,this,i),r&&this.element.addEventListener(this.name,this,t),this._$AH=t}handleEvent(t){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,t):this._$AH.handleEvent(t)}}class st{constructor(t,e,i){this.element=t,this.type=6,this._$AN=void 0,this._$AM=e,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(t){K(this,t)}}const rt=$.litHtmlPolyfillSupport;rt?.(J,Z),($.litHtmlVersions??=[]).push("3.3.1");const at=globalThis;class ot extends w{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){const e=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=((t,e,i)=>{const s=i?.renderBefore??e;let r=s._$litPart$;if(void 0===r){const t=i?.renderBefore??null;s._$litPart$=r=new Z(e.insertBefore(P(),t),t,void 0,i??{})}return r._$AI(t),r})(e,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return q}}ot._$litElement$=!0,ot.finalized=!0,at.litElementHydrateSupport?.({LitElement:ot});const nt=at.litElementPolyfillSupport;nt?.({LitElement:ot}),(at.litElementVersions??=[]).push("4.2.1");const ct=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}):customElements.define(t,e)},dt={attribute:!0,type:String,converter:f,reflect:!1,hasChanged:x},lt=(t=dt,e,i)=>{const{kind:s,metadata:r}=i;let a=globalThis.litPropertyMetadata.get(r);if(void 0===a&&globalThis.litPropertyMetadata.set(r,a=new Map),"setter"===s&&((t=Object.create(t)).wrapped=!0),a.set(i.name,t),"accessor"===s){const{name:s}=i;return{set(i){const r=e.get.call(this);e.set.call(this,i),this.requestUpdate(s,r,t)},init(e){return void 0!==e&&this.C(s,void 0,t,e),e}}}if("setter"===s){const{name:s}=i;return function(i){const r=this[s];e.call(this,i),this.requestUpdate(s,r,t)}}throw Error("Unsupported decorator location: "+s)};function ht(t){return(e,i)=>"object"==typeof i?lt(t,e,i):((t,e,i)=>{const s=e.hasOwnProperty(i);return e.constructor.createProperty(i,t),s?Object.getOwnPropertyDescriptor(e,i):void 0})(t,e,i)}function pt(t){return ht({...t,state:!0,attribute:!1})}const ut="habits_manager",gt="create_child",mt="update_child",vt="delete_child",bt="create_task",yt="update_task",ft="delete_task",xt="mark_task_completed",_t="validate_task",wt="refuse_task",$t="validate_penalty",Ct="create_habit",kt="update_habit",At="delete_habit",Et="complete_habit",St="create_reward",Tt="claim_reward",zt="approve_claim",Pt="create_cosmetic",Ot="purchase_cosmetic";class It{constructor(t){this.hass=t}async callService(t,e={}){return this.hass.callService(ut,t,e)}async createChild(t){return this.callService(gt,t)}async updateChild(t,e){return this.callService(mt,{child_id:t,...e})}async deleteChild(t){return this.callService(vt,{child_id:t})}async createTask(t){return this.callService(bt,t)}async updateTask(t,e){return this.callService(yt,{task_id:t,...e})}async deleteTask(t){return this.callService(ft,{task_id:t})}async markTaskCompleted(t,e){return this.callService(xt,{instance_id:t,child_id:e})}async validateTask(t,e,i){return this.callService(_t,{instance_id:t,validator_id:e,note:i})}async refuseTask(t,e,i=!1,s){return this.callService(wt,{instance_id:t,validator_id:e,apply_penalty:i,note:s})}async validatePenalty(t,e){return this.callService($t,{instance_id:t,validator_id:e})}async createHabit(t){return this.callService(Ct,t)}async updateHabit(t,e){return this.callService(kt,{habit_id:t,...e})}async deleteHabit(t){return this.callService(At,{habit_id:t})}async completeHabit(t,e){return this.callService(Et,{habit_id:t,child_id:e})}async createReward(t){return this.callService(St,t)}async claimReward(t,e){return this.callService(Tt,{reward_id:t,child_id:e})}async approveClaim(t,e){return this.callService(zt,{claim_id:t,approver_id:e})}async createCosmetic(t){return this.callService(Pt,t)}async purchaseCosmetic(t,e){return this.callService(Ot,{cosmetic_id:t,child_id:e})}getChildren(){const t=[],e=Object.values(this.hass.states).filter(t=>t.entity_id.startsWith(`sensor.${ut}_`)&&t.entity_id.endsWith("_points"));for(const i of e){const e=i.attributes.child_id;if(e){const i=this.getChildData(e);i&&t.push(i)}}return t}getChildData(t){const e=this.hass.states[`sensor.${ut}_${t}_points`];if(!e)return null;const i=this.hass.states[`sensor.${ut}_${t}_coins`],s=this.hass.states[`sensor.${ut}_${t}_level`],r=this.hass.states[`sensor.${ut}_${t}_experience`];return{id:t,name:e.attributes.child_name||"Unknown",person_entity:e.attributes.person_entity||"",points:parseInt(e.state)||0,coins:i&&parseInt(i.state)||0,level:s&&parseInt(s.state)||1,experience:r&&parseInt(r.state)||0,experience_to_next_level:r?.attributes.experience_to_next_level||100,avatar:e.attributes.avatar||{photo_url:"",customization:{clothes:null,accessory:null,pet:null,theme:"default"}},badges:e.attributes.badges||[],owned_cosmetics:e.attributes.owned_cosmetics||[],created_at:e.attributes.created_at||(new Date).toISOString(),updated_at:e.attributes.updated_at||(new Date).toISOString()}}getTaskCounts(t){const e=this.hass.states[`sensor.${ut}_${t}_tasks_pending`],i=this.hass.states[`sensor.${ut}_${t}_tasks_completed_waiting`];return{pending:e&&parseInt(e.state)||0,waiting:i&&parseInt(i.state)||0}}getHabitStats(t){const e=this.hass.states[`sensor.${ut}_${t}_habits_count`],i=this.hass.states[`sensor.${ut}_${t}_longest_streak`];return{count:e&&parseInt(e.state)||0,longest_streak:i&&parseInt(i.state)||0}}getCosmetics(){const t=this.hass.states[`sensor.${ut}_cosmetics`];return t&&t.attributes.cosmetics?t.attributes.cosmetics:[]}async subscribeToUpdates(t){return this.hass.connection.subscribeEvents(t,`${ut}_update`)}}class Rt{constructor(t){this.listeners=new Set,this.state={children:[],tasks:[],taskInstances:[],habits:[],habitStreaks:[],rewards:[],rewardClaims:[],cosmetics:[],loading:!0,error:null},this.hass=t,this.api=new It(t),this.initialize()}async initialize(){try{await this.loadAllData(),this.unsubscribe=await this.api.subscribeToUpdates(t=>{this.handleUpdate(t)}),this.state.loading=!1,this.notifyListeners()}catch(t){this.state.error=t instanceof Error?t.message:"Unknown error",this.state.loading=!1,this.notifyListeners()}}async loadAllData(){this.state.children=this.api.getChildren(),this.state.cosmetics=this.api.getCosmetics()}handleUpdate(t){const{update_type:e}=t;switch(e){case"child_created":case"child_updated":case"child_deleted":case"reward_claimed":case"reward_approved":case"cosmetic_purchased":case"level_up":case"badge_earned":case"points_changed":case"coins_changed":this.state.children=this.api.getChildren();break;case"task_completed":case"task_validated":case"task_refused":case"task_failed":case"habit_completed":case"streak_increased":case"streak_broken":t.child_id&&(this.state.children=this.api.getChildren())}this.notifyListeners()}subscribe(t){return this.listeners.add(t),()=>this.listeners.delete(t)}notifyListeners(){this.listeners.forEach(t=>t())}getState(){return{...this.state}}async refresh(){this.state.loading=!0,this.notifyListeners();try{await this.loadAllData(),this.state.loading=!1,this.state.error=null}catch(t){this.state.error=t instanceof Error?t.message:"Unknown error",this.state.loading=!1}this.notifyListeners()}getChildren(){return this.state.children}getChild(t){return this.state.children.find(e=>e.id===t)}async createChild(t){try{await this.api.createChild(t),await this.refresh()}catch(t){throw t}}async updateChild(t,e){try{await this.api.updateChild(t,e),await this.refresh()}catch(t){throw t}}async deleteChild(t){try{await this.api.deleteChild(t),await this.refresh()}catch(t){throw t}}getTaskCounts(t){return this.api.getTaskCounts(t)}async createTask(t){try{await this.api.createTask(t),await this.refresh()}catch(t){throw t}}async updateTask(t,e){try{await this.api.updateTask(t,e),await this.refresh()}catch(t){throw t}}async deleteTask(t){try{await this.api.deleteTask(t),await this.refresh()}catch(t){throw t}}async markTaskCompleted(t,e){try{await this.api.markTaskCompleted(t,e),await this.refresh()}catch(t){throw t}}async validateTask(t,e,i){try{await this.api.validateTask(t,e,i),await this.refresh()}catch(t){throw t}}async refuseTask(t,e,i,s){try{await this.api.refuseTask(t,e,i,s),await this.refresh()}catch(t){throw t}}getHabitStats(t){return this.api.getHabitStats(t)}async createHabit(t){try{await this.api.createHabit(t),await this.refresh()}catch(t){throw t}}async updateHabit(t,e){try{await this.api.updateHabit(t,e),await this.refresh()}catch(t){throw t}}async deleteHabit(t){try{await this.api.deleteHabit(t),await this.refresh()}catch(t){throw t}}async completeHabit(t,e){try{await this.api.completeHabit(t,e),await this.refresh()}catch(t){throw t}}async createReward(t){try{await this.api.createReward(t),await this.refresh()}catch(t){throw t}}async claimReward(t,e){try{await this.api.claimReward(t,e),await this.refresh()}catch(t){throw t}}async approveClaim(t,e){try{await this.api.approveClaim(t,e),await this.refresh()}catch(t){throw t}}getCosmetics(){return this.state.cosmetics}getOwnedCosmetics(t){const e=this.getChild(t);return e?this.state.cosmetics.filter(t=>e.owned_cosmetics.includes(t.id)):[]}getAvailableCosmetics(t){const e=this.getChild(t);return e?this.state.cosmetics.filter(t=>{if(e.owned_cosmetics.includes(t.id))return!1;if(t.unlock_requirements){const i=t.unlock_requirements;if(i.level&&e.level<i.level)return!1;if(i.badge&&!e.badges.includes(i.badge))return!1}return!0}):[]}async createCosmetic(t){try{await this.api.createCosmetic(t),await this.refresh()}catch(t){throw t}}async purchaseCosmetic(t,e){try{await this.api.purchaseCosmetic(t,e),await this.refresh()}catch(t){throw t}}destroy(){this.unsubscribe&&this.unsubscribe(),this.listeners.clear()}}const Ht=o`
   :host {
     display: block;
     box-sizing: border-box;
@@ -338,7 +338,7 @@ function t(t,e,s,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPro
   .hidden {
     display: none !important;
   }
-`;var Nt,It,Dt,zt,Lt,jt,Bt,Ft,Yt,Wt,Vt;!function(t){t.MANDATORY="mandatory",t.BONUS="bonus"}(Nt||(Nt={})),function(t){t.DAILY="daily",t.WEEKLY="weekly",t.MONTHLY="monthly",t.SPECIFIC_DATE="specific_date"}(It||(It={})),function(t){t.CHORES="chores",t.HOMEWORK="homework",t.PERSONAL="personal",t.OTHER="other"}(Dt||(Dt={})),function(t){t.PENDING="pending",t.COMPLETED_WAITING="completed_waiting",t.VALIDATED="validated",t.REFUSED="refused",t.FAILED="failed"}(zt||(zt={})),function(t){t.DAILY="daily",t.WEEKLY="weekly",t.MONTHLY="monthly"}(Lt||(Lt={})),function(t){t.PROGRESSIVE="progressive",t.FIXED="fixed"}(jt||(jt={})),function(t){t.SCREEN_TIME="screen_time",t.MEAL_CHOICE="meal_choice",t.ACTIVITY="activity",t.OTHER="other"}(Bt||(Bt={})),function(t){t.PENDING="pending",t.APPROVED="approved",t.USED="used",t.EXPIRED="expired"}(Ft||(Ft={})),function(t){t.CLOTHES="clothes",t.ACCESSORY="accessory",t.PET="pet",t.THEME="theme",t.BADGE="badge",t.ANIMATION="animation"}(Yt||(Yt={})),function(t){t.COMMON="common",t.RARE="rare",t.EPIC="epic",t.LEGENDARY="legendary"}(Wt||(Wt={})),function(t){t.FIRST_TASK="first_task",t.TASKS_COUNT="tasks_count",t.STREAK_DAYS="streak_days",t.LEVEL_REACHED="level_reached",t.POINTS_EARNED="points_earned"}(Vt||(Vt={})),Wt.COMMON,Wt.RARE,Wt.EPIC,Wt.LEGENDARY,Nt.MANDATORY,Nt.BONUS;let Gt=class extends nt{constructor(){super(...arguments),this.icon="",this.iconColor="",this.clickable=!1,this.selected=!1}handleClick(){this.clickable&&this.dispatchEvent(new CustomEvent("item-click",{bubbles:!0,composed:!0}))}render(){return B`
+`;var Mt,Ut,Nt,Dt,Lt,jt,Bt,qt,Ft,Vt,Yt;!function(t){t.MANDATORY="mandatory",t.BONUS="bonus"}(Mt||(Mt={})),function(t){t.DAILY="daily",t.WEEKLY="weekly",t.MONTHLY="monthly",t.SPECIFIC_DATE="specific_date"}(Ut||(Ut={})),function(t){t.CHORES="chores",t.HOMEWORK="homework",t.PERSONAL="personal",t.OTHER="other"}(Nt||(Nt={})),function(t){t.PENDING="pending",t.COMPLETED_WAITING="completed_waiting",t.VALIDATED="validated",t.REFUSED="refused",t.FAILED="failed"}(Dt||(Dt={})),function(t){t.DAILY="daily",t.WEEKLY="weekly",t.MONTHLY="monthly"}(Lt||(Lt={})),function(t){t.PROGRESSIVE="progressive",t.FIXED="fixed"}(jt||(jt={})),function(t){t.SCREEN_TIME="screen_time",t.MEAL_CHOICE="meal_choice",t.ACTIVITY="activity",t.OTHER="other"}(Bt||(Bt={})),function(t){t.PENDING="pending",t.APPROVED="approved",t.USED="used",t.EXPIRED="expired"}(qt||(qt={})),function(t){t.CLOTHES="clothes",t.ACCESSORY="accessory",t.PET="pet",t.THEME="theme",t.BADGE="badge",t.ANIMATION="animation"}(Ft||(Ft={})),function(t){t.COMMON="common",t.RARE="rare",t.EPIC="epic",t.LEGENDARY="legendary"}(Vt||(Vt={})),function(t){t.FIRST_TASK="first_task",t.TASKS_COUNT="tasks_count",t.STREAK_DAYS="streak_days",t.LEVEL_REACHED="level_reached",t.POINTS_EARNED="points_earned"}(Yt||(Yt={}));const Wt={[Vt.COMMON]:"#9E9E9E",[Vt.RARE]:"#2196F3",[Vt.EPIC]:"#9C27B0",[Vt.LEGENDARY]:"#FF9800"};Mt.MANDATORY,Mt.BONUS;let Gt=class extends ot{constructor(){super(...arguments),this.icon="",this.iconColor="",this.clickable=!1,this.selected=!1}handleClick(){this.clickable&&this.dispatchEvent(new CustomEvent("item-click",{bubbles:!0,composed:!0}))}render(){return B`
       <div
         class="card ${this.clickable?"clickable":""} ${this.selected?"selected":""}"
         @click="${this.handleClick}"
@@ -355,7 +355,7 @@ function t(t,e,s,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPro
           <slot name="actions"></slot>
         </div>
       </div>
-    `}};Gt.styles=n`
+    `}};Gt.styles=o`
     :host {
       display: block;
     }
@@ -412,13 +412,888 @@ function t(t,e,s,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPro
       display: flex;
       gap: 8px;
     }
-  `,t([lt({type:String})],Gt.prototype,"icon",void 0),t([lt({type:String})],Gt.prototype,"iconColor",void 0),t([lt({type:Boolean})],Gt.prototype,"clickable",void 0),t([lt({type:Boolean})],Gt.prototype,"selected",void 0),Gt=t([ct("hm-item-card")],Gt);let qt=class extends nt{setConfig(t){if(!t)throw new Error("Invalid configuration");if(!t.child_id)throw new Error("child_id is required");this._config=t}getCardSize(){return 4}updated(t){var e;super.updated(t),t.has("hass")&&this.hass&&(this._store||(this._store=(e=this.hass,new Ut(e)),this._unsubscribe=this._store.subscribe(()=>{this._loadChild(),this.requestUpdate()})),this._loadChild())}disconnectedCallback(){super.disconnectedCallback(),this._unsubscribe&&this._unsubscribe(),this._store&&this._store.destroy()}_loadChild(){this._store&&this._config&&(this._child=this._store.getChild(this._config.child_id))}render(){if(!this._config||!this.hass)return B``;if(!this._child)return B`
+  `,t([ht({type:String})],Gt.prototype,"icon",void 0),t([ht({type:String})],Gt.prototype,"iconColor",void 0),t([ht({type:Boolean})],Gt.prototype,"clickable",void 0),t([ht({type:Boolean})],Gt.prototype,"selected",void 0),Gt=t([ct("hm-item-card")],Gt);let Jt=class extends ot{constructor(){super(...arguments),this.open=!1,this.title="",this.hideActions=!1,this.confirmText="Confirmer",this.cancelText="Annuler",this.hideCancel=!1,this.loading=!1}handleOverlayClick(t){t.target===t.currentTarget&&this.close()}handleCancel(){this.dispatchEvent(new CustomEvent("cancel",{bubbles:!0,composed:!0})),this.close()}handleConfirm(){this.dispatchEvent(new CustomEvent("confirm",{bubbles:!0,composed:!0}))}close(){this.open=!1}render(){return this.open?B`
+      <div class="overlay" @click="${this.handleOverlayClick}">
+        <div class="dialog">
+          <div class="dialog-header">
+            <h2 class="dialog-title">${this.title}</h2>
+            <button class="close-button" @click="${this.close}" ?disabled="${this.loading}">
+              ✕
+            </button>
+          </div>
+
+          <div class="dialog-content">
+            <slot></slot>
+          </div>
+
+          ${this.hideActions?"":B`
+                <div class="dialog-actions">
+                  ${this.hideCancel?"":B`
+                        <button
+                          class="cancel-button"
+                          @click="${this.handleCancel}"
+                          ?disabled="${this.loading}"
+                        >
+                          ${this.cancelText}
+                        </button>
+                      `}
+                  <button
+                    class="confirm-button"
+                    @click="${this.handleConfirm}"
+                    ?disabled="${this.loading}"
+                  >
+                    ${this.loading?B`<span class="loading-spinner"></span>`:""}${this.confirmText}
+                  </button>
+                </div>
+              `}
+        </div>
+      </div>
+    `:B``}};Jt.styles=o`
+    :host {
+      display: none;
+    }
+
+    :host([open]) {
+      display: block;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .dialog {
+      background: var(--card-background-color, white);
+      border-radius: var(--ha-card-border-radius, 12px);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      animation: slideIn 0.3s ease;
+    }
+
+    .dialog-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dialog-title {
+      font-size: 20px;
+      font-weight: 500;
+      margin: 0;
+      color: var(--primary-text-color, #212121);
+    }
+
+    .close-button {
+      background: none;
+      border: none;
+      padding: 8px;
+      cursor: pointer;
+      border-radius: 50%;
+      color: var(--secondary-text-color, #727272);
+      transition: background 0.2s;
+    }
+
+    .close-button:hover {
+      background: var(--divider-color, rgba(0, 0, 0, 0.08));
+    }
+
+    .dialog-content {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .dialog-actions {
+      padding: 16px 24px;
+      border-top: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .cancel-button {
+      background: var(--secondary-color, #e0e0e0);
+      color: var(--primary-text-color, #212121);
+    }
+
+    .cancel-button:hover:not(:disabled) {
+      background: var(--divider-color, #d0d0d0);
+    }
+
+    .confirm-button {
+      background: var(--primary-color, #03a9f4);
+      color: white;
+    }
+
+    .confirm-button:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  `,t([ht({type:Boolean})],Jt.prototype,"open",void 0),t([ht({type:String})],Jt.prototype,"title",void 0),t([ht({type:Boolean})],Jt.prototype,"hideActions",void 0),t([ht({type:String})],Jt.prototype,"confirmText",void 0),t([ht({type:String})],Jt.prototype,"cancelText",void 0),t([ht({type:Boolean})],Jt.prototype,"hideCancel",void 0),t([ht({type:Boolean})],Jt.prototype,"loading",void 0),Jt=t([ct("hm-dialog")],Jt);let Kt=class extends ot{constructor(){super(...arguments),this.availableCosmetics=[],this.allCosmetics=[],this.selectedCategory="all",this.showPurchaseDialog=!1}getCategoryIcon(t){return{all:"🛍️",clothes:"👕",accessory:"🎩",pet:"🐕",theme:"🎨",badge:"🏆",animation:"✨"}[t]||"🛍️"}getCategoryLabel(t){return{all:"Tout",clothes:"Vêtements",accessory:"Accessoires",pet:"Animaux",theme:"Thèmes",badge:"Badges",animation:"Animations"}[t]||"Tout"}getRarityLabel(t){return{common:"Commun",rare:"Rare",epic:"Épique",legendary:"Légendaire"}[t]}getItemStatus(t){if(this.child.owned_cosmetics.includes(t.id))return"owned";if(t.unlock_requirements){const e=t.unlock_requirements;if(e.level&&this.child.level<e.level)return"locked";if(e.badge&&!this.child.badges.includes(e.badge))return"locked"}return"available"}getUnlockRequirementsText(t){if(!t.unlock_requirements)return"";const e=t.unlock_requirements,i=[];return e.level&&i.push(`Niveau ${e.level} requis`),e.badge&&i.push("Badge requis"),i.join(" • ")}getFilteredCosmetics(){let t=this.allCosmetics;return"all"!==this.selectedCategory&&(t=t.filter(t=>t.category===this.selectedCategory)),t.sort((t,e)=>{const i=this.getItemStatus(t),s=this.getItemStatus(e);if("owned"===i&&"owned"!==s)return 1;if("owned"!==i&&"owned"===s)return-1;if("locked"===i&&"locked"!==s)return 1;if("locked"!==i&&"locked"===s)return-1;const r={common:0,rare:1,epic:2,legendary:3},a=r[e.rarity]-r[t.rarity];return 0!==a?a:t.cost_coins-e.cost_coins})}handleCosmeticClick(t){"available"===this.getItemStatus(t)&&(this.selectedCosmetic=t,this.showPurchaseDialog=!0)}async handlePurchase(){if(!this.selectedCosmetic)return;const t=new CustomEvent("purchase-cosmetic",{detail:{cosmeticId:this.selectedCosmetic.id,childId:this.child.id},bubbles:!0,composed:!0});this.dispatchEvent(t),this.showPurchaseDialog=!1,this.selectedCosmetic=void 0}handleCancelPurchase(){this.showPurchaseDialog=!1,this.selectedCosmetic=void 0}render(){const t=this.getFilteredCosmetics();return B`
+      <div class="shop-header">
+        <h2 class="shop-title">Boutique de Cosmétiques</h2>
+        <div class="coins-display">
+          <span class="coin-icon">🪙</span>
+          <span>${this.child.coins} pièces</span>
+        </div>
+      </div>
+
+      <div class="category-tabs">
+        <div
+          class="category-tab ${"all"===this.selectedCategory?"selected":""}"
+          @click="${()=>this.selectedCategory="all"}"
+        >
+          ${this.getCategoryIcon("all")} ${this.getCategoryLabel("all")}
+        </div>
+        ${Object.values(Ft).map(t=>B`
+          <div
+            class="category-tab ${this.selectedCategory===t?"selected":""}"
+            @click="${()=>this.selectedCategory=t}"
+          >
+            ${this.getCategoryIcon(t)} ${this.getCategoryLabel(t)}
+          </div>
+        `)}
+      </div>
+
+      ${0===t.length?B`
+        <div class="empty-message">
+          <p>Aucun cosmétique disponible dans cette catégorie</p>
+        </div>
+      `:B`
+        <div class="cosmetics-grid">
+          ${t.map(t=>{const e=this.getItemStatus(t),i=this.getUnlockRequirementsText(t);return B`
+              <div
+                class="cosmetic-card ${e}"
+                @click="${()=>this.handleCosmeticClick(t)}"
+              >
+                <div
+                  class="rarity-badge"
+                  style="background-color: ${Wt[t.rarity]}"
+                >
+                  ${this.getRarityLabel(t.rarity)}
+                </div>
+
+                ${"owned"===e?B`
+                  <div class="status-badge">✅ Possédé</div>
+                `:"locked"===e?B`
+                  <div class="status-badge">🔒 Verrouillé</div>
+                `:""}
+
+                <div class="preview-container">
+                  ${t.preview_image}
+                </div>
+
+                <h3 class="cosmetic-name">${t.name}</h3>
+                <p class="cosmetic-description">${t.description}</p>
+
+                ${i?B`
+                  <div class="unlock-requirements">
+                    🔒 ${i}
+                  </div>
+                `:""}
+
+                <div class="cosmetic-price">
+                  <span class="price-amount">
+                    <span>🪙</span>
+                    <span>${t.cost_coins}</span>
+                  </span>
+                  ${"available"===e?B`
+                    <span style="color: var(--primary-color)">🛒 Acheter</span>
+                  `:""}
+                </div>
+              </div>
+            `})}
+        </div>
+      `}
+
+      ${this.showPurchaseDialog&&this.selectedCosmetic?B`
+        <hm-dialog
+          .open="${this.showPurchaseDialog}"
+          @dialog-closed="${this.handleCancelPurchase}"
+        >
+          <div slot="header">Confirmer l'achat</div>
+          <div slot="content" class="purchase-dialog-content">
+            <div class="purchase-preview">
+              <div class="purchase-preview-icon">${this.selectedCosmetic.preview_image}</div>
+              <h3>${this.selectedCosmetic.name}</h3>
+              <p>${this.selectedCosmetic.description}</p>
+            </div>
+
+            <div class="purchase-info">
+              <div class="purchase-info-row">
+                <span>Prix:</span>
+                <span><strong>🪙 ${this.selectedCosmetic.cost_coins}</strong></span>
+              </div>
+              <div class="purchase-info-row">
+                <span>Tes pièces:</span>
+                <span>🪙 ${this.child.coins}</span>
+              </div>
+              <div class="purchase-info-row">
+                <span>Après achat:</span>
+                <span>🪙 ${this.child.coins-this.selectedCosmetic.cost_coins}</span>
+              </div>
+            </div>
+
+            ${this.child.coins<this.selectedCosmetic.cost_coins?B`
+              <div style="color: var(--error-color); text-align: center; margin-top: 16px;">
+                ⚠️ Pas assez de pièces!
+              </div>
+            `:""}
+          </div>
+          <div slot="actions" class="purchase-actions">
+            <button class="btn btn-secondary" @click="${this.handleCancelPurchase}">
+              Annuler
+            </button>
+            <button
+              class="btn btn-primary"
+              @click="${this.handlePurchase}"
+              ?disabled="${this.child.coins<this.selectedCosmetic.cost_coins}"
+            >
+              Acheter
+            </button>
+          </div>
+        </hm-dialog>
+      `:""}
+    `}};Kt.styles=o`
+    :host {
+      display: block;
+      padding: 16px;
+    }
+
+    .shop-header {
+      margin-bottom: 24px;
+    }
+
+    .shop-title {
+      font-size: 24px;
+      font-weight: 500;
+      margin: 0 0 8px 0;
+    }
+
+    .coins-display {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--primary-text-color);
+    }
+
+    .coin-icon {
+      font-size: 24px;
+    }
+
+    .category-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .category-tab {
+      padding: 8px 16px;
+      border: 1px solid var(--divider-color);
+      border-radius: 20px;
+      background: var(--card-background-color);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .category-tab:hover {
+      background: var(--secondary-background-color);
+    }
+
+    .category-tab.selected {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .cosmetics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .cosmetic-card {
+      background: var(--card-background-color);
+      border-radius: 8px;
+      padding: 16px;
+      border: 2px solid transparent;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cosmetic-card.available {
+      border-color: var(--divider-color);
+      cursor: pointer;
+    }
+
+    .cosmetic-card.available:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .cosmetic-card.owned {
+      opacity: 0.7;
+      border-color: var(--success-color);
+      background: var(--success-color-light, rgba(76, 175, 80, 0.05));
+    }
+
+    .cosmetic-card.locked {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .rarity-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: white;
+    }
+
+    .status-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: white;
+      border: 1px solid var(--divider-color);
+    }
+
+    .preview-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 80px;
+      font-size: 64px;
+      margin-bottom: 12px;
+    }
+
+    .cosmetic-name {
+      font-size: 16px;
+      font-weight: 500;
+      margin: 0 0 4px 0;
+    }
+
+    .cosmetic-description {
+      font-size: 13px;
+      color: var(--secondary-text-color);
+      margin: 0 0 12px 0;
+      min-height: 32px;
+    }
+
+    .cosmetic-price {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--divider-color);
+    }
+
+    .price-amount {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .unlock-requirements {
+      font-size: 12px;
+      color: var(--warning-color);
+      margin-top: 8px;
+      padding: 8px;
+      background: var(--warning-color-light, rgba(255, 152, 0, 0.1));
+      border-radius: 4px;
+    }
+
+    .empty-message {
+      text-align: center;
+      padding: 48px 16px;
+      color: var(--secondary-text-color);
+    }
+
+    .purchase-dialog-content {
+      padding: 16px;
+    }
+
+    .purchase-preview {
+      text-align: center;
+      padding: 24px;
+    }
+
+    .purchase-preview-icon {
+      font-size: 80px;
+      margin-bottom: 16px;
+    }
+
+    .purchase-info {
+      margin: 16px 0;
+    }
+
+    .purchase-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--divider-color);
+    }
+
+    .purchase-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      background: var(--secondary-background-color);
+      color: var(--primary-text-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--divider-color);
+    }
+  `,t([ht({type:Object})],Kt.prototype,"child",void 0),t([ht({type:Array})],Kt.prototype,"availableCosmetics",void 0),t([ht({type:Array})],Kt.prototype,"allCosmetics",void 0),t([pt()],Kt.prototype,"selectedCategory",void 0),t([pt()],Kt.prototype,"selectedCosmetic",void 0),t([pt()],Kt.prototype,"showPurchaseDialog",void 0),Kt=t([ct("hm-cosmetics-shop")],Kt);let Xt=class extends ot{constructor(){super(),this.ownedCosmetics=[],this.selectedCategory=null,this.editingAvatar={photo_url:"",customization:{clothes:null,accessory:null,pet:null,theme:"default"}}}connectedCallback(){super.connectedCallback(),this.child&&(this.editingAvatar=JSON.parse(JSON.stringify(this.child.avatar)))}updated(t){t.has("child")&&this.child&&(this.editingAvatar=JSON.parse(JSON.stringify(this.child.avatar)))}getCategoryIcon(t){return{clothes:"👕",accessory:"🎩",pet:"🐕",theme:"🎨",badge:"🏆",animation:"✨"}[t]||""}getCategoryLabel(t){return{clothes:"Vêtements",accessory:"Accessoires",pet:"Animaux",theme:"Thèmes",badge:"Badges",animation:"Animations"}[t]||""}getCustomizableCategories(){return[Ft.CLOTHES,Ft.ACCESSORY,Ft.PET,Ft.THEME]}getCosmeticsForCategory(t){return this.ownedCosmetics.filter(e=>e.category===t)}getSelectedCosmeticId(t){const e=this.editingAvatar.customization;switch(t){case Ft.CLOTHES:return e.clothes;case Ft.ACCESSORY:return e.accessory;case Ft.PET:return e.pet;case Ft.THEME:return e.theme;default:return null}}selectCosmetic(t,e){const i={...this.editingAvatar.customization};switch(t){case Ft.CLOTHES:i.clothes=e;break;case Ft.ACCESSORY:i.accessory=e;break;case Ft.PET:i.pet=e;break;case Ft.THEME:i.theme=e}this.editingAvatar={...this.editingAvatar,customization:i},this.requestUpdate()}removeCosmetic(t){const e={...this.editingAvatar.customization};switch(t){case Ft.CLOTHES:e.clothes=null;break;case Ft.ACCESSORY:e.accessory=null;break;case Ft.PET:e.pet=null;break;case Ft.THEME:e.theme="default"}this.editingAvatar={...this.editingAvatar,customization:e},this.requestUpdate()}getCosmeticById(t){return t&&this.ownedCosmetics.find(e=>e.id===t)||null}handleSave(){const t=new CustomEvent("avatar-updated",{detail:{childId:this.child.id,avatar:this.editingAvatar},bubbles:!0,composed:!0});this.dispatchEvent(t)}handleReset(){this.editingAvatar=JSON.parse(JSON.stringify(this.child.avatar)),this.requestUpdate()}renderAvatarPreview(){const{customization:t}=this.editingAvatar,e=this.getCosmeticById(t.clothes),i=this.getCosmeticById(t.accessory),s=this.getCosmeticById(t.pet),r=this.getCosmeticById(t.theme);return B`
+      <div class="avatar-preview">
+        <!-- Base avatar (person photo or default) -->
+        <div class="avatar-base">
+          ${this.child.avatar.photo_url?B`
+            <img src="${this.child.avatar.photo_url}" alt="Avatar" />
+          `:B`
+            <span>👤</span>
+          `}
+        </div>
+
+        <!-- Cosmetic layers -->
+        ${e?B`
+          <div class="avatar-layer clothes">${e.preview_image}</div>
+        `:""}
+
+        ${i?B`
+          <div class="avatar-layer accessory">${i.preview_image}</div>
+        `:""}
+
+        ${s?B`
+          <div class="avatar-layer pet">${s.preview_image}</div>
+        `:""}
+      </div>
+
+      ${r?B`
+        <div class="current-theme">
+          <strong>Thème:</strong> ${r.preview_image} ${r.name}
+        </div>
+      `:""}
+    `}render(){const t=this.getCustomizableCategories();return B`
+      <div class="customizer-container">
+        <!-- Preview Section -->
+        <div class="preview-section">
+          <h3 class="preview-title">Aperçu de ton avatar</h3>
+          ${this.renderAvatarPreview()}
+          <div class="actions">
+            <button class="btn btn-secondary" @click="${this.handleReset}">
+              Réinitialiser
+            </button>
+            <button class="btn btn-primary" @click="${this.handleSave}">
+              Sauvegarder
+            </button>
+          </div>
+        </div>
+
+        <!-- Selector Section -->
+        <div class="selector-section">
+          <h3 class="selector-title">Personnalise ton avatar</h3>
+
+          <div class="category-buttons">
+            ${t.map(t=>B`
+              <button
+                class="category-btn ${this.selectedCategory===t?"selected":""}"
+                @click="${()=>this.selectedCategory=t}"
+              >
+                ${this.getCategoryIcon(t)} ${this.getCategoryLabel(t)}
+              </button>
+            `)}
+          </div>
+
+          ${this.selectedCategory?B`
+            ${0===this.getCosmeticsForCategory(this.selectedCategory).length?B`
+              <div class="no-cosmetics">
+                <p>Tu ne possèdes aucun cosmétique dans cette catégorie</p>
+                <p style="margin-top: 8px; font-size: 14px;">
+                  Va dans la boutique pour en acheter! 🛍️
+                </p>
+              </div>
+            `:B`
+              <div class="cosmetics-list">
+                <!-- Remove option -->
+                <div class="remove-option" @click="${()=>this.removeCosmetic(this.selectedCategory)}">
+                  <span>🗑️</span>
+                  <span class="remove-label">Retirer</span>
+                </div>
+
+                <!-- Cosmetic options -->
+                ${this.getCosmeticsForCategory(this.selectedCategory).map(t=>{const e=this.getSelectedCosmeticId(this.selectedCategory)===t.id;return B`
+                    <div
+                      class="cosmetic-option ${e?"selected":""}"
+                      @click="${()=>this.selectCosmetic(this.selectedCategory,t.id)}"
+                      title="${t.name}"
+                    >
+                      ${t.preview_image}
+                    </div>
+                  `})}
+              </div>
+            `}
+          `:B`
+            <div class="no-cosmetics">
+              <p>Sélectionne une catégorie pour commencer</p>
+            </div>
+          `}
+        </div>
+      </div>
+    `}};Xt.styles=o`
+    :host {
+      display: block;
+      padding: 16px;
+    }
+
+    .customizer-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .customizer-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .preview-section {
+      background: var(--card-background-color);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .preview-title {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 0 0 24px 0;
+    }
+
+    .avatar-preview {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: var(--secondary-background-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar-base {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      font-size: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar-layer {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 80px;
+      pointer-events: none;
+    }
+
+    .avatar-layer.clothes {
+      z-index: 1;
+    }
+
+    .avatar-layer.accessory {
+      z-index: 2;
+    }
+
+    .avatar-layer.pet {
+      z-index: 3;
+      top: auto;
+      bottom: 10px;
+      left: auto;
+      right: 10px;
+      transform: none;
+      font-size: 40px;
+    }
+
+    .current-theme {
+      padding: 12px;
+      background: var(--secondary-background-color);
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+
+    .selector-section {
+      background: var(--card-background-color);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .selector-title {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 0 0 16px 0;
+    }
+
+    .category-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .category-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--divider-color);
+      border-radius: 20px;
+      background: var(--card-background-color);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+    }
+
+    .category-btn:hover {
+      background: var(--secondary-background-color);
+    }
+
+    .category-btn.selected {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .cosmetics-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .cosmetic-option {
+      aspect-ratio: 1;
+      border: 2px solid var(--divider-color);
+      border-radius: 8px;
+      background: var(--card-background-color);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      position: relative;
+    }
+
+    .cosmetic-option:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transform: scale(1.05);
+    }
+
+    .cosmetic-option.selected {
+      border-color: var(--primary-color);
+      background: var(--primary-color-light, rgba(3, 169, 244, 0.1));
+    }
+
+    .cosmetic-option.selected::after {
+      content: '✓';
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      font-size: 16px;
+      color: var(--primary-color);
+      background: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .remove-option {
+      aspect-ratio: 1;
+      border: 2px dashed var(--divider-color);
+      border-radius: 8px;
+      background: var(--secondary-background-color);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      gap: 4px;
+    }
+
+    .remove-option:hover {
+      background: var(--divider-color);
+    }
+
+    .remove-label {
+      font-size: 10px;
+      color: var(--secondary-text-color);
+    }
+
+    .no-cosmetics {
+      text-align: center;
+      padding: 32px;
+      color: var(--secondary-text-color);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      background: var(--secondary-background-color);
+      color: var(--primary-text-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--divider-color);
+    }
+  `,t([ht({type:Object})],Xt.prototype,"child",void 0),t([ht({type:Array})],Xt.prototype,"ownedCosmetics",void 0),t([pt()],Xt.prototype,"editingAvatar",void 0),t([pt()],Xt.prototype,"selectedCategory",void 0),Xt=t([ct("hm-avatar-customizer")],Xt);let Zt=class extends ot{constructor(){super(...arguments),this._viewMode="overview"}setConfig(t){if(!t)throw new Error("Invalid configuration");if(!t.child_id)throw new Error("child_id is required");this._config=t}getCardSize(){return 4}updated(t){var e;super.updated(t),t.has("hass")&&this.hass&&(this._store||(this._store=(e=this.hass,new Rt(e)),this._unsubscribe=this._store.subscribe(()=>{this._loadChild(),this.requestUpdate()})),this._loadChild())}disconnectedCallback(){super.disconnectedCallback(),this._unsubscribe&&this._unsubscribe(),this._store&&this._store.destroy()}_loadChild(){this._store&&this._config&&(this._child=this._store.getChild(this._config.child_id))}render(){if(!this._config||!this.hass)return B``;if(!this._child)return B`
         <ha-card>
           <div class="card">
             <div class="loading">Chargement...</div>
           </div>
         </ha-card>
-      `;const t=this._config.title||`Bonjour ${this._child.name}!`,e=this._store?.getTaskCounts(this._child.id)||{pending:0,waiting:0},s=this._store?.getHabitStats(this._child.id)||{count:0,longest_streak:0};return B`
+      `;const t=this._config.title||`Bonjour ${this._child.name}!`;return B`
       <ha-card>
         <div class="card">
           <!-- Header -->
@@ -426,23 +1301,60 @@ function t(t,e,s,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPro
             <h1 class="card-title">${t}</h1>
           </div>
 
-          <!-- Stats Grid -->
-          ${this._renderStatsGrid()}
+          <!-- View Tabs -->
+          <div class="view-tabs">
+            <button
+              class="view-tab ${"overview"===this._viewMode?"active":""}"
+              @click="${()=>this._viewMode="overview"}"
+            >
+              📊 Accueil
+            </button>
+            <button
+              class="view-tab ${"shop"===this._viewMode?"active":""}"
+              @click="${()=>this._viewMode="shop"}"
+            >
+              🛍️ Boutique
+            </button>
+            <button
+              class="view-tab ${"customizer"===this._viewMode?"active":""}"
+              @click="${()=>this._viewMode="customizer"}"
+            >
+              ✨ Mon Avatar
+            </button>
+          </div>
 
-          <!-- Level Progress -->
-          ${this._renderLevelProgress()}
-
-          <!-- Tasks Section -->
-          ${this._renderTasksSection(e)}
-
-          <!-- Habits Section -->
-          ${this._renderHabitsSection(s)}
-
-          <!-- Badges Section -->
-          ${this._child.badges.length>0?this._renderBadgesSection():""}
+          <!-- View Content -->
+          ${this._renderViewContent()}
         </div>
       </ha-card>
-    `}_renderStatsGrid(){return B`
+    `}_renderViewContent(){switch(this._viewMode){case"overview":return this._renderOverviewView();case"shop":return this._renderShopView();case"customizer":return this._renderCustomizerView();default:return B``}}_renderOverviewView(){const t=this._store?.getTaskCounts(this._child.id)||{pending:0,waiting:0},e=this._store?.getHabitStats(this._child.id)||{count:0,longest_streak:0};return B`
+      <!-- Stats Grid -->
+      ${this._renderStatsGrid()}
+
+      <!-- Level Progress -->
+      ${this._renderLevelProgress()}
+
+      <!-- Tasks Section -->
+      ${this._renderTasksSection(t)}
+
+      <!-- Habits Section -->
+      ${this._renderHabitsSection(e)}
+
+      <!-- Badges Section -->
+      ${this._child.badges.length>0?this._renderBadgesSection():""}
+    `}_renderShopView(){if(!this._store||!this._child)return B``;const t=this._store.getCosmetics();return B`
+      <hm-cosmetics-shop
+        .child="${this._child}"
+        .allCosmetics="${t}"
+        @purchase-cosmetic="${this._handlePurchaseCosmetic}"
+      ></hm-cosmetics-shop>
+    `}_renderCustomizerView(){if(!this._store||!this._child)return B``;const t=this._store.getOwnedCosmetics(this._child.id);return B`
+      <hm-avatar-customizer
+        .child="${this._child}"
+        .ownedCosmetics="${t}"
+        @avatar-updated="${this._handleAvatarUpdated}"
+      ></hm-avatar-customizer>
+    `}async _handlePurchaseCosmetic(t){const{cosmeticId:e,childId:i}=t.detail;if(this._store)try{await this._store.purchaseCosmetic(e,i)}catch(t){}}async _handleAvatarUpdated(t){const{childId:e,avatar:i}=t.detail;if(this._store)try{await this._store.updateChild(e,{avatar:i})}catch(t){}}_renderStatsGrid(){return B`
       <div class="section">
         <div class="grid grid-2">
           <hm-item-card>
@@ -461,7 +1373,7 @@ function t(t,e,s,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPro
           </hm-item-card>
         </div>
       </div>
-    `}_renderLevelProgress(){const t=this._child,e=Math.min(100,t.experience/t.experience_to_next_level*100),s=function(t){const e=["#9E9E9E","#03A9F4","#2196F3","#9C27B0","#FF9800"];return e[Math.min(Math.floor((t-1)/5),e.length-1)]}(t.level);return B`
+    `}_renderLevelProgress(){const t=this._child,e=Math.min(100,t.experience/t.experience_to_next_level*100),i=function(t){const e=["#9E9E9E","#03A9F4","#2196F3","#9C27B0","#FF9800"];return e[Math.min(Math.floor((t-1)/5),e.length-1)]}(t.level);return B`
       <div class="section">
         <hm-item-card>
           <div>
@@ -479,7 +1391,7 @@ function t(t,e,s,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPro
               <div style="
                 width: ${e}%;
                 height: 100%;
-                background: ${s};
+                background: ${i};
                 transition: width 0.3s ease;
               "></div>
             </div>
@@ -506,7 +1418,7 @@ function t(t,e,s,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPro
               </div>
             `}
       </div>
-    `}_renderHabitsSection(t){const e=0===(s=t.longest_streak)?"#9E9E9E":s<7?"#4CAF50":s<30?"#2196F3":s<90?"#9C27B0":"#FF9800";var s;return B`
+    `}_renderHabitsSection(t){const e=0===(i=t.longest_streak)?"#9E9E9E":i<7?"#4CAF50":i<30?"#2196F3":i<90?"#9C27B0":"#FF9800";var i;return B`
       <div class="section">
         <h2 class="section-title">Mes Habitudes</h2>
         ${t.longest_streak>0?B`
@@ -552,4 +1464,40 @@ function t(t,e,s,i){var r,a=arguments.length,n=a<3?e:null===i?i=Object.getOwnPro
             `)}
         </div>
       </div>
-    `}};qt.styles=Mt,t([lt({attribute:!1})],qt.prototype,"hass",void 0),t([pt()],qt.prototype,"_config",void 0),t([pt()],qt.prototype,"_store",void 0),t([pt()],qt.prototype,"_child",void 0),t([pt()],qt.prototype,"_unsubscribe",void 0),qt=t([ct("habits-child-card")],qt),window.customCards=window.customCards||[],window.customCards.push({type:"habits-child-card",name:"Habits Child",description:"Carte pour enfants pour voir leurs tâches et progresser",preview:!0});export{qt as HabitsChildCard};
+    `}};Zt.styles=[Ht,o`
+      .view-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 2px solid var(--divider-color);
+      }
+
+      .view-tab {
+        padding: 12px 24px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--secondary-text-color);
+        transition: all 0.2s ease;
+        margin-bottom: -2px;
+      }
+
+      .view-tab:hover {
+        color: var(--primary-text-color);
+      }
+
+      .view-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+      }
+
+      @media (max-width: 600px) {
+        .view-tab {
+          padding: 8px 12px;
+          font-size: 14px;
+        }
+      }
+    `],t([ht({attribute:!1})],Zt.prototype,"hass",void 0),t([pt()],Zt.prototype,"_config",void 0),t([pt()],Zt.prototype,"_store",void 0),t([pt()],Zt.prototype,"_child",void 0),t([pt()],Zt.prototype,"_unsubscribe",void 0),t([pt()],Zt.prototype,"_viewMode",void 0),Zt=t([ct("habits-child-card")],Zt),window.customCards=window.customCards||[],window.customCards.push({type:"habits-child-card",name:"Habits Child",description:"Carte pour enfants pour voir leurs tâches et progresser",preview:!0});export{Zt as HabitsChildCard};

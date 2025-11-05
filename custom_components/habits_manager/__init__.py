@@ -48,6 +48,7 @@ from .core.exceptions import (
     RewardNotFoundError,
     CosmeticNotFoundError,
     InsufficientPointsError,
+    InsufficientCoinsError,
     ValidationError,
 )
 from .sensor import async_create_child_sensors
@@ -156,7 +157,7 @@ async def register_services(hass: HomeAssistant):
                 "child_name": child.name,
             })
 
-            _LOGGER.info(f"Service call: Child created - {child.name} with {8} sensors")
+            _LOGGER.info(f"Service call: Child created - {child.name} with {12} sensors")
 
         except ValidationError as err:
             _LOGGER.error(f"Validation error in create_child: {err}")
@@ -676,6 +677,44 @@ async def register_services(hass: HomeAssistant):
             _LOGGER.error(f"Error in create_cosmetic: {err}")
             raise HomeAssistantError(f"Failed to create cosmetic: {err}")
 
+    async def handle_purchase_cosmetic(call: ServiceCall):
+        """Service: Acheter un cosmétique."""
+        try:
+            cosmetic_id = call.data["cosmetic_id"]
+            child_id = call.data["child_id"]
+
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+            cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
+
+            # Get cosmetic to check cost
+            cosmetic = await cosmetic_mgr.get_cosmetic(cosmetic_id)
+
+            # Purchase cosmetic (deducts coins and adds to owned_cosmetics)
+            child = await child_mgr.purchase_cosmetic(child_id, cosmetic_id, cosmetic.cost_coins)
+
+            # Fire event
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "cosmetic_purchased",
+                "cosmetic_id": cosmetic_id,
+                "child_id": child_id,
+                "coins_spent": cosmetic.cost_coins,
+            })
+
+            _LOGGER.info(f"Service call: Cosmetic {cosmetic.name} purchased by {child.name}")
+
+        except ChildNotFoundError as err:
+            _LOGGER.error(f"Child not found: {err}")
+            raise HomeAssistantError(f"Child not found: {err}")
+        except CosmeticNotFoundError as err:
+            _LOGGER.error(f"Cosmetic not found: {err}")
+            raise HomeAssistantError(f"Cosmetic not found: {err}")
+        except InsufficientCoinsError as err:
+            _LOGGER.error(f"Insufficient coins: {err}")
+            raise HomeAssistantError(f"Insufficient coins: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in purchase_cosmetic: {err}")
+            raise HomeAssistantError(f"Failed to purchase cosmetic: {err}")
+
     # Enregistrer tous les services
     hass.services.async_register(DOMAIN, SERVICE_CREATE_CHILD, handle_create_child)
     hass.services.async_register(DOMAIN, SERVICE_UPDATE_CHILD, handle_update_child)
@@ -698,8 +737,9 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_CLAIM_REWARD, handle_claim_reward)
     hass.services.async_register(DOMAIN, SERVICE_APPROVE_CLAIM, handle_approve_claim)
     hass.services.async_register(DOMAIN, SERVICE_CREATE_COSMETIC, handle_create_cosmetic)
+    hass.services.async_register(DOMAIN, SERVICE_PURCHASE_COSMETIC, handle_purchase_cosmetic)
 
-    _LOGGER.info(f"Registered {17} services for {DOMAIN} (11 Phase 1 + 6 Phase 2)")
+    _LOGGER.info(f"Registered {18} services for {DOMAIN} (11 Phase 1 + 7 Phase 2)")
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

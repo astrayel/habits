@@ -3,7 +3,7 @@
  * Interface for children to view and complete their tasks and habits
  */
 
-import { LitElement, html, PropertyValues } from 'lit';
+import { LitElement, html, css, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, CardConfig } from '../types/home-assistant';
 import { HabitsManagerStore, createStore } from '../services/store';
@@ -12,11 +12,15 @@ import { getLevelColor, getStreakColor } from '../styles/theme';
 import { CARD_TYPE_CHILD } from '../types/constants';
 import type { Child } from '../types/models';
 import '../components/item-card';
+import '../components/cosmetics-shop';
+import '../components/avatar-customizer';
 
 interface HabitsChildCardConfig extends CardConfig {
   child_id: string;
   title?: string;
 }
+
+type ViewMode = 'overview' | 'shop' | 'customizer';
 
 @customElement('habits-child-card')
 export class HabitsChildCard extends LitElement {
@@ -25,8 +29,48 @@ export class HabitsChildCard extends LitElement {
   @state() private _store?: HabitsManagerStore;
   @state() private _child?: Child | null;
   @state() private _unsubscribe?: () => void;
+  @state() private _viewMode: ViewMode = 'overview';
 
-  static styles = baseStyles;
+  static styles = [
+    baseStyles,
+    css`
+      .view-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 2px solid var(--divider-color);
+      }
+
+      .view-tab {
+        padding: 12px 24px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--secondary-text-color);
+        transition: all 0.2s ease;
+        margin-bottom: -2px;
+      }
+
+      .view-tab:hover {
+        color: var(--primary-text-color);
+      }
+
+      .view-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+      }
+
+      @media (max-width: 600px) {
+        .view-tab {
+          padding: 8px 12px;
+          font-size: 14px;
+        }
+      }
+    `,
+  ];
 
   public setConfig(config: HabitsChildCardConfig): void {
     if (!config) {
@@ -88,8 +132,6 @@ export class HabitsChildCard extends LitElement {
     }
 
     const title = this._config.title || `Bonjour ${this._child.name}!`;
-    const taskCounts = this._store?.getTaskCounts(this._child.id) || { pending: 0, waiting: 0 };
-    const habitStats = this._store?.getHabitStats(this._child.id) || { count: 0, longest_streak: 0 };
 
     return html`
       <ha-card>
@@ -99,23 +141,124 @@ export class HabitsChildCard extends LitElement {
             <h1 class="card-title">${title}</h1>
           </div>
 
-          <!-- Stats Grid -->
-          ${this._renderStatsGrid()}
+          <!-- View Tabs -->
+          <div class="view-tabs">
+            <button
+              class="view-tab ${this._viewMode === 'overview' ? 'active' : ''}"
+              @click="${() => this._viewMode = 'overview'}"
+            >
+              📊 Accueil
+            </button>
+            <button
+              class="view-tab ${this._viewMode === 'shop' ? 'active' : ''}"
+              @click="${() => this._viewMode = 'shop'}"
+            >
+              🛍️ Boutique
+            </button>
+            <button
+              class="view-tab ${this._viewMode === 'customizer' ? 'active' : ''}"
+              @click="${() => this._viewMode = 'customizer'}"
+            >
+              ✨ Mon Avatar
+            </button>
+          </div>
 
-          <!-- Level Progress -->
-          ${this._renderLevelProgress()}
-
-          <!-- Tasks Section -->
-          ${this._renderTasksSection(taskCounts)}
-
-          <!-- Habits Section -->
-          ${this._renderHabitsSection(habitStats)}
-
-          <!-- Badges Section -->
-          ${this._child.badges.length > 0 ? this._renderBadgesSection() : ''}
+          <!-- View Content -->
+          ${this._renderViewContent()}
         </div>
       </ha-card>
     `;
+  }
+
+  private _renderViewContent() {
+    switch (this._viewMode) {
+      case 'overview':
+        return this._renderOverviewView();
+      case 'shop':
+        return this._renderShopView();
+      case 'customizer':
+        return this._renderCustomizerView();
+      default:
+        return html``;
+    }
+  }
+
+  private _renderOverviewView() {
+    const taskCounts = this._store?.getTaskCounts(this._child!.id) || { pending: 0, waiting: 0 };
+    const habitStats = this._store?.getHabitStats(this._child!.id) || { count: 0, longest_streak: 0 };
+
+    return html`
+      <!-- Stats Grid -->
+      ${this._renderStatsGrid()}
+
+      <!-- Level Progress -->
+      ${this._renderLevelProgress()}
+
+      <!-- Tasks Section -->
+      ${this._renderTasksSection(taskCounts)}
+
+      <!-- Habits Section -->
+      ${this._renderHabitsSection(habitStats)}
+
+      <!-- Badges Section -->
+      ${this._child!.badges.length > 0 ? this._renderBadgesSection() : ''}
+    `;
+  }
+
+  private _renderShopView() {
+    if (!this._store || !this._child) return html``;
+
+    const allCosmetics = this._store.getCosmetics();
+
+    return html`
+      <hm-cosmetics-shop
+        .child="${this._child}"
+        .allCosmetics="${allCosmetics}"
+        @purchase-cosmetic="${this._handlePurchaseCosmetic}"
+      ></hm-cosmetics-shop>
+    `;
+  }
+
+  private _renderCustomizerView() {
+    if (!this._store || !this._child) return html``;
+
+    const ownedCosmetics = this._store.getOwnedCosmetics(this._child.id);
+
+    return html`
+      <hm-avatar-customizer
+        .child="${this._child}"
+        .ownedCosmetics="${ownedCosmetics}"
+        @avatar-updated="${this._handleAvatarUpdated}"
+      ></hm-avatar-customizer>
+    `;
+  }
+
+  private async _handlePurchaseCosmetic(e: CustomEvent) {
+    const { cosmeticId, childId } = e.detail;
+
+    if (!this._store) return;
+
+    try {
+      await this._store.purchaseCosmetic(cosmeticId, childId);
+      // Success feedback could be added here
+    } catch (error) {
+      console.error('Failed to purchase cosmetic:', error);
+      // Error feedback could be added here
+    }
+  }
+
+  private async _handleAvatarUpdated(e: CustomEvent) {
+    const { childId, avatar } = e.detail;
+
+    if (!this._store) return;
+
+    try {
+      await this._store.updateChild(childId, { avatar });
+      // Success feedback could be added here
+    } catch (error) {
+      console.error('Failed to update avatar:', error);
+      // Error feedback could be added here
+    }
   }
 
   private _renderStatsGrid() {

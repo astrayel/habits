@@ -20,7 +20,9 @@ import type {
   HabitFrequency,
   Reward,
   RewardType,
+  CosmeticItem,
 } from '../types/models';
+import { CosmeticCategory, CosmeticRarity } from '../types/models';
 
 // Import shared components
 import '../components/form-input';
@@ -35,7 +37,7 @@ interface HabitsManagerCardConfig extends CardConfig {
   title?: string;
 }
 
-type TabType = 'children' | 'tasks' | 'habits' | 'rewards';
+type TabType = 'children' | 'tasks' | 'habits' | 'rewards' | 'cosmetics';
 type DialogMode = 'create' | 'edit';
 
 @customElement('habits-manager-card')
@@ -123,6 +125,7 @@ export class HabitsManagerCard extends LitElement {
       { key: 'tasks', label: 'Tâches', icon: '✅' },
       { key: 'habits', label: 'Habitudes', icon: '🔄' },
       { key: 'rewards', label: 'Récompenses', icon: '🎁' },
+      { key: 'cosmetics', label: 'Cosmétiques', icon: '👕' },
     ];
 
     return html`
@@ -161,6 +164,8 @@ export class HabitsManagerCard extends LitElement {
         return this._renderHabitsSection();
       case 'rewards':
         return this._renderRewardsSection();
+      case 'cosmetics':
+        return this._renderCosmeticsSection();
       default:
         return html``;
     }
@@ -795,6 +800,8 @@ export class HabitsManagerCard extends LitElement {
         return 'une habitude';
       case 'rewards':
         return 'une récompense';
+      case 'cosmetics':
+        return 'un cosmétique';
       default:
         return '';
     }
@@ -810,6 +817,8 @@ export class HabitsManagerCard extends LitElement {
         return this._renderHabitForm();
       case 'rewards':
         return this._renderRewardForm();
+      case 'cosmetics':
+        return this._renderCosmeticForm();
       default:
         return html``;
     }
@@ -828,6 +837,9 @@ export class HabitsManagerCard extends LitElement {
         break;
       case 'rewards':
         this._handleSaveReward();
+        break;
+      case 'cosmetics':
+        this._saveCosmeticDialog();
         break;
     }
   }
@@ -1243,6 +1255,228 @@ export class HabitsManagerCard extends LitElement {
     `;
   }
 
+  private _renderCosmeticForm() {
+    const categoryOptions: SelectOption[] = [
+      { value: 'clothes', label: 'Vêtements' },
+      { value: 'accessory', label: 'Accessoires' },
+      { value: 'pet', label: 'Animaux' },
+      { value: 'theme', label: 'Thèmes' },
+      { value: 'badge', label: 'Badges' },
+      { value: 'animation', label: 'Animations' },
+    ];
+
+    const rarityOptions: SelectOption[] = [
+      { value: 'common', label: 'Commun' },
+      { value: 'rare', label: 'Rare' },
+      { value: 'epic', label: 'Épique' },
+      { value: 'legendary', label: 'Légendaire' },
+    ];
+
+    return html`
+      <hm-form-input
+        label="Nom"
+        .value="${this._formData.name || ''}"
+        required
+        @value-changed="${(e: CustomEvent) => (this._formData.name = e.detail.value)}"
+      ></hm-form-input>
+
+      <hm-form-textarea
+        label="Description"
+        .value="${this._formData.description || ''}"
+        rows="3"
+        @value-changed="${(e: CustomEvent) => (this._formData.description = e.detail.value)}"
+      ></hm-form-textarea>
+
+      <div class="form-row">
+        <hm-form-select
+          label="Catégorie"
+          .value="${this._formData.category || 'clothes'}"
+          .options="${categoryOptions}"
+          required
+          @value-changed="${(e: CustomEvent) => (this._formData.category = e.detail.value)}"
+        ></hm-form-select>
+
+        <hm-form-input
+          label="Sous-catégorie"
+          .value="${this._formData.subcategory || ''}"
+          placeholder="shirt, hat, dog..."
+          helper="Type spécifique dans la catégorie"
+          @value-changed="${(e: CustomEvent) => (this._formData.subcategory = e.detail.value)}"
+        ></hm-form-input>
+      </div>
+
+      <div class="form-row">
+        <hm-form-select
+          label="Rareté"
+          .value="${this._formData.rarity || 'common'}"
+          .options="${rarityOptions}"
+          required
+          @value-changed="${(e: CustomEvent) => (this._formData.rarity = e.detail.value)}"
+        ></hm-form-select>
+
+        <hm-form-input
+          label="Coût (pièces)"
+          .value="${String(this._formData.cost_coins || 10)}"
+          type="number"
+          min="0"
+          required
+          @value-changed="${(e: CustomEvent) => (this._formData.cost_coins = e.detail.value)}"
+        ></hm-form-input>
+      </div>
+
+      <hm-form-input
+        label="Image/Emoji de prévisualisation"
+        .value="${this._formData.preview_image || ''}"
+        placeholder="👕"
+        required
+        helper="Emoji ou URL d'image"
+        @value-changed="${(e: CustomEvent) => (this._formData.preview_image = e.detail.value)}"
+      ></hm-form-input>
+
+      <hm-form-input
+        label="Niveau minimum requis (optionnel)"
+        .value="${this._formData.unlock_min_level ? String(this._formData.unlock_min_level) : ''}"
+        type="number"
+        min="1"
+        placeholder="Aucun prérequis"
+        helper="Laissez vide si accessible dès le début"
+        @value-changed="${(e: CustomEvent) =>
+          (this._formData.unlock_min_level = e.detail.value ? Number(e.detail.value) : null)}"
+      ></hm-form-input>
+
+      <hm-form-checkbox
+        label="Actif"
+        .checked="${this._formData.active ?? true}"
+        helper="Désactivez pour retirer temporairement de la boutique"
+        @checked-changed="${(e: CustomEvent) => (this._formData.active = e.detail.checked)}"
+      ></hm-form-checkbox>
+    `;
+  }
+
+  // =====================================================
+  // Cosmetics Section
+  // =====================================================
+
+  private _renderCosmeticsSection() {
+    if (!this._store) return html`<div class="loading">Chargement...</div>`;
+
+    const cosmetics = this._store.getCosmetics();
+
+    return html`
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">Cosmétiques</h2>
+          <button class="btn btn-primary" @click="${() => this._openCosmeticDialog('create')}">
+            + Ajouter un cosmétique
+          </button>
+        </div>
+
+        <p style="margin-bottom: 16px; color: var(--secondary-text-color);">
+          Les cosmétiques permettent aux enfants de personnaliser leur avatar avec les pièces qu'ils gagnent.
+        </p>
+
+        ${cosmetics.length === 0
+          ? html`
+              <div class="empty-message">
+                <p>Aucun cosmétique disponible</p>
+                <p style="font-size: 14px; margin-top: 8px;">
+                  Les cosmétiques par défaut seront chargés au démarrage du système.
+                </p>
+              </div>
+            `
+          : html`
+              <div class="items-list">
+                ${cosmetics.map((cosmetic) => this._renderCosmeticCard(cosmetic))}
+              </div>
+            `}
+      </div>
+    `;
+  }
+
+  private _renderCosmeticCard(cosmetic: CosmeticItem) {
+    return html`
+      <hm-item-card .icon="${cosmetic.preview_image}" .iconColor="${this._getRarityColor(cosmetic.rarity)}">
+        <div>
+          <h3 style="margin: 0 0 4px 0;">${cosmetic.name}</h3>
+          <p style="margin: 0 0 8px 0; font-size: 14px; color: var(--secondary-text-color);">
+            ${cosmetic.description}
+          </p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+            <span class="badge" style="background: ${this._getRarityColor(cosmetic.rarity)}">
+              ${this._formatRarity(cosmetic.rarity)}
+            </span>
+            <span class="badge">${this._formatCosmeticCategory(cosmetic.category)}</span>
+            <span class="badge">🪙 ${cosmetic.cost_coins}</span>
+            ${cosmetic.unlock_requirements
+              ? html`<span class="badge">🔒 Niveau requis</span>`
+              : ''}
+          </div>
+        </div>
+        <div slot="actions">
+          <button
+            class="btn btn-icon"
+            @click="${() => this._openCosmeticDialog('edit', cosmetic)}"
+            title="Modifier"
+          >
+            ✏️
+          </button>
+        </div>
+      </hm-item-card>
+    `;
+  }
+
+  private _openCosmeticDialog(mode: DialogMode, cosmetic?: CosmeticItem): void {
+    this._dialogMode = mode;
+    this._selectedItem = cosmetic;
+    this._formData = cosmetic
+      ? { ...cosmetic }
+      : {
+          name: '',
+          description: '',
+          category: CosmeticCategory.CLOTHES,
+          subcategory: '',
+          rarity: CosmeticRarity.COMMON,
+          cost_coins: 10,
+          preview_image: '',
+          unlock_requirements: null,
+          active: true,
+        };
+    this._showDialog = true;
+  }
+
+  private async _saveCosmeticDialog(): Promise<void> {
+    if (!this._store) return;
+
+    this._loading = true;
+    this._error = '';
+
+    try {
+      if (this._dialogMode === 'create') {
+        await this._store.createCosmetic({
+          name: this._formData.name,
+          description: this._formData.description,
+          category: this._formData.category,
+          subcategory: this._formData.subcategory,
+          rarity: this._formData.rarity,
+          cost_coins: parseInt(this._formData.cost_coins),
+          preview_image: this._formData.preview_image,
+          unlock_requirements: this._formData.unlock_min_level
+            ? { min_level: parseInt(this._formData.unlock_min_level) }
+            : null,
+          active: this._formData.active !== false,
+        });
+      }
+
+      this._showDialog = false;
+      this._formData = {};
+      this._selectedItem = undefined;
+    } catch (error) {
+      this._error = error instanceof Error ? error.message : 'Erreur lors de la sauvegarde';
+    } finally {
+      this._loading = false;
+    }
+  }
+
   // =====================================================
   // Helper Methods
   // =====================================================
@@ -1274,6 +1508,38 @@ export class HabitsManagerCard extends LitElement {
       other: 'Autre',
     };
     return labels[type] || type;
+  }
+
+  private _formatCosmeticCategory(category: CosmeticCategory): string {
+    const labels: Record<CosmeticCategory, string> = {
+      clothes: 'Vêtements',
+      accessory: 'Accessoires',
+      pet: 'Animaux',
+      theme: 'Thèmes',
+      badge: 'Badges',
+      animation: 'Animations',
+    };
+    return labels[category] || category;
+  }
+
+  private _formatRarity(rarity: CosmeticRarity): string {
+    const labels: Record<CosmeticRarity, string> = {
+      common: 'Commun',
+      rare: 'Rare',
+      epic: 'Épique',
+      legendary: 'Légendaire',
+    };
+    return labels[rarity] || rarity;
+  }
+
+  private _getRarityColor(rarity: CosmeticRarity): string {
+    const colors: Record<CosmeticRarity, string> = {
+      common: '#9E9E9E',
+      rare: '#2196F3',
+      epic: '#9C27B0',
+      legendary: '#FF9800',
+    };
+    return colors[rarity] || '#9E9E9E';
   }
 }
 

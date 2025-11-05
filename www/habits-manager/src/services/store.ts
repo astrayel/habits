@@ -84,8 +84,9 @@ export class HabitsManagerStore {
    */
   private async loadAllData(): Promise<void> {
     this.state.children = this.api.getChildren();
+    this.state.cosmetics = this.api.getCosmetics();
     // Note: tasks, taskInstances, habits, etc. would need backend sensor support
-    // For now, we only have children data from sensors
+    // For now, we only have children and cosmetics data from sensors
   }
 
   /**
@@ -384,6 +385,46 @@ export class HabitsManagerStore {
   // =====================================================
   // Cosmetic Methods
   // =====================================================
+
+  public getCosmetics(): CosmeticItem[] {
+    return this.state.cosmetics;
+  }
+
+  public getOwnedCosmetics(childId: string): CosmeticItem[] {
+    const child = this.getChild(childId);
+    if (!child) return [];
+
+    return this.state.cosmetics.filter(c => child.owned_cosmetics.includes(c.id));
+  }
+
+  public getAvailableCosmetics(childId: string): CosmeticItem[] {
+    const child = this.getChild(childId);
+    if (!child) return [];
+
+    return this.state.cosmetics.filter(cosmetic => {
+      // Filter out owned cosmetics
+      if (child.owned_cosmetics.includes(cosmetic.id)) {
+        return false;
+      }
+
+      // Check unlock requirements
+      if (cosmetic.unlock_requirements) {
+        const reqs = cosmetic.unlock_requirements;
+
+        // Check level requirement
+        if (reqs.level && child.level < reqs.level) {
+          return false;
+        }
+
+        // Check badge requirement
+        if (reqs.badge && !child.badges.includes(reqs.badge)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
 
   public async createCosmetic(data: any): Promise<void> {
     try {

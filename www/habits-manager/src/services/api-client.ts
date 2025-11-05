@@ -321,6 +321,21 @@ export class HabitsManagerAPI {
     };
   }
 
+  /**
+   * Get all cosmetics from sensor
+   * Note: This assumes there's a sensor exposing cosmetics, or we fetch from a config
+   * For now, returns empty array (cosmetics would need to be loaded from backend)
+   */
+  getCosmetics(): any[] {
+    // TODO: Implement cosmetic loading from sensor or backend endpoint
+    // For now, cosmetics need to be managed via services
+    const cosmeticsSensor = this.hass.states[`sensor.${DOMAIN}_cosmetics`];
+    if (cosmeticsSensor && cosmeticsSensor.attributes.cosmetics) {
+      return cosmeticsSensor.attributes.cosmetics;
+    }
+    return [];
+  }
+
   // =====================================================
   // Event Subscription
   // =====================================================
