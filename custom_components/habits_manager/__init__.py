@@ -113,6 +113,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # Enregistrer les services
     await register_services(hass)
 
+    # Enregistrer le chemin statique pour les cartes Lovelace
+    await register_frontend_resources(hass)
+
     # Charger la plateforme sensor
     hass.async_create_task(
         discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
@@ -122,6 +125,39 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     _LOGGER.info(f"Registered {len(hass.services.async_services().get(DOMAIN, {}))} services for {DOMAIN}")
 
     return True
+
+
+async def register_frontend_resources(hass: HomeAssistant):
+    """Enregistre les ressources frontend (cartes Lovelace).
+
+    Args:
+        hass: Instance Home Assistant
+    """
+    import os
+
+    # Chemin vers le dossier www de l'intégration
+    integration_dir = os.path.dirname(__file__)
+    www_dir = os.path.join(integration_dir, "www")
+
+    # Enregistrer le chemin statique avec un path custom (pas /hacsfiles car pas sur HACS)
+    # Les fichiers seront accessibles via /habits_manager_static/*
+    hass.http.register_static_path(
+        f"/{DOMAIN}_static",
+        www_dir,
+        cache_headers=True
+    )
+
+    _LOGGER.info(f"Registered static path: /{DOMAIN}_static -> {www_dir}")
+
+    # Les cartes sont maintenant disponibles aux URLs suivantes:
+    # - /habits_manager_static/habits-manager-card.js
+    # - /habits_manager_static/habits-supervision-card.js
+    # - /habits_manager_static/habits-child-card.js
+
+    # L'utilisateur doit les ajouter manuellement dans:
+    # Configuration > Lovelace Dashboards > Resources
+    # OU les déclarer dans configuration.yaml sous lovelace > resources
+    _LOGGER.info("Frontend cards ready. Add resources in Lovelace configuration.")
 
 
 async def register_services(hass: HomeAssistant):
