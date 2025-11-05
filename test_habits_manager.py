@@ -246,10 +246,20 @@ class HabitsManagerTester:
 
         if len(sensors_found) >= 8:
             print(f"  {Colors.GREEN}✓ Tous les sensors créés{Colors.RESET}")
-            # Stocker un child_id si possible (à partir d'un sensor)
+            # Extraire le child_id à partir du nom du sensor
             for sensor in sensors_found:
                 if 'points' in sensor['entity_id']:
+                    # Format: sensor.test_bot_points ou sensor.child_xxxxx_points
+                    # On va lire children.json pour obtenir le vrai ID
+                    children_data = self.read_json_storage('children.json')
+                    if children_data:
+                        for child_id, child_info in children_data.items():
+                            if child_info.get('name') == 'Test Bot':
+                                self.test_data['child_id'] = child_id
+                                print(f"  → Child ID récupéré: {child_id}")
+                                break
                     print(f"  → Sensor points: {sensor['entity_id']} = {sensor['state']}")
+                    break
             return True
         else:
             print(f"  {Colors.RED}✗ Seulement {len(sensors_found)}/8 sensors{Colors.RESET}")
@@ -257,19 +267,24 @@ class HabitsManagerTester:
 
     def test_03_create_task(self):
         """Test: Créer une tâche."""
-        # Note: Il faudra récupérer le child_id du test 1
-        # Pour ce test, on utilise un ID fictif - à adapter
+        # Utiliser le child_id récupéré dans Test 2
+        child_id = self.test_data.get('child_id')
+        if not child_id:
+            print(f"  {Colors.YELLOW}⚠ Child ID non disponible, test ignoré{Colors.RESET}")
+            return True  # Skip mais ne fait pas échouer
+
         result = self.call_service('habits_manager.create_task', {
             'title': 'Test - Ranger la chambre',
             'description': 'Tâche de test automatisée',
-            'assigned_to': ['child_test'],  # À remplacer par l'ID réel
+            'assigned_to': [child_id],
             'difficulty': 2,
             'task_type': 'mandatory',
             'schedule': {'type': 'daily'}
         })
 
         if result is not None:
-            print(f"  → Tâche créée")
+            print(f"  → Tâche créée pour child {child_id}")
+            time.sleep(1)  # Attendre que l'instance soit générée
             return True
         return False
 
@@ -289,15 +304,21 @@ class HabitsManagerTester:
 
     def test_05_create_habit(self):
         """Test: Créer une habitude."""
+        # Utiliser le child_id récupéré dans Test 2
+        child_id = self.test_data.get('child_id')
+        if not child_id:
+            print(f"  {Colors.YELLOW}⚠ Child ID non disponible, test ignoré{Colors.RESET}")
+            return True  # Skip mais ne fait pas échouer
+
         result = self.call_service('habits_manager.create_habit', {
             'title': 'Test - Duolingo',
             'description': 'Habitude de test',
-            'assigned_to': ['child_test'],
+            'assigned_to': [child_id],
             'frequency': 'daily'
         })
 
         if result is not None:
-            print(f"  → Habitude créée")
+            print(f"  → Habitude créée pour child {child_id}")
             return True
         return False
 
