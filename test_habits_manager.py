@@ -246,18 +246,15 @@ class HabitsManagerTester:
 
         if len(sensors_found) >= 8:
             print(f"  {Colors.GREEN}✓ Tous les sensors créés{Colors.RESET}")
-            # Extraire le child_id à partir du nom du sensor
+            # Extraire le child_id depuis les attributs du sensor
             for sensor in sensors_found:
                 if 'points' in sensor['entity_id']:
-                    # Format: sensor.test_bot_points ou sensor.child_xxxxx_points
-                    # On va lire children.json pour obtenir le vrai ID
-                    children_data = self.read_json_storage('children.json')
-                    if children_data:
-                        for child_id, child_info in children_data.items():
-                            if child_info.get('name') == 'Test Bot':
-                                self.test_data['child_id'] = child_id
-                                print(f"  → Child ID récupéré: {child_id}")
-                                break
+                    # Lire le child_id depuis les attributs du sensor
+                    attributes = sensor.get('attributes', {})
+                    child_id = attributes.get('child_id')
+                    if child_id:
+                        self.test_data['child_id'] = child_id
+                        print(f"  → Child ID récupéré: {child_id}")
                     print(f"  → Sensor points: {sensor['entity_id']} = {sensor['state']}")
                     break
             return True

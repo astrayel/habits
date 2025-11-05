@@ -132,6 +132,14 @@ class BaseChildSensor(SensorEntity):
             "model": "Child Profile",
         }
 
+    @property
+    def extra_state_attributes(self):
+        """Attributs communs à tous les sensors d'un enfant."""
+        return {
+            "child_id": self._child_id,
+            "child_name": self._child_data.get('name', 'Unknown'),
+        }
+
     async def async_added_to_hass(self):
         """S'abonne aux événements de mise à jour."""
 
@@ -286,12 +294,14 @@ class ChildExperienceSensor(BaseChildSensor):
     @property
     def extra_state_attributes(self):
         """Attributs supplémentaires."""
-        return {
+        attrs = super().extra_state_attributes.copy()
+        attrs.update({
             "experience_to_next_level": self._child_data.get("experience_to_next_level", 100),
             "progress_percentage": int(
                 (self._child_data.get("experience", 0) / self._child_data.get("experience_to_next_level", 100)) * 100
             ) if self._child_data.get("experience_to_next_level", 100) > 0 else 0,
-        }
+        })
+        return attrs
 
 
 class ChildTasksPendingSensor(BaseChildSensor):
