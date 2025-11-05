@@ -1,0 +1,538 @@
+# Services pour Habits Manager
+# Phase 1: Services de base (CRUD pour enfants, tâches, habitudes)
+
+# ========================================================================
+# SERVICES ENFANTS
+# ========================================================================
+
+create_child:
+  name: Créer un enfant
+  description: Crée un nouveau profil d'enfant dans le système
+  fields:
+    name:
+      name: Nom
+      description: Nom de l'enfant
+      required: true
+      example: "Sophie"
+      selector:
+        text:
+    person_entity:
+      name: Entité personne
+      description: Entité person.* de Home Assistant associée à l'enfant
+      required: true
+      example: "person.sophie"
+      selector:
+        entity:
+          domain: person
+
+update_child:
+  name: Mettre à jour un enfant
+  description: Modifie les informations d'un enfant existant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant unique de l'enfant
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    name:
+      name: Nom
+      description: Nouveau nom de l'enfant
+      required: false
+      example: "Sophie Martin"
+      selector:
+        text:
+
+delete_child:
+  name: Supprimer un enfant
+  description: Supprime définitivement un profil d'enfant et toutes ses données
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant unique de l'enfant à supprimer
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES TÂCHES
+# ========================================================================
+
+create_task:
+  name: Créer une tâche
+  description: Crée une nouvelle tâche assignée à un ou plusieurs enfants
+  fields:
+    title:
+      name: Titre
+      description: Titre de la tâche
+      required: true
+      example: "Ranger sa chambre"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Description détaillée de la tâche
+      required: false
+      example: "Ranger les jouets, faire son lit, passer l'aspirateur"
+      selector:
+        text:
+          multiline: true
+    assigned_to:
+      name: Assignée à
+      description: Liste des IDs d'enfants auxquels assigner la tâche
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    difficulty:
+      name: Difficulté
+      description: Niveau de difficulté (1=facile, 2=moyen, 3=difficile)
+      required: true
+      default: 1
+      example: 2
+      selector:
+        number:
+          min: 1
+          max: 3
+          mode: box
+    task_type:
+      name: Type
+      description: Type de tâche (mandatory=obligatoire, bonus=optionnelle)
+      required: true
+      default: "mandatory"
+      example: "mandatory"
+      selector:
+        select:
+          options:
+            - label: "Obligatoire"
+              value: "mandatory"
+            - label: "Bonus"
+              value: "bonus"
+
+update_task:
+  name: Mettre à jour une tâche
+  description: Modifie les informations d'une tâche existante
+  fields:
+    task_id:
+      name: ID tâche
+      description: Identifiant unique de la tâche
+      required: true
+      example: "task_456def"
+      selector:
+        text:
+    title:
+      name: Titre
+      description: Nouveau titre de la tâche
+      required: false
+      example: "Ranger sa chambre et son bureau"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Nouvelle description
+      required: false
+      selector:
+        text:
+          multiline: true
+    is_active:
+      name: Active
+      description: Activer ou désactiver la tâche
+      required: false
+      example: true
+      selector:
+        boolean:
+
+delete_task:
+  name: Supprimer une tâche
+  description: Supprime définitivement une tâche
+  fields:
+    task_id:
+      name: ID tâche
+      description: Identifiant unique de la tâche à supprimer
+      required: true
+      example: "task_456def"
+      selector:
+        text:
+
+mark_task_completed:
+  name: Marquer tâche complétée
+  description: Marque une instance de tâche comme complétée (en attente de validation parent)
+  fields:
+    instance_id:
+      name: ID instance
+      description: Identifiant unique de l'instance de tâche
+      required: true
+      example: "instance_789ghi"
+      selector:
+        text:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant qui a complété la tâche
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES HABITUDES
+# ========================================================================
+
+create_habit:
+  name: Créer une habitude
+  description: Crée une nouvelle habitude avec système de streaks
+  fields:
+    title:
+      name: Titre
+      description: Titre de l'habitude
+      required: true
+      example: "Pratiquer Duolingo"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Description détaillée de l'habitude
+      required: false
+      example: "Faire au moins une leçon de 5 minutes"
+      selector:
+        text:
+          multiline: true
+    assigned_to:
+      name: Assignée à
+      description: Liste des IDs d'enfants auxquels assigner l'habitude
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    frequency:
+      name: Fréquence
+      description: Fréquence de l'habitude (daily, weekly, monthly)
+      required: true
+      default: "daily"
+      example: "daily"
+      selector:
+        select:
+          options:
+            - label: "Quotidienne"
+              value: "daily"
+            - label: "Hebdomadaire"
+              value: "weekly"
+            - label: "Mensuelle"
+              value: "monthly"
+
+update_habit:
+  name: Mettre à jour une habitude
+  description: Modifie les informations d'une habitude existante
+  fields:
+    habit_id:
+      name: ID habitude
+      description: Identifiant unique de l'habitude
+      required: true
+      example: "habit_321jkl"
+      selector:
+        text:
+    title:
+      name: Titre
+      description: Nouveau titre de l'habitude
+      required: false
+      example: "Pratiquer Duolingo 10 minutes"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Nouvelle description
+      required: false
+      selector:
+        text:
+          multiline: true
+    is_active:
+      name: Active
+      description: Activer ou désactiver l'habitude
+      required: false
+      example: true
+      selector:
+        boolean:
+
+delete_habit:
+  name: Supprimer une habitude
+  description: Supprime définitivement une habitude
+  fields:
+    habit_id:
+      name: ID habitude
+      description: Identifiant unique de l'habitude à supprimer
+      required: true
+      example: "habit_321jkl"
+      selector:
+        text:
+
+complete_habit:
+  name: Compléter une habitude
+  description: Enregistre la complétion d'une habitude pour aujourd'hui et calcule les récompenses avec bonus de streak
+  fields:
+    habit_id:
+      name: ID habitude
+      description: Identifiant unique de l'habitude
+      required: true
+      example: "habit_321jkl"
+      selector:
+        text:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant qui complète l'habitude
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES PHASE 2 - VALIDATION
+# ========================================================================
+
+validate_task:
+  name: Valider une tâche
+  description: Approuve une tâche complétée et donne les récompenses à l'enfant
+  fields:
+    instance_id:
+      name: ID instance
+      description: Identifiant de l'instance de tâche à valider
+      required: true
+      example: "instance_789ghi"
+      selector:
+        text:
+    validator_id:
+      name: ID validateur
+      description: Identifiant du parent/admin qui valide (optionnel, défaut 'admin')
+      required: false
+      example: "user_parent"
+      selector:
+        text:
+    note:
+      name: Note
+      description: Note optionnelle de validation
+      required: false
+      example: "Très bien fait !"
+      selector:
+        text:
+
+refuse_task:
+  name: Refuser une tâche
+  description: Rejette une tâche complétée et applique optionnellement des pénalités
+  fields:
+    instance_id:
+      name: ID instance
+      description: Identifiant de l'instance de tâche à refuser
+      required: true
+      example: "instance_789ghi"
+      selector:
+        text:
+    validator_id:
+      name: ID validateur
+      description: Identifiant du parent/admin qui refuse (optionnel, défaut 'admin')
+      required: false
+      example: "user_parent"
+      selector:
+        text:
+    apply_penalty:
+      name: Appliquer pénalité
+      description: Si true, applique les pénalités définies dans la tâche
+      required: false
+      default: false
+      example: true
+      selector:
+        boolean:
+    note:
+      name: Note
+      description: Note optionnelle de refus
+      required: false
+      example: "Pas suffisamment bien fait"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES PHASE 2 - RÉCOMPENSES
+# ========================================================================
+
+create_reward:
+  name: Créer une récompense
+  description: Crée une nouvelle récompense réelle (temps d'écran, sortie, choix repas, etc.)
+  fields:
+    title:
+      name: Titre
+      description: Titre de la récompense
+      required: true
+      example: "30 minutes d'écran supplémentaires"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Description détaillée
+      required: false
+      example: "Temps d'écran en plus le week-end"
+      selector:
+        text:
+          multiline: true
+    cost_points:
+      name: Coût en points
+      description: Nombre de points requis pour cette récompense
+      required: true
+      default: 100
+      example: 150
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    requires_parent_approval:
+      name: Requiert approbation
+      description: Si true, un parent doit approuver la réclamation
+      required: false
+      default: true
+      example: true
+      selector:
+        boolean:
+    stock:
+      name: Stock
+      description: Nombre d'utilisations disponibles (null = illimité)
+      required: false
+      example: 5
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    cooldown_days:
+      name: Cooldown (jours)
+      description: Nombre de jours avant de pouvoir réclamer à nouveau
+      required: false
+      default: 0
+      example: 7
+      selector:
+        number:
+          min: 0
+          max: 365
+          mode: box
+
+claim_reward:
+  name: Réclamer une récompense
+  description: Un enfant réclame une récompense (déduit les points)
+  fields:
+    reward_id:
+      name: ID récompense
+      description: Identifiant de la récompense à réclamer
+      required: true
+      example: "reward_abc123"
+      selector:
+        text:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant qui réclame
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+
+approve_claim:
+  name: Approuver une réclamation
+  description: Un parent approuve la réclamation d'une récompense par un enfant
+  fields:
+    claim_id:
+      name: ID réclamation
+      description: Identifiant de la réclamation à approuver
+      required: true
+      example: "claim_xyz789"
+      selector:
+        text:
+    approver_id:
+      name: ID approbateur
+      description: Identifiant du parent qui approuve (optionnel, défaut 'admin')
+      required: false
+      example: "user_parent"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES PHASE 2 - COSMÉTIQUES
+# ========================================================================
+
+create_cosmetic:
+  name: Créer un cosmétique
+  description: Crée un nouvel élément cosmétique (vêtement, accessoire, pet, thème, etc.)
+  fields:
+    name:
+      name: Nom
+      description: Nom du cosmétique
+      required: true
+      example: "T-shirt pirate"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Description du cosmétique
+      required: false
+      example: "Un t-shirt rayé avec un crâne pirate"
+      selector:
+        text:
+          multiline: true
+    category:
+      name: Catégorie
+      description: Catégorie du cosmétique
+      required: true
+      example: "clothes"
+      selector:
+        select:
+          options:
+            - label: "Vêtement"
+              value: "clothes"
+            - label: "Accessoire"
+              value: "accessory"
+            - label: "Pet"
+              value: "pet"
+            - label: "Thème"
+              value: "theme"
+            - label: "Badge"
+              value: "badge"
+            - label: "Animation"
+              value: "animation"
+    subcategory:
+      name: Sous-catégorie
+      description: Sous-catégorie précise (ex. 'shirt', 'hat', 'dog', etc.)
+      required: false
+      example: "shirt"
+      selector:
+        text:
+    rarity:
+      name: Rareté
+      description: Rareté du cosmétique (détermine le prix)
+      required: true
+      default: "common"
+      example: "rare"
+      selector:
+        select:
+          options:
+            - label: "Commun"
+              value: "common"
+            - label: "Rare"
+              value: "rare"
+            - label: "Épique"
+              value: "epic"
+            - label: "Légendaire"
+              value: "legendary"
+    cost_coins:
+      name: Coût en pièces
+      description: Nombre de pièces requises
+      required: false
+      default: 50
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    preview_image:
+      name: Image preview
+      description: URL ou chemin de l'image PNG (512x512px recommandé)
+      required: false
+      example: "/local/cosmetics/pirate_shirt.png"
+      selector:
+        text:
