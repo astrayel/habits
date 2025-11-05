@@ -467,6 +467,219 @@ async def register_services(hass: HomeAssistant):
             _LOGGER.error(f"Error in complete_habit: {err}")
             raise HomeAssistantError(f"Failed to complete habit: {err}")
 
+    # ========================================================================
+    # SERVICES VALIDATION (Phase 2)
+    # ========================================================================
+
+    async def handle_validate_task(call: ServiceCall):
+        """Service: Valider une tâche complétée."""
+        try:
+            instance_id = call.data["instance_id"]
+            validator_id = call.data.get("validator_id", "admin")
+            note = call.data.get("note", "")
+
+            validation_mgr = hass.data[DOMAIN]["validation_manager"]
+
+            # Valider et récupérer les récompenses
+            instance, task, rewards = await validation_mgr.validate_task(
+                instance_id, validator_id, note
+            )
+
+            # Appliquer les récompenses
+            await child_mgr.update_points(
+                instance.child_id,
+                points=rewards["points"],
+                coins=rewards["coins"],
+                xp=rewards["experience"]
+            )
+
+            # Mettre à jour les compteurs
+            entity_mgr = hass.data[DOMAIN]["entity_manager"]
+            all_instances = await task_mgr.get_task_instances(child_id=instance.child_id)
+            pending_count = sum(1 for inst in all_instances if inst.status.value == "pending")
+            waiting_count = sum(1 for inst in all_instances if inst.status.value == "completed_waiting")
+            await entity_mgr.update_task_counts(instance.child_id, pending_count, waiting_count)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "task_validated",
+                "instance_id": instance.id,
+                "task_id": task.id,
+                "child_id": instance.child_id,
+                "rewards": rewards,
+            })
+
+            _LOGGER.info(f"Service call: Task validated - {instance_id} by {validator_id}")
+
+        except TaskNotFoundError as err:
+            _LOGGER.error(f"Task not found: {err}")
+            raise HomeAssistantError(f"Task not found: {err}")
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in validate_task: {err}")
+            raise HomeAssistantError(f"Failed to validate task: {err}")
+
+    async def handle_refuse_task(call: ServiceCall):
+        """Service: Refuser une tâche complétée."""
+        try:
+            instance_id = call.data["instance_id"]
+            validator_id = call.data.get("validator_id", "admin")
+            apply_penalty = call.data.get("apply_penalty", False)
+            note = call.data.get("note", "")
+
+            validation_mgr = hass.data[DOMAIN]["validation_manager"]
+
+            # Refuser et récupérer les pénalités si applicables
+            instance, penalties = await validation_mgr.refuse_task(
+                instance_id, validator_id, apply_penalty, note
+            )
+
+            # Appliquer les pénalités si présentes
+            if penalties:
+                await child_mgr.update_points(
+                    instance.child_id,
+                    points=penalties["points"],
+                    coins=penalties["coins"],
+                    xp=0
+                )
+
+            # Mettre à jour les compteurs
+            entity_mgr = hass.data[DOMAIN]["entity_manager"]
+            all_instances = await task_mgr.get_task_instances(child_id=instance.child_id)
+            pending_count = sum(1 for inst in all_instances if inst.status.value == "pending")
+            waiting_count = sum(1 for inst in all_instances if inst.status.value == "completed_waiting")
+            await entity_mgr.update_task_counts(instance.child_id, pending_count, waiting_count)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "task_refused",
+                "instance_id": instance.id,
+                "child_id": instance.child_id,
+                "penalties_applied": penalties is not None,
+            })
+
+            _LOGGER.info(f"Service call: Task refused - {instance_id} by {validator_id}")
+
+        except TaskNotFoundError as err:
+            _LOGGER.error(f"Task not found: {err}")
+            raise HomeAssistantError(f"Task not found: {err}")
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in refuse_task: {err}")
+            raise HomeAssistantError(f"Failed to refuse task: {err}")
+
+    # ========================================================================
+    # SERVICES REWARDS (Phase 2)
+    # ========================================================================
+
+    async def handle_create_reward(call: ServiceCall):
+        """Service: Créer une récompense."""
+        try:
+            reward_data = dict(call.data)
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            reward = await reward_mgr.create_reward(reward_data)
+
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "reward_created",
+                "reward_id": reward.id,
+            })
+
+            _LOGGER.info(f"Service call: Reward created - {reward.title}")
+
+        except Exception as err:
+            _LOGGER.error(f"Error in create_reward: {err}")
+            raise HomeAssistantError(f"Failed to create reward: {err}")
+
+    async def handle_claim_reward(call: ServiceCall):
+        """Service: Réclamer une récompense."""
+        try:
+            reward_id = call.data["reward_id"]
+            child_id = call.data["child_id"]
+
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            # Réclamer la récompense
+            claim, points_cost, coins_cost = await reward_mgr.claim_reward(reward_id, child_id)
+
+            # Déduire les points/coins
+            await child_mgr.update_points(child_id, points=-points_cost, coins=-coins_cost, xp=0)
+
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "reward_claimed",
+                "reward_id": reward_id,
+                "claim_id": claim.id,
+                "child_id": child_id,
+                "status": claim.status.value,
+            })
+
+            _LOGGER.info(f"Service call: Reward claimed - {reward_id} by {child_id}")
+
+        except RewardNotFoundError as err:
+            _LOGGER.error(f"Reward not found: {err}")
+            raise HomeAssistantError(f"Reward not found: {err}")
+        except InsufficientPointsError as err:
+            _LOGGER.error(f"Insufficient points: {err}")
+            raise HomeAssistantError(f"Insufficient points/coins: {err}")
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in claim_reward: {err}")
+            raise HomeAssistantError(f"Failed to claim reward: {err}")
+
+    async def handle_approve_claim(call: ServiceCall):
+        """Service: Approuver une réclamation."""
+        try:
+            claim_id = call.data["claim_id"]
+            approver_id = call.data.get("approver_id", "admin")
+
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            claim = await reward_mgr.approve_claim(claim_id, approver_id)
+
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "claim_approved",
+                "claim_id": claim.id,
+                "child_id": claim.child_id,
+            })
+
+            _LOGGER.info(f"Service call: Claim approved - {claim_id} by {approver_id}")
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in approve_claim: {err}")
+            raise HomeAssistantError(f"Failed to approve claim: {err}")
+
+    # ========================================================================
+    # SERVICES COSMETICS (Phase 2)
+    # ========================================================================
+
+    async def handle_create_cosmetic(call: ServiceCall):
+        """Service: Créer un cosmétique."""
+        try:
+            cosmetic_data = dict(call.data)
+            cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
+
+            cosmetic = await cosmetic_mgr.create_cosmetic(cosmetic_data)
+
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "cosmetic_created",
+                "cosmetic_id": cosmetic.id,
+            })
+
+            _LOGGER.info(f"Service call: Cosmetic created - {cosmetic.name}")
+
+        except Exception as err:
+            _LOGGER.error(f"Error in create_cosmetic: {err}")
+            raise HomeAssistantError(f"Failed to create cosmetic: {err}")
+
     # Enregistrer tous les services
     hass.services.async_register(DOMAIN, SERVICE_CREATE_CHILD, handle_create_child)
     hass.services.async_register(DOMAIN, SERVICE_UPDATE_CHILD, handle_update_child)
@@ -482,7 +695,15 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_DELETE_HABIT, handle_delete_habit)
     hass.services.async_register(DOMAIN, SERVICE_COMPLETE_HABIT, handle_complete_habit)
 
-    _LOGGER.info(f"Registered {11} services for {DOMAIN}")
+    # Phase 2 services
+    hass.services.async_register(DOMAIN, SERVICE_VALIDATE_TASK, handle_validate_task)
+    hass.services.async_register(DOMAIN, SERVICE_REFUSE_TASK, handle_refuse_task)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_REWARD, handle_create_reward)
+    hass.services.async_register(DOMAIN, SERVICE_CLAIM_REWARD, handle_claim_reward)
+    hass.services.async_register(DOMAIN, SERVICE_APPROVE_CLAIM, handle_approve_claim)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_COSMETIC, handle_create_cosmetic)
+
+    _LOGGER.info(f"Registered {17} services for {DOMAIN} (11 Phase 1 + 6 Phase 2)")
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
