@@ -19,22 +19,39 @@ from .const import (
     SERVICE_UPDATE_TASK,
     SERVICE_DELETE_TASK,
     SERVICE_MARK_TASK_COMPLETED,
+    SERVICE_VALIDATE_TASK,
+    SERVICE_REFUSE_TASK,
     SERVICE_CREATE_HABIT,
     SERVICE_UPDATE_HABIT,
     SERVICE_DELETE_HABIT,
     SERVICE_COMPLETE_HABIT,
+    SERVICE_CREATE_REWARD,
+    SERVICE_UPDATE_REWARD,
+    SERVICE_DELETE_REWARD,
+    SERVICE_CLAIM_REWARD,
+    SERVICE_APPROVE_CLAIM,
+    SERVICE_CREATE_COSMETIC,
+    SERVICE_UPDATE_COSMETIC,
+    SERVICE_DELETE_COSMETIC,
 )
 from .storage.storage_manager import StorageManager
 from .storage.entity_manager import EntityManager
 from .managers.child_manager import ChildManager
 from .managers.task_manager import TaskManager
 from .managers.habit_manager import HabitManager
+from .managers.validation_manager import ValidationManager
+from .managers.reward_manager import RewardManager
+from .managers.cosmetic_manager import CosmeticManager
 from .services.points_calculator import PointsCalculator
 from .services.level_calculator import LevelCalculator
+from .services.scheduler import Scheduler
 from .core.exceptions import (
     ChildNotFoundError,
     TaskNotFoundError,
     HabitNotFoundError,
+    RewardNotFoundError,
+    CosmeticNotFoundError,
+    InsufficientPointsError,
     ValidationError,
 )
 from .sensor import async_create_child_sensors
@@ -56,11 +73,19 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     storage = StorageManager(hass)
     await storage.ensure_storage_dir()
 
-    # Initialiser les managers
+    # Initialiser les managers Phase 1
     entity_mgr = EntityManager(hass)
     child_mgr = ChildManager(storage, entity_mgr)
     task_mgr = TaskManager(storage)
     habit_mgr = HabitManager(storage)
+
+    # Initialiser les managers Phase 2
+    validation_mgr = ValidationManager(storage, entity_mgr)
+    reward_mgr = RewardManager(storage)
+    cosmetic_mgr = CosmeticManager(storage)
+
+    # Initialiser le scheduler
+    scheduler = Scheduler(task_mgr, habit_mgr, entity_mgr)
 
     # Stocker dans hass.data
     hass.data[DOMAIN] = {
@@ -69,6 +94,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         "child_manager": child_mgr,
         "task_manager": task_mgr,
         "habit_manager": habit_mgr,
+        "validation_manager": validation_mgr,
+        "reward_manager": reward_mgr,
+        "cosmetic_manager": cosmetic_mgr,
+        "scheduler": scheduler,
         "points_calculator": PointsCalculator(),
         "level_calculator": LevelCalculator(),
     }
