@@ -460,3 +460,169 @@ class StorageManager:
                 )
 
         return None
+
+    # ========================================================================
+    # REWARDS
+    # ========================================================================
+
+    async def load_rewards(self) -> List[Reward]:
+        """Charge toutes les récompenses.
+
+        Returns:
+            Liste des récompenses
+        """
+        data = await self.load_json(FILE_REWARDS)
+        rewards = []
+
+        for reward_id, reward_data in data.items():
+            try:
+                from ..core.models import RewardType
+                reward = Reward(
+                    id=reward_data["id"],
+                    title=reward_data["title"],
+                    description=reward_data.get("description", ""),
+                    type=RewardType(reward_data.get("type", "real_reward")),
+                    cost_points=reward_data.get("cost_points", 0),
+                    cost_coins=reward_data.get("cost_coins", 0),
+                    icon=reward_data.get("icon", "mdi:gift"),
+                    color=reward_data.get("color", "#FF5722"),
+                    stock=reward_data.get("stock"),
+                    cooldown_days=reward_data.get("cooldown_days", 0),
+                    active=reward_data.get("active", True),
+                    requires_parent_approval=reward_data.get("requires_parent_approval", True),
+                )
+                rewards.append(reward)
+            except Exception as err:
+                _LOGGER.error(f"Failed to load reward {reward_id}: {err}")
+
+        return rewards
+
+    async def save_reward(self, reward: Reward) -> None:
+        """Sauvegarde une récompense.
+
+        Args:
+            reward: Récompense à sauvegarder
+        """
+        data = await self.load_json(FILE_REWARDS)
+        data[reward.id] = reward.to_dict()
+        await self.save_json(FILE_REWARDS, data)
+
+    async def delete_reward(self, reward_id: str) -> None:
+        """Supprime une récompense.
+
+        Args:
+            reward_id: ID de la récompense
+        """
+        data = await self.load_json(FILE_REWARDS)
+        if reward_id in data:
+            del data[reward_id]
+            await self.save_json(FILE_REWARDS, data)
+
+    # ========================================================================
+    # REWARD CLAIMS
+    # ========================================================================
+
+    async def load_reward_claims(self) -> List[RewardClaim]:
+        """Charge toutes les réclamations de récompenses.
+
+        Returns:
+            Liste des réclamations
+        """
+        data = await self.load_json(FILE_REWARD_CLAIMS)
+        claims = []
+
+        for claim_id, claim_data in data.items():
+            try:
+                from ..core.models import RewardClaimStatus
+                claim = RewardClaim(
+                    id=claim_data["id"],
+                    reward_id=claim_data["reward_id"],
+                    child_id=claim_data["child_id"],
+                    claimed_at=datetime.fromisoformat(claim_data["claimed_at"]),
+                    status=RewardClaimStatus(claim_data["status"]),
+                    approved_by=claim_data.get("approved_by"),
+                    approved_at=datetime.fromisoformat(claim_data["approved_at"]) if claim_data.get("approved_at") else None,
+                    used_at=datetime.fromisoformat(claim_data["used_at"]) if claim_data.get("used_at") else None,
+                    expires_at=datetime.fromisoformat(claim_data["expires_at"]) if claim_data.get("expires_at") else None,
+                )
+                claims.append(claim)
+            except Exception as err:
+                _LOGGER.error(f"Failed to load reward claim {claim_id}: {err}")
+
+        return claims
+
+    async def save_reward_claim(self, claim: RewardClaim) -> None:
+        """Sauvegarde une réclamation de récompense.
+
+        Args:
+            claim: Réclamation à sauvegarder
+        """
+        data = await self.load_json(FILE_REWARD_CLAIMS)
+        data[claim.id] = claim.to_dict()
+        await self.save_json(FILE_REWARD_CLAIMS, data)
+
+    # ========================================================================
+    # COSMETICS
+    # ========================================================================
+
+    async def load_cosmetics(self) -> List[CosmeticItem]:
+        """Charge tous les cosmétiques.
+
+        Returns:
+            Liste des cosmétiques
+        """
+        data = await self.load_json(FILE_COSMETICS)
+        cosmetics = []
+
+        for cosmetic_id, cosmetic_data in data.items():
+            try:
+                from ..core.models import CosmeticCategory, CosmeticRarity, CosmeticUnlockRequirements
+
+                # Gérer les unlock requirements
+                unlock_reqs = None
+                if "unlock_requirements" in cosmetic_data and cosmetic_data["unlock_requirements"]:
+                    reqs_data = cosmetic_data["unlock_requirements"]
+                    unlock_reqs = CosmeticUnlockRequirements(
+                        min_level=reqs_data.get("min_level"),
+                        required_badge=reqs_data.get("required_badge"),
+                        min_streak=reqs_data.get("min_streak"),
+                    )
+
+                cosmetic = CosmeticItem(
+                    id=cosmetic_data["id"],
+                    name=cosmetic_data["name"],
+                    description=cosmetic_data.get("description", ""),
+                    category=CosmeticCategory(cosmetic_data["category"]),
+                    subcategory=cosmetic_data.get("subcategory", ""),
+                    rarity=CosmeticRarity(cosmetic_data.get("rarity", "common")),
+                    cost_coins=cosmetic_data.get("cost_coins", 0),
+                    preview_image=cosmetic_data.get("preview_image", ""),
+                    unlock_requirements=unlock_reqs,
+                    active=cosmetic_data.get("active", True),
+                )
+                cosmetics.append(cosmetic)
+            except Exception as err:
+                _LOGGER.error(f"Failed to load cosmetic {cosmetic_id}: {err}")
+
+        return cosmetics
+
+    async def save_cosmetic(self, cosmetic: CosmeticItem) -> None:
+        """Sauvegarde un cosmétique.
+
+        Args:
+            cosmetic: Cosmétique à sauvegarder
+        """
+        data = await self.load_json(FILE_COSMETICS)
+        data[cosmetic.id] = cosmetic.to_dict()
+        await self.save_json(FILE_COSMETICS, data)
+
+    async def delete_cosmetic(self, cosmetic_id: str) -> None:
+        """Supprime un cosmétique.
+
+        Args:
+            cosmetic_id: ID du cosmétique
+        """
+        data = await self.load_json(FILE_COSMETICS)
+        if cosmetic_id in data:
+            del data[cosmetic_id]
+            await self.save_json(FILE_COSMETICS, data)
