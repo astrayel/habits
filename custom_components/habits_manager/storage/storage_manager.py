@@ -6,6 +6,7 @@ import json
 import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime, date
+import aiofiles
 
 from homeassistant.core import HomeAssistant
 
@@ -50,7 +51,7 @@ class StorageManager:
     async def ensure_storage_dir(self) -> None:
         """Cr�e le r�pertoire de stockage s'il n'existe pas."""
         try:
-            os.makedirs(self.base_path, exist_ok=True)
+            await self.hass.async_add_executor_job(os.makedirs, self.base_path, True)
             _LOGGER.info(f"Storage directory ensured at {self.base_path}")
         except Exception as err:
             _LOGGER.error(f"Failed to create storage directory: {err}")
@@ -70,13 +71,14 @@ class StorageManager:
         """
         file_path = os.path.join(self.base_path, filename)
 
-        if not os.path.exists(file_path):
+        if not await self.hass.async_add_executor_job(os.path.exists, file_path):
             _LOGGER.debug(f"File {filename} does not exist, returning empty dict")
             return {}
 
         try:
-            with open(file_path, "r", encoding="utf-8") as file:
-                data = json.load(file)
+            async with aiofiles.open(file_path, "r", encoding="utf-8") as file:
+                content = await file.read()
+                data = json.loads(content)
                 _LOGGER.debug(f"Loaded {filename} successfully")
                 return data
         except json.JSONDecodeError as err:
@@ -99,8 +101,9 @@ class StorageManager:
         file_path = os.path.join(self.base_path, filename)
 
         try:
-            with open(file_path, "w", encoding="utf-8") as file:
-                json.dump(data, file, indent=2, ensure_ascii=False)
+            content = json.dumps(data, indent=2, ensure_ascii=False)
+            async with aiofiles.open(file_path, "w", encoding="utf-8") as file:
+                await file.write(content)
                 _LOGGER.debug(f"Saved {filename} successfully")
         except Exception as err:
             _LOGGER.error(f"Failed to write {filename}: {err}")

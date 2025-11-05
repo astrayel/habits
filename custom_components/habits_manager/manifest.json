@@ -2,7 +2,7 @@
   "domain": "habits_manager",
   "name": "Habits Manager",
   "documentation": "https://github.com/astrayel/habits",
-  "requirements": [],
+  "requirements": ["aiofiles==24.1.0"],
   "codeowners": ["@astrayel"],
   "version": "0.1.0",
   "iot_class": "calculated",
