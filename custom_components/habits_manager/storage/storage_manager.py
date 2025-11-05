@@ -6,6 +6,7 @@ import json
 import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime, date
+from functools import partial
 import aiofiles
 
 from homeassistant.core import HomeAssistant
@@ -51,7 +52,7 @@ class StorageManager:
     async def ensure_storage_dir(self) -> None:
         """Cr�e le r�pertoire de stockage s'il n'existe pas."""
         try:
-            await self.hass.async_add_executor_job(os.makedirs, self.base_path, True)
+            await self.hass.async_add_executor_job(partial(os.makedirs, self.base_path, exist_ok=True))
             _LOGGER.info(f"Storage directory ensured at {self.base_path}")
         except Exception as err:
             _LOGGER.error(f"Failed to create storage directory: {err}")
