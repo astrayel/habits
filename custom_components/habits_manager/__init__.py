@@ -281,14 +281,21 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to delete task: {err}")
 
     async def handle_mark_task_completed(call: ServiceCall):
-        """Service: Marquer une t�che comme compl�t�e (en attente de validation)."""
+        """Service: Marquer une tâche comme complétée (en attente de validation)."""
         try:
             instance_id = call.data["instance_id"]
             child_id = call.data["child_id"]
 
             instance = await task_mgr.mark_completed(instance_id)
 
-            # �mettre un �v�nement
+            # Mettre à jour les compteurs de tâches dynamiquement
+            entity_mgr = hass.data[DOMAIN]["entity_manager"]
+            all_instances = await task_mgr.get_task_instances(child_id=child_id)
+            pending_count = sum(1 for inst in all_instances if inst.status.value == "pending")
+            waiting_count = sum(1 for inst in all_instances if inst.status.value == "completed_waiting")
+            await entity_mgr.update_task_counts(child_id, pending_count, waiting_count)
+
+            # Émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "task_completed",
                 "instance_id": instance.id,
@@ -296,7 +303,7 @@ async def register_services(hass: HomeAssistant):
                 "child_id": child_id,
             })
 
-            _LOGGER.info(f"Service call: Task completed - instance {instance_id}")
+            _LOGGER.info(f"Service call: Task completed - instance {instance_id} (pending={pending_count}, waiting={waiting_count})")
 
         except TaskNotFoundError as err:
             _LOGGER.error(f"Task instance not found: {err}")
@@ -384,18 +391,18 @@ async def register_services(hass: HomeAssistant):
             raise HomeAssistantError(f"Failed to delete habit: {err}")
 
     async def handle_complete_habit(call: ServiceCall):
-        """Service: Compl�ter une habitude."""
+        """Service: Compléter une habitude."""
         try:
             habit_id = call.data["habit_id"]
             child_id = call.data["child_id"]
 
-            # Enregistrer la compl�tion
+            # Enregistrer la complétion
             streak, streak_increased = await habit_mgr.record_completion(habit_id, child_id)
 
-            # Calculer les r�compenses avec bonus
+            # Calculer les récompenses avec bonus
             rewards = await habit_mgr.calculate_streak_bonus(habit_id, child_id)
 
-            # Appliquer les r�compenses
+            # Appliquer les récompenses (met à jour points/coins/level/xp automatiquement)
             await child_mgr.update_points(
                 child_id,
                 points=rewards["points"],
@@ -403,17 +410,23 @@ async def register_services(hass: HomeAssistant):
                 xp=rewards["experience"]
             )
 
-            # �mettre un �v�nement
+            # Mettre à jour le longest_streak dynamiquement
+            entity_mgr = hass.data[DOMAIN]["entity_manager"]
+            longest_streak = await habit_mgr.get_child_longest_streak(child_id)
+            await entity_mgr.update_longest_streak(child_id, longest_streak)
+
+            # Émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "habit_completed",
                 "habit_id": habit_id,
                 "child_id": child_id,
                 "streak": streak.current_streak,
+                "longest_streak": longest_streak,
                 "streak_increased": streak_increased,
                 "rewards": rewards,
             })
 
-            _LOGGER.info(f"Service call: Habit completed - {habit_id} by child {child_id}, streak={streak.current_streak}")
+            _LOGGER.info(f"Service call: Habit completed - {habit_id} by child {child_id}, streak={streak.current_streak}, longest={longest_streak}")
 
         except HabitNotFoundError as err:
             _LOGGER.error(f"Habit not found: {err}")
