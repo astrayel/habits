@@ -15,7 +15,7 @@ from enum import Enum
 
 
 class TaskType(Enum):
-    """Type de tâche."""
+    """Type de tÃ¢che."""
     MANDATORY = "mandatory"
     BONUS = "bonus"
 
@@ -29,7 +29,7 @@ class ScheduleType(Enum):
 
 
 class TaskCategory(Enum):
-    """Catégorie de tâche."""
+    """CatÃ©gorie de tÃ¢che."""
     CHORES = "chores"
     HOMEWORK = "homework"
     PERSONAL = "personal"
@@ -37,7 +37,7 @@ class TaskCategory(Enum):
 
 
 class TaskInstanceStatus(Enum):
-    """Statut d'une instance de tâche."""
+    """Statut d'une instance de tÃ¢che."""
     PENDING = "pending"
     COMPLETED_WAITING = "completed_waiting"
     VALIDATED = "validated"
@@ -46,7 +46,7 @@ class TaskInstanceStatus(Enum):
 
 
 class HabitFrequency(Enum):
-    """Fréquence d'une habitude."""
+    """FrÃ©quence d'une habitude."""
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -59,7 +59,7 @@ class StreakBonusType(Enum):
 
 
 class RewardType(Enum):
-    """Type de récompense."""
+    """Type de rÃ©compense."""
     SCREEN_TIME = "screen_time"
     MEAL_CHOICE = "meal_choice"
     ACTIVITY = "activity"
@@ -67,7 +67,7 @@ class RewardType(Enum):
 
 
 class RewardClaimStatus(Enum):
-    """Statut d'une réclamation."""
+    """Statut d'une rÃ©clamation."""
     PENDING = "pending"
     APPROVED = "approved"
     USED = "used"
@@ -75,7 +75,7 @@ class RewardClaimStatus(Enum):
 
 
 class CosmeticCategory(Enum):
-    """Catégorie de cosmétique."""
+    """CatÃ©gorie de cosmÃ©tique."""
     CLOTHES = "clothes"
     ACCESSORY = "accessory"
     PET = "pet"
@@ -85,7 +85,7 @@ class CosmeticCategory(Enum):
 
 
 class CosmeticRarity(Enum):
-    """Rareté d'un cosmétique."""
+    """RaretÃ© d'un cosmÃ©tique."""
     COMMON = "common"
     RARE = "rare"
     EPIC = "epic"
@@ -93,7 +93,7 @@ class CosmeticRarity(Enum):
 
 
 class BadgeConditionType(Enum):
-    """Type de condition pour déverrouiller un badge."""
+    """Type de condition pour dÃ©verrouiller un badge."""
     FIRST_TASK = "first_task"
     TASKS_COUNT = "tasks_count"
     STREAK_DAYS = "streak_days"
@@ -140,7 +140,7 @@ class Avatar:
 
 @dataclass
 class Child:
-    """Représentation d'un enfant dans le système."""
+    """ReprÃ©sentation d'un enfant dans le systÃ¨me."""
     id: str
     name: str
     person_entity: str  # Ex: "person.emma"
@@ -175,13 +175,13 @@ class Child:
 
 
 # ============================================================================
-# TASK (TÂCHE)
+# TASK (TÃ‚CHE)
 # ============================================================================
 
 
 @dataclass
 class TaskSchedule:
-    """Planning d'une tâche."""
+    """Planning d'une tÃ¢che."""
     type: ScheduleType
     days: Optional[List[int]] = None  # 1=Lundi, 7=Dimanche
     time: Optional[str] = None  # Format "HH:MM"
@@ -199,7 +199,7 @@ class TaskSchedule:
 
 @dataclass
 class TaskRewards:
-    """Récompenses d'une tâche."""
+    """RÃ©compenses d'une tÃ¢che."""
     points: int = 0
     coins: int = 0
     experience: int = 0
@@ -215,7 +215,7 @@ class TaskRewards:
 
 @dataclass
 class TaskPenalties:
-    """Pénalités d'une tâche."""
+    """PÃ©nalitÃ©s d'une tÃ¢che."""
     points: int = 0
     coins: int = 0
 
@@ -229,7 +229,7 @@ class TaskPenalties:
 
 @dataclass
 class Task:
-    """Définition d'une tâche."""
+    """DÃ©finition d'une tÃ¢che."""
     id: str
     title: str
     description: str
@@ -269,7 +269,7 @@ class Task:
 
 @dataclass
 class TaskInstance:
-    """Instance concrète d'une tâche pour un enfant à une date donnée."""
+    """Instance concrÃ¨te d'une tÃ¢che pour un enfant Ã  une date donnÃ©e."""
     id: str
     task_id: str
     child_id: str
@@ -307,7 +307,7 @@ class StreakBonus:
     """Configuration du bonus de streak."""
     enabled: bool = True
     type: StreakBonusType = StreakBonusType.PROGRESSIVE
-    multiplier: float = 0.1  # +10% par unité de streak
+    multiplier: float = 0.1  # +10% par unitÃ© de streak
 
     def to_dict(self) -> dict:
         """Convertit en dictionnaire."""
@@ -320,7 +320,7 @@ class StreakBonus:
 
 @dataclass
 class HabitRewards:
-    """Récompenses d'une habitude."""
+    """RÃ©compenses d'une habitude."""
     points: int = 0
     coins: int = 0
     experience: int = 0
@@ -338,7 +338,7 @@ class HabitRewards:
 
 @dataclass
 class Habit:
-    """Définition d'une habitude."""
+    """DÃ©finition d'une habitude."""
     id: str
     title: str
     description: str
@@ -366,7 +366,7 @@ class Habit:
 
 @dataclass
 class StreakHistoryEntry:
-    """Entrée dans l'historique de streak."""
+    """EntrÃ©e dans l'historique de streak."""
     date: date
     completed: bool
 
@@ -405,22 +405,22 @@ class HabitStreak:
 
 
 # ============================================================================
-# REWARD (RÉCOMPENSE)
+# REWARD (RÃ‰COMPENSE)
 # ============================================================================
 
 
 @dataclass
 class Reward:
-    """Définition d'une récompense."""
+    """DÃ©finition d'une rÃ©compense."""
     id: str
     title: str
     description: str
     type: RewardType
-    cost_points: int  # Coût en points
-    cost_coins: int = 0  # 0 pour récompenses réelles
+    cost_points: int  # CoÃ»t en points
+    cost_coins: int = 0  # 0 pour rÃ©compenses rÃ©elles
     icon: str = "mdi:gift"
     color: str = "#FF5722"
-    stock: Optional[int] = None  # None = illimité
+    stock: Optional[int] = None  # None = illimitÃ©
     cooldown_days: int = 0
     active: bool = True
     requires_parent_approval: bool = True
@@ -445,7 +445,7 @@ class Reward:
 
 @dataclass
 class RewardClaim:
-    """Réclamation d'une récompense par un enfant."""
+    """RÃ©clamation d'une rÃ©compense par un enfant."""
     id: str
     reward_id: str
     child_id: str
@@ -472,13 +472,13 @@ class RewardClaim:
 
 
 # ============================================================================
-# COSMETIC (COSMÉTIQUE)
+# COSMETIC (COSMÃ‰TIQUE)
 # ============================================================================
 
 
 @dataclass
 class CosmeticUnlockRequirements:
-    """Prérequis pour déverrouiller un cosmétique."""
+    """PrÃ©requis pour dÃ©verrouiller un cosmÃ©tique."""
     level: Optional[int] = None
     badge: Optional[str] = None
 
@@ -492,7 +492,7 @@ class CosmeticUnlockRequirements:
 
 @dataclass
 class CosmeticItem:
-    """Élément cosmétique."""
+    """Ã‰lÃ©ment cosmÃ©tique."""
     id: str
     name: str
     description: str
@@ -527,7 +527,7 @@ class CosmeticItem:
 
 @dataclass
 class Badge:
-    """Badge de réussite."""
+    """Badge de rÃ©ussite."""
     id: str
     name: str
     description: str

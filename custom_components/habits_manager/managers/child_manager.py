@@ -16,14 +16,14 @@ from ..services.level_calculator import LevelCalculator
 
 
 class ChildManager:
-    """Gère les enfants du système."""
+    """GÃ¨re les enfants du systÃ¨me."""
 
     def __init__(self, storage: StorageManager, entity_mgr: EntityManager):
         """Initialise le child manager.
 
         Args:
             storage: Manager de stockage
-            entity_mgr: Manager d'entités HA
+            entity_mgr: Manager d'entitÃ©s HA
         """
         self.storage = storage
         self.entity_mgr = entity_mgr
@@ -31,29 +31,29 @@ class ChildManager:
         self.level_calc = LevelCalculator()
 
     async def create_child(self, name: str, person_entity: str) -> Child:
-        """Crée un nouvel enfant.
+        """CrÃ©e un nouvel enfant.
 
         Args:
             name: Nom de l'enfant
-            person_entity: Entité person de Home Assistant (ex: "person.emma")
+            person_entity: EntitÃ© person de Home Assistant (ex: "person.emma")
 
         Returns:
-            Child créé
+            Child crÃ©Ã©
 
         Raises:
-            ValidationError: Si les données sont invalides
+            ValidationError: Si les donnÃ©es sont invalides
         """
         # Valider
         if not name or len(name) > 50:
             raise ValidationError("Nom invalide")
 
         if not person_entity or not person_entity.startswith("person."):
-            raise ValidationError("Entité person invalide")
+            raise ValidationError("EntitÃ© person invalide")
 
-        # Générer ID unique
+        # GÃ©nÃ©rer ID unique
         child_id = f"child_{uuid.uuid4().hex[:8]}"
 
-        # Récupérer la photo de l'entité person (si disponible)
+        # RÃ©cupÃ©rer la photo de l'entitÃ© person (si disponible)
         photo_url = ""
         try:
             person_state = self.entity_mgr.hass.states.get(person_entity)
@@ -62,13 +62,13 @@ class ChildManager:
         except Exception as err:
             _LOGGER.warning(f"Could not fetch photo for {person_entity}: {err}")
 
-        # Créer l'avatar
+        # CrÃ©er l'avatar
         avatar = Avatar(
             photo_url=photo_url,
             customization=AvatarCustomization(),
         )
 
-        # Créer l'enfant
+        # CrÃ©er l'enfant
         child = Child(
             id=child_id,
             name=name,
@@ -88,7 +88,7 @@ class ChildManager:
         # Sauvegarder
         await self.storage.save_child(child)
 
-        # Créer les entités HA
+        # CrÃ©er les entitÃ©s HA
         await self.entity_mgr.create_child_entities(child)
 
         _LOGGER.info(f"Child created: {child.name} ({child.id})")
@@ -96,7 +96,7 @@ class ChildManager:
         return child
 
     async def get_child(self, child_id: str) -> Child:
-        """Récupère un enfant par son ID.
+        """RÃ©cupÃ¨re un enfant par son ID.
 
         Args:
             child_id: ID de l'enfant
@@ -113,7 +113,7 @@ class ChildManager:
         return child
 
     async def get_all_children(self) -> List[Child]:
-        """Récupère tous les enfants.
+        """RÃ©cupÃ¨re tous les enfants.
 
         Returns:
             Liste des enfants
@@ -121,13 +121,13 @@ class ChildManager:
         return await self.storage.load_children()
 
     async def update_child(self, child: Child) -> Child:
-        """Met à jour un enfant.
+        """Met Ã  jour un enfant.
 
         Args:
-            child: Enfant à mettre à jour
+            child: Enfant Ã  mettre Ã  jour
 
         Returns:
-            Child mis à jour
+            Child mis Ã  jour
         """
         child.updated_at = datetime.now()
         await self.storage.save_child(child)
@@ -146,7 +146,7 @@ class ChildManager:
         Raises:
             ChildNotFoundError: Si l'enfant n'existe pas
         """
-        # Vérifier que l'enfant existe
+        # VÃ©rifier que l'enfant existe
         await self.get_child(child_id)
 
         # Supprimer
@@ -156,18 +156,18 @@ class ChildManager:
         _LOGGER.info(f"Child deleted: {child_id}")
 
     async def update_points(self, child_id: str, points: int, coins: int, xp: int) -> Child:
-        """Met à jour les points, pièces et XP d'un enfant.
+        """Met Ã  jour les points, piÃ¨ces et XP d'un enfant.
 
-        Gère automatiquement les level-ups.
+        GÃ¨re automatiquement les level-ups.
 
         Args:
             child_id: ID de l'enfant
-            points: Delta de points (peut être négatif)
-            coins: Delta de pièces (peut être négatif)
+            points: Delta de points (peut Ãªtre nÃ©gatif)
+            coins: Delta de piÃ¨ces (peut Ãªtre nÃ©gatif)
             xp: Delta d'XP (toujours positif)
 
         Returns:
-            Child mis à jour
+            Child mis Ã  jour
 
         Raises:
             ChildNotFoundError: Si l'enfant n'existe pas
@@ -187,7 +187,7 @@ class ChildManager:
             else:
                 child.coins = max(0, child.coins + coins)
 
-        # Ajouter l'XP et gérer les level-ups
+        # Ajouter l'XP et gÃ©rer les level-ups
         leveled_up = False
         if xp > 0:
             child, leveled_up = self.level_calc.add_experience(child, xp)
@@ -195,19 +195,19 @@ class ChildManager:
         # Sauvegarder
         await self.update_child(child)
 
-        _LOGGER.debug(f"Points updated for {child.name}: ”points={points}, ”coins={coins}, ”xp={xp}, leveled_up={leveled_up}")
+        _LOGGER.debug(f"Points updated for {child.name}: Â”points={points}, Â”coins={coins}, Â”xp={xp}, leveled_up={leveled_up}")
 
         return child
 
     async def add_badge(self, child_id: str, badge_id: str) -> Child:
-        """Ajoute un badge à un enfant.
+        """Ajoute un badge Ã  un enfant.
 
         Args:
             child_id: ID de l'enfant
             badge_id: ID du badge
 
         Returns:
-            Child mis à jour
+            Child mis Ã  jour
 
         Raises:
             ChildNotFoundError: Si l'enfant n'existe pas
@@ -222,35 +222,35 @@ class ChildManager:
         return child
 
     async def purchase_cosmetic(self, child_id: str, cosmetic_id: str, cost: int) -> Child:
-        """Achète un cosmétique pour un enfant.
+        """AchÃ¨te un cosmÃ©tique pour un enfant.
 
         Args:
             child_id: ID de l'enfant
-            cosmetic_id: ID du cosmétique
-            cost: Coût en pièces
+            cosmetic_id: ID du cosmÃ©tique
+            cost: CoÃ»t en piÃ¨ces
 
         Returns:
-            Child mis à jour
+            Child mis Ã  jour
 
         Raises:
             ChildNotFoundError: Si l'enfant n'existe pas
-            InsufficientCoinsError: Si pas assez de pièces
+            InsufficientCoinsError: Si pas assez de piÃ¨ces
         """
         child = await self.get_child(child_id)
 
-        # Vérifier si assez de pièces
+        # VÃ©rifier si assez de piÃ¨ces
         if child.coins < cost:
             raise InsufficientCoinsError(f"Not enough coins: has {child.coins}, needs {cost}")
 
-        # Vérifier si pas déjà possédé
+        # VÃ©rifier si pas dÃ©jÃ  possÃ©dÃ©
         if cosmetic_id in child.owned_cosmetics:
             _LOGGER.warning(f"{child.name} already owns cosmetic {cosmetic_id}")
             return child
 
-        # Déduire les pièces
+        # DÃ©duire les piÃ¨ces
         child.coins -= cost
 
-        # Ajouter le cosmétique
+        # Ajouter le cosmÃ©tique
         child.owned_cosmetics.append(cosmetic_id)
 
         # Sauvegarder
@@ -261,27 +261,27 @@ class ChildManager:
         return child
 
     async def apply_cosmetic(self, child_id: str, cosmetic_id: str, category: str) -> Child:
-        """Applique un cosmétique à l'avatar d'un enfant.
+        """Applique un cosmÃ©tique Ã  l'avatar d'un enfant.
 
         Args:
             child_id: ID de l'enfant
-            cosmetic_id: ID du cosmétique
-            category: Catégorie (clothes, accessory, pet, theme)
+            cosmetic_id: ID du cosmÃ©tique
+            category: CatÃ©gorie (clothes, accessory, pet, theme)
 
         Returns:
-            Child mis à jour
+            Child mis Ã  jour
 
         Raises:
             ChildNotFoundError: Si l'enfant n'existe pas
-            ValidationError: Si le cosmétique n'est pas possédé
+            ValidationError: Si le cosmÃ©tique n'est pas possÃ©dÃ©
         """
         child = await self.get_child(child_id)
 
-        # Vérifier que le cosmétique est possédé
+        # VÃ©rifier que le cosmÃ©tique est possÃ©dÃ©
         if cosmetic_id not in child.owned_cosmetics:
             raise ValidationError(f"Cosmetic {cosmetic_id} not owned by {child.name}")
 
-        # Appliquer selon la catégorie
+        # Appliquer selon la catÃ©gorie
         if category == "clothes":
             child.avatar.customization.clothes = cosmetic_id
         elif category == "accessory":
@@ -301,21 +301,21 @@ class ChildManager:
         return child
 
     async def remove_cosmetic(self, child_id: str, category: str) -> Child:
-        """Retire un cosmétique de l'avatar d'un enfant.
+        """Retire un cosmÃ©tique de l'avatar d'un enfant.
 
         Args:
             child_id: ID de l'enfant
-            category: Catégorie à retirer
+            category: CatÃ©gorie Ã  retirer
 
         Returns:
-            Child mis à jour
+            Child mis Ã  jour
 
         Raises:
             ChildNotFoundError: Si l'enfant n'existe pas
         """
         child = await self.get_child(child_id)
 
-        # Retirer selon la catégorie
+        # Retirer selon la catÃ©gorie
         if category == "clothes":
             child.avatar.customization.clothes = None
         elif category == "accessory":
@@ -335,7 +335,7 @@ class ChildManager:
         return child
 
     async def get_child_stats(self, child_id: str) -> Dict:
-        """Récupère les statistiques d'un enfant.
+        """RÃ©cupÃ¨re les statistiques d'un enfant.
 
         Args:
             child_id: ID de l'enfant

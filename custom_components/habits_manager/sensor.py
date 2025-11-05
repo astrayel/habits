@@ -22,8 +22,8 @@ async def async_setup_platform(
     Args:
         hass: Instance Home Assistant
         config: Configuration
-        async_add_entities: Callback pour ajouter les entités
-        discovery_info: Informations de découverte
+        async_add_entities: Callback pour ajouter les entitÃ©s
+        discovery_info: Informations de dÃ©couverte
     """
     if DOMAIN not in hass.data:
         _LOGGER.warning("Habits Manager domain not found in hass.data")
@@ -36,7 +36,7 @@ async def async_setup_platform(
     entities = []
     children_data = hass.data[DOMAIN]["children_entities"]
 
-    # Créer les sensors pour chaque enfant
+    # CrÃ©er les sensors pour chaque enfant
     for child_id, child_data in children_data.items():
         entities.extend([
             ChildPointsSensor(hass, child_id, child_data),
@@ -62,7 +62,7 @@ class BaseChildSensor(SensorEntity):
         Args:
             hass: Instance Home Assistant
             child_id: ID de l'enfant
-            child_data: Données de l'enfant
+            child_data: DonnÃ©es de l'enfant
         """
         self.hass = hass
         self._child_id = child_id
@@ -80,13 +80,13 @@ class BaseChildSensor(SensorEntity):
         }
 
     async def async_added_to_hass(self):
-        """S'abonne aux événements de mise à jour."""
+        """S'abonne aux Ã©vÃ©nements de mise Ã  jour."""
 
         @callback
         def handle_entity_update(event):
             """Handle entity update event."""
             if event.data.get("child_id") == self._child_id:
-                # Rafraîchir les données depuis hass.data
+                # RafraÃ®chir les donnÃ©es depuis hass.data
                 if DOMAIN in self.hass.data and "children_entities" in self.hass.data[DOMAIN]:
                     updated_data = self.hass.data[DOMAIN]["children_entities"].get(self._child_id)
                     if updated_data:
@@ -97,10 +97,10 @@ class BaseChildSensor(SensorEntity):
         def handle_entity_delete(event):
             """Handle entity delete event."""
             if event.data.get("child_id") == self._child_id:
-                # Supprimer l'entité
+                # Supprimer l'entitÃ©
                 self.hass.async_create_task(self.async_remove())
 
-        # S'abonner aux événements
+        # S'abonner aux Ã©vÃ©nements
         self.async_on_remove(
             self.hass.bus.async_listen(f"{DOMAIN}_entity_update", handle_entity_update)
         )
@@ -124,22 +124,22 @@ class ChildPointsSensor(BaseChildSensor):
 
     @property
     def state(self):
-        """État du sensor."""
+        """Ã‰tat du sensor."""
         return self._child_data.get("points", 0)
 
     @property
     def icon(self):
-        """Icône du sensor."""
+        """IcÃ´ne du sensor."""
         return "mdi:star"
 
     @property
     def unit_of_measurement(self):
-        """Unité de mesure."""
+        """UnitÃ© de mesure."""
         return "pts"
 
 
 class ChildCoinsSensor(BaseChildSensor):
-    """Sensor pour les pièces d'un enfant."""
+    """Sensor pour les piÃ¨ces d'un enfant."""
 
     @property
     def name(self):
@@ -153,17 +153,17 @@ class ChildCoinsSensor(BaseChildSensor):
 
     @property
     def state(self):
-        """État du sensor."""
+        """Ã‰tat du sensor."""
         return self._child_data.get("coins", 0)
 
     @property
     def icon(self):
-        """Icône du sensor."""
+        """IcÃ´ne du sensor."""
         return "mdi:coin"
 
     @property
     def unit_of_measurement(self):
-        """Unité de mesure."""
+        """UnitÃ© de mesure."""
         return "coins"
 
 
@@ -182,12 +182,12 @@ class ChildLevelSensor(BaseChildSensor):
 
     @property
     def state(self):
-        """État du sensor."""
+        """Ã‰tat du sensor."""
         return self._child_data.get("level", 1)
 
     @property
     def icon(self):
-        """Icône du sensor."""
+        """IcÃ´ne du sensor."""
         level = self._child_data.get("level", 1)
         if level >= 10:
             return "mdi:trophy"
@@ -198,12 +198,12 @@ class ChildLevelSensor(BaseChildSensor):
 
     @property
     def unit_of_measurement(self):
-        """Unité de mesure."""
+        """UnitÃ© de mesure."""
         return None
 
 
 class ChildExperienceSensor(BaseChildSensor):
-    """Sensor pour l'expérience d'un enfant."""
+    """Sensor pour l'expÃ©rience d'un enfant."""
 
     @property
     def name(self):
@@ -217,22 +217,22 @@ class ChildExperienceSensor(BaseChildSensor):
 
     @property
     def state(self):
-        """État du sensor."""
+        """Ã‰tat du sensor."""
         return self._child_data.get("experience", 0)
 
     @property
     def icon(self):
-        """Icône du sensor."""
+        """IcÃ´ne du sensor."""
         return "mdi:chart-line"
 
     @property
     def unit_of_measurement(self):
-        """Unité de mesure."""
+        """UnitÃ© de mesure."""
         return "XP"
 
     @property
     def extra_state_attributes(self):
-        """Attributs supplémentaires."""
+        """Attributs supplÃ©mentaires."""
         return {
             "experience_to_next_level": self._child_data.get("experience_to_next_level", 100),
             "progress_percentage": int(
@@ -242,7 +242,7 @@ class ChildExperienceSensor(BaseChildSensor):
 
 
 class ChildTasksPendingSensor(BaseChildSensor):
-    """Sensor pour les tâches en attente d'un enfant."""
+    """Sensor pour les tÃ¢ches en attente d'un enfant."""
 
     @property
     def name(self):
@@ -256,12 +256,12 @@ class ChildTasksPendingSensor(BaseChildSensor):
 
     @property
     def state(self):
-        """État du sensor."""
+        """Ã‰tat du sensor."""
         return self._child_data.get("tasks_pending", 0)
 
     @property
     def icon(self):
-        """Icône du sensor."""
+        """IcÃ´ne du sensor."""
         pending = self._child_data.get("tasks_pending", 0)
         if pending > 0:
             return "mdi:checkbox-marked-circle-outline"
@@ -270,12 +270,12 @@ class ChildTasksPendingSensor(BaseChildSensor):
 
     @property
     def unit_of_measurement(self):
-        """Unité de mesure."""
+        """UnitÃ© de mesure."""
         return "tasks"
 
 
 class ChildTasksWaitingSensor(BaseChildSensor):
-    """Sensor pour les tâches en attente de validation d'un enfant."""
+    """Sensor pour les tÃ¢ches en attente de validation d'un enfant."""
 
     @property
     def name(self):
@@ -289,12 +289,12 @@ class ChildTasksWaitingSensor(BaseChildSensor):
 
     @property
     def state(self):
-        """État du sensor."""
+        """Ã‰tat du sensor."""
         return self._child_data.get("tasks_waiting", 0)
 
     @property
     def icon(self):
-        """Icône du sensor."""
+        """IcÃ´ne du sensor."""
         waiting = self._child_data.get("tasks_waiting", 0)
         if waiting > 0:
             return "mdi:clock-alert"
@@ -303,7 +303,7 @@ class ChildTasksWaitingSensor(BaseChildSensor):
 
     @property
     def unit_of_measurement(self):
-        """Unité de mesure."""
+        """UnitÃ© de mesure."""
         return "tasks"
 
 
@@ -322,12 +322,12 @@ class ChildLongestStreakSensor(BaseChildSensor):
 
     @property
     def state(self):
-        """État du sensor."""
+        """Ã‰tat du sensor."""
         return self._child_data.get("longest_streak", 0)
 
     @property
     def icon(self):
-        """Icône du sensor."""
+        """IcÃ´ne du sensor."""
         streak = self._child_data.get("longest_streak", 0)
         if streak >= 30:
             return "mdi:fire"
@@ -338,12 +338,12 @@ class ChildLongestStreakSensor(BaseChildSensor):
 
     @property
     def unit_of_measurement(self):
-        """Unité de mesure."""
+        """UnitÃ© de mesure."""
         return "days"
 
 
 class ChildHasPendingValidationSensor(BinarySensorEntity):
-    """Binary sensor indiquant si un enfant a des tâches en attente de validation."""
+    """Binary sensor indiquant si un enfant a des tÃ¢ches en attente de validation."""
 
     def __init__(self, hass: HomeAssistant, child_id: str, child_data: dict):
         """Initialise le sensor.
@@ -351,7 +351,7 @@ class ChildHasPendingValidationSensor(BinarySensorEntity):
         Args:
             hass: Instance Home Assistant
             child_id: ID de l'enfant
-            child_data: Données de l'enfant
+            child_data: DonnÃ©es de l'enfant
         """
         self.hass = hass
         self._child_id = child_id
@@ -370,12 +370,12 @@ class ChildHasPendingValidationSensor(BinarySensorEntity):
 
     @property
     def is_on(self):
-        """État du binary sensor."""
+        """Ã‰tat du binary sensor."""
         return self._child_data.get("has_pending_validation", False)
 
     @property
     def icon(self):
-        """Icône du sensor."""
+        """IcÃ´ne du sensor."""
         if self.is_on:
             return "mdi:bell-alert"
         else:
@@ -397,13 +397,13 @@ class ChildHasPendingValidationSensor(BinarySensorEntity):
         }
 
     async def async_added_to_hass(self):
-        """S'abonne aux événements de mise à jour."""
+        """S'abonne aux Ã©vÃ©nements de mise Ã  jour."""
 
         @callback
         def handle_entity_update(event):
             """Handle entity update event."""
             if event.data.get("child_id") == self._child_id:
-                # Rafraîchir les données depuis hass.data
+                # RafraÃ®chir les donnÃ©es depuis hass.data
                 if DOMAIN in self.hass.data and "children_entities" in self.hass.data[DOMAIN]:
                     updated_data = self.hass.data[DOMAIN]["children_entities"].get(self._child_id)
                     if updated_data:
@@ -414,10 +414,10 @@ class ChildHasPendingValidationSensor(BinarySensorEntity):
         def handle_entity_delete(event):
             """Handle entity delete event."""
             if event.data.get("child_id") == self._child_id:
-                # Supprimer l'entité
+                # Supprimer l'entitÃ©
                 self.hass.async_create_task(self.async_remove())
 
-        # S'abonner aux événements
+        # S'abonner aux Ã©vÃ©nements
         self.async_on_remove(
             self.hass.bus.async_listen(f"{DOMAIN}_entity_update", handle_entity_update)
         )

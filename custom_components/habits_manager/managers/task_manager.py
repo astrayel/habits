@@ -24,7 +24,7 @@ from ..storage.storage_manager import StorageManager
 
 
 class TaskManager:
-    """Gère les tâches et leurs instances."""
+    """GÃ¨re les tÃ¢ches et leurs instances."""
 
     def __init__(self, storage: StorageManager):
         """Initialise le task manager.
@@ -35,21 +35,21 @@ class TaskManager:
         self.storage = storage
 
     async def create_task(self, task_data: dict) -> Task:
-        """Crée une nouvelle tâche.
+        """CrÃ©e une nouvelle tÃ¢che.
 
         Args:
-            task_data: Données de la tâche
+            task_data: DonnÃ©es de la tÃ¢che
 
         Returns:
-            Task créée
+            Task crÃ©Ã©e
 
         Raises:
-            ValidationError: Si les données sont invalides
+            ValidationError: Si les donnÃ©es sont invalides
         """
         # Valider
         validate_task_data(task_data)
 
-        # Générer ID
+        # GÃ©nÃ©rer ID
         task_id = f"task_{uuid.uuid4().hex[:8]}"
 
         # Construire le schedule
@@ -76,7 +76,7 @@ class TaskManager:
             coins=penalties_data.get("coins", 0),
         )
 
-        # Créer la tâche
+        # CrÃ©er la tÃ¢che
         task = Task(
             id=task_id,
             title=task_data["title"],
@@ -103,16 +103,16 @@ class TaskManager:
         return task
 
     async def get_task(self, task_id: str) -> Task:
-        """Récupère une tâche par son ID.
+        """RÃ©cupÃ¨re une tÃ¢che par son ID.
 
         Args:
-            task_id: ID de la tâche
+            task_id: ID de la tÃ¢che
 
         Returns:
             Task
 
         Raises:
-            TaskNotFoundError: Si la tâche n'existe pas
+            TaskNotFoundError: Si la tÃ¢che n'existe pas
         """
         tasks = await self.storage.load_tasks()
         for task in tasks:
@@ -122,36 +122,36 @@ class TaskManager:
         raise TaskNotFoundError(f"Task {task_id} not found")
 
     async def get_all_tasks(self) -> List[Task]:
-        """Récupère toutes les tâches.
+        """RÃ©cupÃ¨re toutes les tÃ¢ches.
 
         Returns:
-            Liste des tâches
+            Liste des tÃ¢ches
         """
         return await self.storage.load_tasks()
 
     async def update_task(self, task: Task) -> Task:
-        """Met à jour une tâche.
+        """Met Ã  jour une tÃ¢che.
 
         Args:
-            task: Tâche à mettre à jour
+            task: TÃ¢che Ã  mettre Ã  jour
 
         Returns:
-            Task mise à jour
+            Task mise Ã  jour
         """
         await self.storage.save_task(task)
         _LOGGER.debug(f"Task updated: {task.title} ({task.id})")
         return task
 
     async def delete_task(self, task_id: str) -> None:
-        """Supprime une tâche.
+        """Supprime une tÃ¢che.
 
         Args:
-            task_id: ID de la tâche
+            task_id: ID de la tÃ¢che
 
         Raises:
-            TaskNotFoundError: Si la tâche n'existe pas
+            TaskNotFoundError: Si la tÃ¢che n'existe pas
         """
-        # Vérifier que la tâche existe
+        # VÃ©rifier que la tÃ¢che existe
         await self.get_task(task_id)
 
         # Supprimer
@@ -159,13 +159,13 @@ class TaskManager:
         _LOGGER.info(f"Task deleted: {task_id}")
 
     async def generate_task_instances(self, target_date: date) -> List[TaskInstance]:
-        """Génère les instances de tâches pour une date donnée.
+        """GÃ©nÃ¨re les instances de tÃ¢ches pour une date donnÃ©e.
 
         Args:
-            target_date: Date pour laquelle générer les instances
+            target_date: Date pour laquelle gÃ©nÃ©rer les instances
 
         Returns:
-            Liste des instances créées
+            Liste des instances crÃ©Ã©es
         """
         tasks = await self.get_all_tasks()
         instances = []
@@ -174,19 +174,19 @@ class TaskManager:
             if not task.active:
                 continue
 
-            # Vérifier si la tâche doit être générée ce jour
+            # VÃ©rifier si la tÃ¢che doit Ãªtre gÃ©nÃ©rÃ©e ce jour
             if not self._should_generate_for_date(task, target_date):
                 continue
 
-            # Générer une instance pour chaque enfant assigné
+            # GÃ©nÃ©rer une instance pour chaque enfant assignÃ©
             for child_id in task.assigned_to:
-                # Vérifier si une instance existe déjà
+                # VÃ©rifier si une instance existe dÃ©jÃ 
                 existing_instances = await self.storage.load_task_instances(
                     child_id=child_id,
                     date_filter=target_date
                 )
 
-                # Vérifier si cette tâche a déjà une instance ce jour
+                # VÃ©rifier si cette tÃ¢che a dÃ©jÃ  une instance ce jour
                 already_exists = any(
                     inst.task_id == task.id for inst in existing_instances
                 )
@@ -195,7 +195,7 @@ class TaskManager:
                     _LOGGER.debug(f"Instance already exists for task {task.id}, child {child_id}, date {target_date}")
                     continue
 
-                # Créer l'instance
+                # CrÃ©er l'instance
                 instance_id = f"inst_{uuid.uuid4().hex[:8]}"
                 instance = TaskInstance(
                     id=instance_id,
@@ -214,14 +214,14 @@ class TaskManager:
         return instances
 
     def _should_generate_for_date(self, task: Task, target_date: date) -> bool:
-        """Vérifie si une tâche doit être générée pour une date.
+        """VÃ©rifie si une tÃ¢che doit Ãªtre gÃ©nÃ©rÃ©e pour une date.
 
         Args:
-            task: Tâche à vérifier
+            task: TÃ¢che Ã  vÃ©rifier
             target_date: Date cible
 
         Returns:
-            True si la tâche doit être générée
+            True si la tÃ¢che doit Ãªtre gÃ©nÃ©rÃ©e
         """
         schedule = task.schedule
 
@@ -247,7 +247,7 @@ class TaskManager:
             return target_date.day in schedule.days
 
         elif schedule.type == ScheduleType.SPECIFIC_DATE:
-            # Date spécifique
+            # Date spÃ©cifique
             if schedule.specific_date is None:
                 return False
 
@@ -256,7 +256,7 @@ class TaskManager:
         return False
 
     async def get_instances_for_child(self, child_id: str, target_date: date) -> List[TaskInstance]:
-        """Récupère les instances de tâches d'un enfant pour une date.
+        """RÃ©cupÃ¨re les instances de tÃ¢ches d'un enfant pour une date.
 
         Args:
             child_id: ID de l'enfant
@@ -271,13 +271,13 @@ class TaskManager:
         )
 
     async def mark_completed(self, instance_id: str) -> TaskInstance:
-        """Marque une instance comme complétée (en attente de validation).
+        """Marque une instance comme complÃ©tÃ©e (en attente de validation).
 
         Args:
             instance_id: ID de l'instance
 
         Returns:
-            TaskInstance mise à jour
+            TaskInstance mise Ã  jour
 
         Raises:
             TaskNotFoundError: Si l'instance n'existe pas
@@ -294,7 +294,7 @@ class TaskManager:
         if instance is None:
             raise TaskNotFoundError(f"Task instance {instance_id} not found")
 
-        # Marquer comme complétée en attente
+        # Marquer comme complÃ©tÃ©e en attente
         instance.status = TaskInstanceStatus.COMPLETED_WAITING
         instance.completed_at = datetime.now()
 
@@ -306,13 +306,13 @@ class TaskManager:
         return instance
 
     async def check_failed_tasks(self, check_date: date = None) -> List[TaskInstance]:
-        """Vérifie les tâches échouées (heure limite dépassée).
+        """VÃ©rifie les tÃ¢ches Ã©chouÃ©es (heure limite dÃ©passÃ©e).
 
         Args:
-            check_date: Date à vérifier (par défaut aujourd'hui)
+            check_date: Date Ã  vÃ©rifier (par dÃ©faut aujourd'hui)
 
         Returns:
-            Liste des instances passées en statut FAILED
+            Liste des instances passÃ©es en statut FAILED
         """
         if check_date is None:
             check_date = date.today()
@@ -327,16 +327,16 @@ class TaskManager:
             if instance.status != TaskInstanceStatus.PENDING:
                 continue
 
-            # Récupérer la tâche pour voir l'heure limite
+            # RÃ©cupÃ©rer la tÃ¢che pour voir l'heure limite
             try:
                 task = await self.get_task(instance.task_id)
             except TaskNotFoundError:
                 _LOGGER.warning(f"Task {instance.task_id} not found for instance {instance.id}")
                 continue
 
-            # Vérifier si l'heure limite est dépassée
+            # VÃ©rifier si l'heure limite est dÃ©passÃ©e
             if task.schedule.time is None:
-                # Pas d'heure limite spécifique
+                # Pas d'heure limite spÃ©cifique
                 continue
 
             # Parser l'heure limite
@@ -349,7 +349,7 @@ class TaskManager:
 
             # Comparer avec maintenant
             if now > limit_time:
-                # Tâche échouée
+                # TÃ¢che Ã©chouÃ©e
                 instance.status = TaskInstanceStatus.FAILED
                 await self.storage.save_task_instance(instance)
                 failed_instances.append(instance)
@@ -359,7 +359,7 @@ class TaskManager:
         return failed_instances
 
     async def get_instance(self, instance_id: str) -> TaskInstance:
-        """Récupère une instance par son ID.
+        """RÃ©cupÃ¨re une instance par son ID.
 
         Args:
             instance_id: ID de l'instance

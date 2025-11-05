@@ -7,14 +7,14 @@ from ..core.models import Task, Habit, Child, StreakBonusType
 
 
 class PointsCalculator:
-    """Calcule les points, pièces et expérience."""
+    """Calcule les points, piÃ¨ces et expÃ©rience."""
 
     @staticmethod
     def calculate_task_rewards(task: Task) -> Dict[str, int]:
-        """Calcule les récompenses d'une tâche.
+        """Calcule les rÃ©compenses d'une tÃ¢che.
 
         Args:
-            task: Tâche dont calculer les récompenses
+            task: TÃ¢che dont calculer les rÃ©compenses
 
         Returns:
             Dictionnaire avec points, coins, experience
@@ -27,14 +27,14 @@ class PointsCalculator:
 
     @staticmethod
     def calculate_habit_rewards(habit: Habit, streak: int) -> Dict[str, int]:
-        """Calcule les récompenses d'une habitude avec bonus streak.
+        """Calcule les rÃ©compenses d'une habitude avec bonus streak.
 
         Args:
-            habit: Habitude dont calculer les récompenses
+            habit: Habitude dont calculer les rÃ©compenses
             streak: Streak actuel de l'enfant pour cette habitude
 
         Returns:
-            Dictionnaire avec points, coins, experience (avec bonus appliqué)
+            Dictionnaire avec points, coins, experience (avec bonus appliquÃ©)
         """
         base_points = habit.rewards.points
         base_coins = habit.rewards.coins
@@ -53,7 +53,7 @@ class PointsCalculator:
             # Exemple: streak de 7 jours avec multiplier 0.1 = +70% = x1.7
             multiplier = 1 + (streak * habit.rewards.streak_bonus.multiplier)
         else:
-            # Bonus fixe: toujours le même bonus si streak > 0
+            # Bonus fixe: toujours le mÃªme bonus si streak > 0
             multiplier = 1 + habit.rewards.streak_bonus.multiplier if streak > 0 else 1
 
         return {
@@ -64,14 +64,14 @@ class PointsCalculator:
 
     @staticmethod
     def apply_rewards(child: Child, rewards: Dict[str, int]) -> Child:
-        """Applique les récompenses à un enfant.
+        """Applique les rÃ©compenses Ã  un enfant.
 
         Args:
-            child: Enfant à qui appliquer les récompenses
+            child: Enfant Ã  qui appliquer les rÃ©compenses
             rewards: Dictionnaire avec points, coins, experience
 
         Returns:
-            Child avec les récompenses appliquées
+            Child avec les rÃ©compenses appliquÃ©es
         """
         child.points += rewards.get("points", 0)
         child.coins += rewards.get("coins", 0)
@@ -80,48 +80,48 @@ class PointsCalculator:
 
     @staticmethod
     def apply_penalties(child: Child, penalties: Dict[str, int]) -> Child:
-        """Applique les pénalités à un enfant.
+        """Applique les pÃ©nalitÃ©s Ã  un enfant.
 
-        Les valeurs dans penalties sont déjà négatives.
+        Les valeurs dans penalties sont dÃ©jÃ  nÃ©gatives.
         Ne permet pas de descendre en dessous de 0.
 
         Args:
-            child: Enfant à qui appliquer les pénalités
-            penalties: Dictionnaire avec points, coins (valeurs négatives)
+            child: Enfant Ã  qui appliquer les pÃ©nalitÃ©s
+            penalties: Dictionnaire avec points, coins (valeurs nÃ©gatives)
 
         Returns:
-            Child avec les pénalités appliquées
+            Child avec les pÃ©nalitÃ©s appliquÃ©es
         """
-        # Les pénalités sont négatives, donc on les ajoute
+        # Les pÃ©nalitÃ©s sont nÃ©gatives, donc on les ajoute
         child.points = max(0, child.points + penalties.get("points", 0))
         child.coins = max(0, child.coins + penalties.get("coins", 0))
         return child
 
     @staticmethod
     def can_afford_reward(child: Child, cost_points: int, cost_coins: int) -> bool:
-        """Vérifie si un enfant peut se permettre une récompense.
+        """VÃ©rifie si un enfant peut se permettre une rÃ©compense.
 
         Args:
             child: Enfant
-            cost_points: Coût en points
-            cost_coins: Coût en pièces
+            cost_points: CoÃ»t en points
+            cost_coins: CoÃ»t en piÃ¨ces
 
         Returns:
-            True si l'enfant a assez de points et de pièces
+            True si l'enfant a assez de points et de piÃ¨ces
         """
         return child.points >= cost_points and child.coins >= cost_coins
 
     @staticmethod
     def deduct_cost(child: Child, cost_points: int, cost_coins: int) -> Child:
-        """Déduit le coût d'une récompense ou cosmétique.
+        """DÃ©duit le coÃ»t d'une rÃ©compense ou cosmÃ©tique.
 
         Args:
             child: Enfant
-            cost_points: Coût en points
-            cost_coins: Coût en pièces
+            cost_points: CoÃ»t en points
+            cost_coins: CoÃ»t en piÃ¨ces
 
         Returns:
-            Child avec le coût déduit
+            Child avec le coÃ»t dÃ©duit
 
         Note:
             Assurez-vous d'appeler can_afford_reward() avant !

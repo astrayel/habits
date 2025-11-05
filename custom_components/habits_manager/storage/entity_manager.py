@@ -10,7 +10,7 @@ from ..core.models import Child
 
 
 class EntityManager:
-    """Gère les entités Home Assistant pour chaque enfant."""
+    """GÃ¨re les entitÃ©s Home Assistant pour chaque enfant."""
 
     def __init__(self, hass: HomeAssistant):
         """Initialise l'entity manager.
@@ -19,12 +19,12 @@ class EntityManager:
             hass: Instance Home Assistant
         """
         self.hass = hass
-        self._entities = {}  # child_id -> liste d'entités
+        self._entities = {}  # child_id -> liste d'entitÃ©s
 
     async def create_child_entities(self, child: Child) -> None:
-        """Crée toutes les entités pour un enfant.
+        """CrÃ©e toutes les entitÃ©s pour un enfant.
 
-        Créé les sensors suivants:
+        CrÃ©Ã© les sensors suivants:
         - sensor.habits_child_XXX_points
         - sensor.habits_child_XXX_coins
         - sensor.habits_child_XXX_level
@@ -35,14 +35,14 @@ class EntityManager:
         - binary_sensor.habits_child_XXX_has_pending_validation
 
         Args:
-            child: Enfant pour lequel créer les entités
+            child: Enfant pour lequel crÃ©er les entitÃ©s
         """
         _LOGGER.info(f"Creating entities for child {child.name} ({child.id})")
 
-        # Les entités seront créées via sensor.py
-        # Cette méthode prépare les données pour sensor.py
+        # Les entitÃ©s seront crÃ©Ã©es via sensor.py
+        # Cette mÃ©thode prÃ©pare les donnÃ©es pour sensor.py
 
-        # Stocker les données de l'enfant dans hass.data pour que sensor.py puisse y accéder
+        # Stocker les donnÃ©es de l'enfant dans hass.data pour que sensor.py puisse y accÃ©der
         if DOMAIN not in self.hass.data:
             self.hass.data[DOMAIN] = {}
 
@@ -56,19 +56,19 @@ class EntityManager:
             "level": child.level,
             "experience": child.experience,
             "experience_to_next_level": child.experience_to_next_level,
-            "tasks_pending": 0,  # Sera mis à jour par les managers
-            "tasks_waiting": 0,  # Sera mis à jour par les managers
-            "longest_streak": 0,  # Sera mis à jour par les managers
-            "has_pending_validation": False,  # Sera mis à jour par les managers
+            "tasks_pending": 0,  # Sera mis Ã  jour par les managers
+            "tasks_waiting": 0,  # Sera mis Ã  jour par les managers
+            "longest_streak": 0,  # Sera mis Ã  jour par les managers
+            "has_pending_validation": False,  # Sera mis Ã  jour par les managers
         }
 
         _LOGGER.debug(f"Entity data prepared for child {child.id}")
 
     async def update_child_entities(self, child: Child) -> None:
-        """Met à jour les entités d'un enfant.
+        """Met Ã  jour les entitÃ©s d'un enfant.
 
         Args:
-            child: Enfant dont les entités doivent être mises à jour
+            child: Enfant dont les entitÃ©s doivent Ãªtre mises Ã  jour
         """
         if DOMAIN not in self.hass.data:
             return
@@ -77,11 +77,11 @@ class EntityManager:
             return
 
         if child.id not in self.hass.data[DOMAIN]["children_entities"]:
-            # L'enfant n'a pas encore d'entités, les créer
+            # L'enfant n'a pas encore d'entitÃ©s, les crÃ©er
             await self.create_child_entities(child)
             return
 
-        # Mettre à jour les données
+        # Mettre Ã  jour les donnÃ©es
         entity_data = self.hass.data[DOMAIN]["children_entities"][child.id]
         entity_data["name"] = child.name
         entity_data["points"] = child.points
@@ -90,20 +90,20 @@ class EntityManager:
         entity_data["experience"] = child.experience
         entity_data["experience_to_next_level"] = child.experience_to_next_level
 
-        # Déclencher une mise à jour des entités
-        # Les entités sensor.py écouteront les changements dans hass.data
+        # DÃ©clencher une mise Ã  jour des entitÃ©s
+        # Les entitÃ©s sensor.py Ã©couteront les changements dans hass.data
         _LOGGER.debug(f"Updated entity data for child {child.id}")
 
-        # Émettre un événement pour notifier les entités
+        # Ã‰mettre un Ã©vÃ©nement pour notifier les entitÃ©s
         self.hass.bus.fire(f"{DOMAIN}_entity_update", {"child_id": child.id})
 
     async def update_task_counts(self, child_id: str, pending: int, waiting: int) -> None:
-        """Met à jour les compteurs de tâches pour un enfant.
+        """Met Ã  jour les compteurs de tÃ¢ches pour un enfant.
 
         Args:
             child_id: ID de l'enfant
-            pending: Nombre de tâches en attente
-            waiting: Nombre de tâches en attente de validation
+            pending: Nombre de tÃ¢ches en attente
+            waiting: Nombre de tÃ¢ches en attente de validation
         """
         if DOMAIN not in self.hass.data:
             return
@@ -119,11 +119,11 @@ class EntityManager:
         entity_data["tasks_waiting"] = waiting
         entity_data["has_pending_validation"] = waiting > 0
 
-        # Émettre un événement
+        # Ã‰mettre un Ã©vÃ©nement
         self.hass.bus.fire(f"{DOMAIN}_entity_update", {"child_id": child_id})
 
     async def update_longest_streak(self, child_id: str, longest_streak: int) -> None:
-        """Met à jour le plus long streak d'un enfant.
+        """Met Ã  jour le plus long streak d'un enfant.
 
         Args:
             child_id: ID de l'enfant
@@ -141,11 +141,11 @@ class EntityManager:
         entity_data = self.hass.data[DOMAIN]["children_entities"][child_id]
         entity_data["longest_streak"] = longest_streak
 
-        # Émettre un événement
+        # Ã‰mettre un Ã©vÃ©nement
         self.hass.bus.fire(f"{DOMAIN}_entity_update", {"child_id": child_id})
 
     async def delete_child_entities(self, child_id: str) -> None:
-        """Supprime les entités d'un enfant.
+        """Supprime les entitÃ©s d'un enfant.
 
         Args:
             child_id: ID de l'enfant
@@ -162,17 +162,17 @@ class EntityManager:
             del self.hass.data[DOMAIN]["children_entities"][child_id]
             _LOGGER.debug(f"Entity data deleted for child {child_id}")
 
-            # Émettre un événement pour notifier la suppression
+            # Ã‰mettre un Ã©vÃ©nement pour notifier la suppression
             self.hass.bus.fire(f"{DOMAIN}_entity_delete", {"child_id": child_id})
 
     def get_entity_data(self, child_id: str) -> dict:
-        """Récupère les données d'entités pour un enfant.
+        """RÃ©cupÃ¨re les donnÃ©es d'entitÃ©s pour un enfant.
 
         Args:
             child_id: ID de l'enfant
 
         Returns:
-            Dictionnaire avec les données ou None
+            Dictionnaire avec les donnÃ©es ou None
         """
         if DOMAIN not in self.hass.data:
             return None

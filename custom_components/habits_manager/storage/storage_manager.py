@@ -35,20 +35,20 @@ from ..core.exceptions import StorageError
 
 
 class StorageManager:
-    """Gère le stockage persistant des données."""
+    """GÃ¨re le stockage persistant des donnÃ©es."""
 
     def __init__(self, hass: HomeAssistant, base_path: str = STORAGE_DIR):
         """Initialise le storage manager.
 
         Args:
             hass: Instance Home Assistant
-            base_path: Chemin du répertoire de stockage
+            base_path: Chemin du rÃ©pertoire de stockage
         """
         self.hass = hass
         self.base_path = hass.config.path(base_path)
 
     async def ensure_storage_dir(self) -> None:
-        """Crée le répertoire de stockage s'il n'existe pas."""
+        """Crï¿½e le rï¿½pertoire de stockage s'il n'existe pas."""
         try:
             os.makedirs(self.base_path, exist_ok=True)
             _LOGGER.info(f"Storage directory ensured at {self.base_path}")
@@ -63,10 +63,10 @@ class StorageManager:
             filename: Nom du fichier (sans chemin)
 
         Returns:
-            Dictionnaire avec les données, ou {} si le fichier n'existe pas
+            Dictionnaire avec les donnï¿½es, ou {} si le fichier n'existe pas
 
         Raises:
-            StorageError: Si la lecture échoue
+            StorageError: Si la lecture ï¿½choue
         """
         file_path = os.path.join(self.base_path, filename)
 
@@ -91,10 +91,10 @@ class StorageManager:
 
         Args:
             filename: Nom du fichier (sans chemin)
-            data: Données à sauvegarder
+            data: Donnï¿½es ï¿½ sauvegarder
 
         Raises:
-            StorageError: Si l'écriture échoue
+            StorageError: Si l'ï¿½criture ï¿½choue
         """
         file_path = os.path.join(self.base_path, filename)
 
@@ -164,7 +164,7 @@ class StorageManager:
         """Sauvegarde un enfant.
 
         Args:
-            child: Enfant à sauvegarder
+            child: Enfant ï¿½ sauvegarder
         """
         data = await self.load_json(FILE_CHILDREN)
         child.updated_at = datetime.now()
@@ -183,13 +183,13 @@ class StorageManager:
             await self.save_json(FILE_CHILDREN, data)
 
     async def get_child(self, child_id: str) -> Optional[Child]:
-        """Récupère un enfant par son ID.
+        """Rï¿½cupï¿½re un enfant par son ID.
 
         Args:
             child_id: ID de l'enfant
 
         Returns:
-            Child ou None si non trouvé
+            Child ou None si non trouvï¿½
         """
         children = await self.load_children()
         for child in children:
@@ -202,10 +202,10 @@ class StorageManager:
     # ========================================================================
 
     async def load_tasks(self) -> List[Task]:
-        """Charge toutes les tâches.
+        """Charge toutes les tï¿½ches.
 
         Returns:
-            Liste des tâches
+            Liste des tï¿½ches
         """
         data = await self.load_json(FILE_TASKS)
         tasks = []
@@ -261,20 +261,20 @@ class StorageManager:
         return tasks
 
     async def save_task(self, task: Task) -> None:
-        """Sauvegarde une tâche.
+        """Sauvegarde une tï¿½che.
 
         Args:
-            task: Tâche à sauvegarder
+            task: Tï¿½che ï¿½ sauvegarder
         """
         data = await self.load_json(FILE_TASKS)
         data[task.id] = task.to_dict()
         await self.save_json(FILE_TASKS, data)
 
     async def delete_task(self, task_id: str) -> None:
-        """Supprime une tâche.
+        """Supprime une tï¿½che.
 
         Args:
-            task_id: ID de la tâche
+            task_id: ID de la tï¿½che
         """
         data = await self.load_json(FILE_TASKS)
         if task_id in data:
@@ -336,7 +336,7 @@ class StorageManager:
         """Sauvegarde une habitude.
 
         Args:
-            habit: Habitude à sauvegarder
+            habit: Habitude ï¿½ sauvegarder
         """
         data = await self.load_json(FILE_HABITS)
         data[habit.id] = habit.to_dict()
@@ -358,17 +358,17 @@ class StorageManager:
     # ========================================================================
 
     async def save_task_instance(self, instance: TaskInstance) -> None:
-        """Sauvegarde une instance de tâche.
+        """Sauvegarde une instance de tï¿½che.
 
         Args:
-            instance: Instance à sauvegarder
+            instance: Instance ï¿½ sauvegarder
         """
         data = await self.load_json(FILE_TASK_INSTANCES)
         data[instance.id] = instance.to_dict()
         await self.save_json(FILE_TASK_INSTANCES, data)
 
     async def load_task_instances(self, child_id: Optional[str] = None, date_filter: Optional[date] = None) -> List[TaskInstance]:
-        """Charge les instances de tâches avec filtres optionnels.
+        """Charge les instances de tï¿½ches avec filtres optionnels.
 
         Args:
             child_id: Filtrer par enfant (optionnel)
@@ -418,7 +418,7 @@ class StorageManager:
         """Sauvegarde un streak d'habitude.
 
         Args:
-            streak: Streak à sauvegarder
+            streak: Streak ï¿½ sauvegarder
         """
         data = await self.load_json(FILE_HABIT_STREAKS)
         data[streak.id] = streak.to_dict()

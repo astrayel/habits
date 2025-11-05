@@ -23,7 +23,7 @@ from ..services.streak_calculator import StreakCalculator
 
 
 class HabitManager:
-    """Gère les habitudes et leurs streaks."""
+    """GÃ¨re les habitudes et leurs streaks."""
 
     def __init__(self, storage: StorageManager):
         """Initialise le habit manager.
@@ -35,21 +35,21 @@ class HabitManager:
         self.streak_calc = StreakCalculator()
 
     async def create_habit(self, habit_data: dict) -> Habit:
-        """Crée une nouvelle habitude.
+        """CrÃ©e une nouvelle habitude.
 
         Args:
-            habit_data: Données de l'habitude
+            habit_data: DonnÃ©es de l'habitude
 
         Returns:
-            Habit créée
+            Habit crÃ©Ã©e
 
         Raises:
-            ValidationError: Si les données sont invalides
+            ValidationError: Si les donnÃ©es sont invalides
         """
         # Valider
         validate_habit_data(habit_data)
 
-        # Générer ID
+        # GÃ©nÃ©rer ID
         habit_id = f"habit_{uuid.uuid4().hex[:8]}"
 
         # Construire les rewards avec streak_bonus
@@ -69,7 +69,7 @@ class HabitManager:
             streak_bonus=streak_bonus,
         )
 
-        # Créer l'habitude
+        # CrÃ©er l'habitude
         habit = Habit(
             id=habit_id,
             title=habit_data["title"],
@@ -90,7 +90,7 @@ class HabitManager:
         return habit
 
     async def get_habit(self, habit_id: str) -> Habit:
-        """Récupère une habitude par son ID.
+        """RÃ©cupÃ¨re une habitude par son ID.
 
         Args:
             habit_id: ID de l'habitude
@@ -109,7 +109,7 @@ class HabitManager:
         raise HabitNotFoundError(f"Habit {habit_id} not found")
 
     async def get_all_habits(self) -> List[Habit]:
-        """Récupère toutes les habitudes.
+        """RÃ©cupÃ¨re toutes les habitudes.
 
         Returns:
             Liste des habitudes
@@ -117,13 +117,13 @@ class HabitManager:
         return await self.storage.load_habits()
 
     async def update_habit(self, habit: Habit) -> Habit:
-        """Met à jour une habitude.
+        """Met Ã  jour une habitude.
 
         Args:
-            habit: Habitude à mettre à jour
+            habit: Habitude Ã  mettre Ã  jour
 
         Returns:
-            Habit mise à jour
+            Habit mise Ã  jour
         """
         await self.storage.save_habit(habit)
         _LOGGER.debug(f"Habit updated: {habit.title} ({habit.id})")
@@ -138,7 +138,7 @@ class HabitManager:
         Raises:
             HabitNotFoundError: Si l'habitude n'existe pas
         """
-        # Vérifier que l'habitude existe
+        # VÃ©rifier que l'habitude existe
         await self.get_habit(habit_id)
 
         # Supprimer
@@ -146,30 +146,30 @@ class HabitManager:
         _LOGGER.info(f"Habit deleted: {habit_id}")
 
     async def record_completion(self, habit_id: str, child_id: str, completion_date: date = None) -> Tuple[HabitStreak, bool]:
-        """Enregistre la complétion d'une habitude.
+        """Enregistre la complÃ©tion d'une habitude.
 
         Args:
             habit_id: ID de l'habitude
             child_id: ID de l'enfant
-            completion_date: Date de complétion (par défaut aujourd'hui)
+            completion_date: Date de complÃ©tion (par dÃ©faut aujourd'hui)
 
         Returns:
-            Tuple (HabitStreak mis à jour, streak_increased)
+            Tuple (HabitStreak mis Ã  jour, streak_increased)
 
         Raises:
             HabitNotFoundError: Si l'habitude n'existe pas
         """
-        # Vérifier que l'habitude existe
+        # VÃ©rifier que l'habitude existe
         habit = await self.get_habit(habit_id)
 
         if completion_date is None:
             completion_date = date.today()
 
-        # Charger ou créer le streak
+        # Charger ou crÃ©er le streak
         streak = await self.get_streak(habit_id, child_id)
 
         if streak is None:
-            # Créer un nouveau streak
+            # CrÃ©er un nouveau streak
             streak_id = f"streak_{uuid.uuid4().hex[:8]}"
             streak = HabitStreak(
                 id=streak_id,
@@ -182,7 +182,7 @@ class HabitManager:
                 streak_history=[],
             )
 
-        # Vérifier si déjà complété aujourd'hui
+        # VÃ©rifier si dÃ©jÃ  complÃ©tÃ© aujourd'hui
         if self.streak_calc.is_completed_today(streak, completion_date):
             _LOGGER.warning(f"Habit {habit_id} already completed today by child {child_id}")
             return streak, False
@@ -190,14 +190,14 @@ class HabitManager:
         # Sauvegarder le streak avant
         old_streak = streak.current_streak
 
-        # Mettre à jour le streak
+        # Mettre Ã  jour le streak
         streak = self.streak_calc.update_streak(streak, completion_date)
 
-        # Ajouter à l'historique
+        # Ajouter Ã  l'historique
         history_entry = StreakHistoryEntry(date=completion_date, completed=True)
         streak.streak_history.append(history_entry)
 
-        # Garder seulement les 100 dernières entrées
+        # Garder seulement les 100 derniÃ¨res entrÃ©es
         if len(streak.streak_history) > 100:
             streak.streak_history = streak.streak_history[-100:]
 
@@ -211,19 +211,19 @@ class HabitManager:
         return streak, streak_increased
 
     async def get_streak(self, habit_id: str, child_id: str) -> Optional[HabitStreak]:
-        """Récupère le streak d'une habitude pour un enfant.
+        """RÃ©cupÃ¨re le streak d'une habitude pour un enfant.
 
         Args:
             habit_id: ID de l'habitude
             child_id: ID de l'enfant
 
         Returns:
-            HabitStreak ou None si jamais commencé
+            HabitStreak ou None si jamais commencÃ©
         """
         return await self.storage.load_habit_streak(habit_id, child_id)
 
     async def calculate_streak_bonus(self, habit_id: str, child_id: str) -> dict:
-        """Calcule les récompenses avec bonus de streak.
+        """Calcule les rÃ©compenses avec bonus de streak.
 
         Args:
             habit_id: ID de l'habitude
@@ -240,20 +240,20 @@ class HabitManager:
 
         current_streak = 0 if streak is None else streak.current_streak
 
-        # Utiliser le PointsCalculator pour calculer les récompenses
+        # Utiliser le PointsCalculator pour calculer les rÃ©compenses
         from ..services.points_calculator import PointsCalculator
         calc = PointsCalculator()
 
         return calc.calculate_habit_rewards(habit, current_streak)
 
     async def check_streak_breaks(self, check_date: date = None) -> List[Tuple[HabitStreak, Habit]]:
-        """Vérifie les streaks cassés (habitudes non faites).
+        """VÃ©rifie les streaks cassÃ©s (habitudes non faites).
 
         Args:
-            check_date: Date de vérification (par défaut aujourd'hui)
+            check_date: Date de vÃ©rification (par dÃ©faut aujourd'hui)
 
         Returns:
-            Liste de tuples (streak_cassé, habitude)
+            Liste de tuples (streak_cassÃ©, habitude)
         """
         if check_date is None:
             check_date = date.today()
@@ -265,15 +265,15 @@ class HabitManager:
             if not habit.active:
                 continue
 
-            # Pour chaque enfant assigné
+            # Pour chaque enfant assignÃ©
             for child_id in habit.assigned_to:
                 streak = await self.get_streak(habit.id, child_id)
 
                 if streak is None:
-                    # Jamais commencé, pas de streak à casser
+                    # Jamais commencÃ©, pas de streak Ã  casser
                     continue
 
-                # Vérifier si le streak est cassé
+                # VÃ©rifier si le streak est cassÃ©
                 if self.streak_calc.check_streak_broken(streak, habit, check_date):
                     # Reset le streak
                     streak = self.streak_calc.reset_streak(streak)
@@ -286,7 +286,7 @@ class HabitManager:
         return broken_streaks
 
     async def get_habits_for_child(self, child_id: str) -> List[Habit]:
-        """Récupère toutes les habitudes assignées à un enfant.
+        """RÃ©cupÃ¨re toutes les habitudes assignÃ©es Ã  un enfant.
 
         Args:
             child_id: ID de l'enfant
@@ -298,7 +298,7 @@ class HabitManager:
         return [h for h in all_habits if h.active and child_id in h.assigned_to]
 
     async def get_child_longest_streak(self, child_id: str) -> int:
-        """Récupère le plus long streak de toutes les habitudes d'un enfant.
+        """RÃ©cupÃ¨re le plus long streak de toutes les habitudes d'un enfant.
 
         Args:
             child_id: ID de l'enfant

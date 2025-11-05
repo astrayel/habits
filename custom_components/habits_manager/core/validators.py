@@ -4,207 +4,207 @@ from .exceptions import ValidationError
 
 
 def validate_child_data(data: Dict[str, Any]) -> bool:
-    """Valide les données d'un enfant.
+    """Valide les donnÃ©es d'un enfant.
 
     Args:
-        data: Dictionnaire contenant les données de l'enfant
+        data: Dictionnaire contenant les donnÃ©es de l'enfant
 
     Returns:
-        True si les données sont valides
+        True si les donnÃ©es sont valides
 
     Raises:
-        ValidationError: Si les données sont invalides
+        ValidationError: Si les donnÃ©es sont invalides
     """
     if not data.get("name"):
         raise ValidationError("Le nom de l'enfant est requis")
 
     if len(data["name"]) > 50:
-        raise ValidationError("Le nom ne peut pas dépasser 50 caractères")
+        raise ValidationError("Le nom ne peut pas dÃ©passer 50 caractÃ¨res")
 
     if not data.get("person_entity"):
-        raise ValidationError("L'entité person est requise")
+        raise ValidationError("L'entitÃ© person est requise")
 
     if not data["person_entity"].startswith("person."):
-        raise ValidationError("L'entité person doit commencer par 'person.'")
+        raise ValidationError("L'entitÃ© person doit commencer par 'person.'")
 
     return True
 
 
 def validate_task_data(data: Dict[str, Any]) -> bool:
-    """Valide les données d'une tâche.
+    """Valide les donnÃ©es d'une tÃ¢che.
 
     Args:
-        data: Dictionnaire contenant les données de la tâche
+        data: Dictionnaire contenant les donnÃ©es de la tÃ¢che
 
     Returns:
-        True si les données sont valides
+        True si les donnÃ©es sont valides
 
     Raises:
-        ValidationError: Si les données sont invalides
+        ValidationError: Si les donnÃ©es sont invalides
     """
     if not data.get("title"):
-        raise ValidationError("Le titre de la tâche est requis")
+        raise ValidationError("Le titre de la tÃ¢che est requis")
 
     if len(data["title"]) > 100:
-        raise ValidationError("Le titre ne peut pas dépasser 100 caractères")
+        raise ValidationError("Le titre ne peut pas dÃ©passer 100 caractÃ¨res")
 
     if not data.get("assigned_to") or len(data["assigned_to"]) == 0:
-        raise ValidationError("La tâche doit être assignée à au moins un enfant")
+        raise ValidationError("La tÃ¢che doit Ãªtre assignÃ©e Ã  au moins un enfant")
 
-    # Valider la difficulté
+    # Valider la difficultÃ©
     difficulty = data.get("difficulty", 1)
     if difficulty < 1 or difficulty > 3:
-        raise ValidationError("La difficulté doit être entre 1 et 3")
+        raise ValidationError("La difficultÃ© doit Ãªtre entre 1 et 3")
 
-    # Valider la durée estimée
+    # Valider la durÃ©e estimÃ©e
     duration = data.get("estimated_duration", 10)
     if duration <= 0:
-        raise ValidationError("La durée estimée doit être positive")
+        raise ValidationError("La durÃ©e estimÃ©e doit Ãªtre positive")
 
-    # Valider les récompenses
+    # Valider les rÃ©compenses
     if "rewards" in data:
         rewards = data["rewards"]
         if rewards.get("points", 0) < 0:
-            raise ValidationError("Les points ne peuvent pas être négatifs")
+            raise ValidationError("Les points ne peuvent pas Ãªtre nÃ©gatifs")
         if rewards.get("coins", 0) < 0:
-            raise ValidationError("Les pièces ne peuvent pas être négatives")
+            raise ValidationError("Les piÃ¨ces ne peuvent pas Ãªtre nÃ©gatives")
         if rewards.get("experience", 0) < 0:
-            raise ValidationError("L'expérience ne peut pas être négative")
+            raise ValidationError("L'expÃ©rience ne peut pas Ãªtre nÃ©gative")
 
-    # Valider les pénalités (doivent être <= 0)
+    # Valider les pÃ©nalitÃ©s (doivent Ãªtre <= 0)
     if "penalties" in data:
         penalties = data["penalties"]
         if penalties.get("points", 0) > 0:
-            raise ValidationError("Les pénalités de points doivent être négatives ou nulles")
+            raise ValidationError("Les pÃ©nalitÃ©s de points doivent Ãªtre nÃ©gatives ou nulles")
         if penalties.get("coins", 0) > 0:
-            raise ValidationError("Les pénalités de pièces doivent être négatives ou nulles")
+            raise ValidationError("Les pÃ©nalitÃ©s de piÃ¨ces doivent Ãªtre nÃ©gatives ou nulles")
 
     return True
 
 
 def validate_habit_data(data: Dict[str, Any]) -> bool:
-    """Valide les données d'une habitude.
+    """Valide les donnÃ©es d'une habitude.
 
     Args:
-        data: Dictionnaire contenant les données de l'habitude
+        data: Dictionnaire contenant les donnÃ©es de l'habitude
 
     Returns:
-        True si les données sont valides
+        True si les donnÃ©es sont valides
 
     Raises:
-        ValidationError: Si les données sont invalides
+        ValidationError: Si les donnÃ©es sont invalides
     """
     if not data.get("title"):
         raise ValidationError("Le titre de l'habitude est requis")
 
     if len(data["title"]) > 100:
-        raise ValidationError("Le titre ne peut pas dépasser 100 caractères")
+        raise ValidationError("Le titre ne peut pas dÃ©passer 100 caractÃ¨res")
 
     if not data.get("frequency"):
-        raise ValidationError("La fréquence est requise")
+        raise ValidationError("La frÃ©quence est requise")
 
     if data["frequency"] not in ["daily", "weekly", "monthly"]:
-        raise ValidationError("Fréquence invalide (daily, weekly, ou monthly)")
+        raise ValidationError("FrÃ©quence invalide (daily, weekly, ou monthly)")
 
-    # Valider les récompenses
+    # Valider les rÃ©compenses
     if "rewards" in data:
         rewards = data["rewards"]
         if rewards.get("points", 0) < 0:
-            raise ValidationError("Les points ne peuvent pas être négatifs")
+            raise ValidationError("Les points ne peuvent pas Ãªtre nÃ©gatifs")
         if rewards.get("coins", 0) < 0:
-            raise ValidationError("Les pièces ne peuvent pas être négatives")
+            raise ValidationError("Les piÃ¨ces ne peuvent pas Ãªtre nÃ©gatives")
         if rewards.get("experience", 0) < 0:
-            raise ValidationError("L'expérience ne peut pas être négative")
+            raise ValidationError("L'expÃ©rience ne peut pas Ãªtre nÃ©gative")
 
         # Valider le streak bonus
         if "streak_bonus" in rewards:
             bonus = rewards["streak_bonus"]
             if bonus.get("multiplier", 0) < 0:
-                raise ValidationError("Le multiplicateur de streak ne peut pas être négatif")
+                raise ValidationError("Le multiplicateur de streak ne peut pas Ãªtre nÃ©gatif")
 
     return True
 
 
 def validate_reward_data(data: Dict[str, Any]) -> bool:
-    """Valide les données d'une récompense.
+    """Valide les donnÃ©es d'une rÃ©compense.
 
     Args:
-        data: Dictionnaire contenant les données de la récompense
+        data: Dictionnaire contenant les donnÃ©es de la rÃ©compense
 
     Returns:
-        True si les données sont valides
+        True si les donnÃ©es sont valides
 
     Raises:
-        ValidationError: Si les données sont invalides
+        ValidationError: Si les donnÃ©es sont invalides
     """
     if not data.get("title"):
-        raise ValidationError("Le titre de la récompense est requis")
+        raise ValidationError("Le titre de la rÃ©compense est requis")
 
     if len(data["title"]) > 100:
-        raise ValidationError("Le titre ne peut pas dépasser 100 caractères")
+        raise ValidationError("Le titre ne peut pas dÃ©passer 100 caractÃ¨res")
 
     if not data.get("type"):
-        raise ValidationError("Le type de récompense est requis")
+        raise ValidationError("Le type de rÃ©compense est requis")
 
     if data["type"] not in ["screen_time", "meal_choice", "activity", "other"]:
-        raise ValidationError("Type de récompense invalide")
+        raise ValidationError("Type de rÃ©compense invalide")
 
-    # Valider les coûts
+    # Valider les coÃ»ts
     cost_points = data.get("cost_points", 0)
     cost_coins = data.get("cost_coins", 0)
 
     if cost_points < 0:
-        raise ValidationError("Le coût en points ne peut pas être négatif")
+        raise ValidationError("Le coÃ»t en points ne peut pas Ãªtre nÃ©gatif")
     if cost_coins < 0:
-        raise ValidationError("Le coût en pièces ne peut pas être négatif")
+        raise ValidationError("Le coÃ»t en piÃ¨ces ne peut pas Ãªtre nÃ©gatif")
 
-    # Au moins un coût doit être > 0
+    # Au moins un coÃ»t doit Ãªtre > 0
     if cost_points == 0 and cost_coins == 0:
-        raise ValidationError("La récompense doit avoir un coût (points ou pièces)")
+        raise ValidationError("La rÃ©compense doit avoir un coÃ»t (points ou piÃ¨ces)")
 
     # Valider le cooldown
     cooldown = data.get("cooldown_days", 0)
     if cooldown < 0:
-        raise ValidationError("Le cooldown ne peut pas être négatif")
+        raise ValidationError("Le cooldown ne peut pas Ãªtre nÃ©gatif")
 
     return True
 
 
 def validate_cosmetic_data(data: Dict[str, Any]) -> bool:
-    """Valide les données d'un cosmétique.
+    """Valide les donnÃ©es d'un cosmÃ©tique.
 
     Args:
-        data: Dictionnaire contenant les données du cosmétique
+        data: Dictionnaire contenant les donnÃ©es du cosmÃ©tique
 
     Returns:
-        True si les données sont valides
+        True si les donnÃ©es sont valides
 
     Raises:
-        ValidationError: Si les données sont invalides
+        ValidationError: Si les donnÃ©es sont invalides
     """
     if not data.get("name"):
-        raise ValidationError("Le nom du cosmétique est requis")
+        raise ValidationError("Le nom du cosmÃ©tique est requis")
 
     if len(data["name"]) > 100:
-        raise ValidationError("Le nom ne peut pas dépasser 100 caractères")
+        raise ValidationError("Le nom ne peut pas dÃ©passer 100 caractÃ¨res")
 
     if not data.get("category"):
-        raise ValidationError("La catégorie est requise")
+        raise ValidationError("La catÃ©gorie est requise")
 
     valid_categories = ["clothes", "accessory", "pet", "theme", "badge", "animation"]
     if data["category"] not in valid_categories:
-        raise ValidationError(f"Catégorie invalide (doit être parmi: {', '.join(valid_categories)})")
+        raise ValidationError(f"CatÃ©gorie invalide (doit Ãªtre parmi: {', '.join(valid_categories)})")
 
     if not data.get("rarity"):
-        raise ValidationError("La rareté est requise")
+        raise ValidationError("La raretÃ© est requise")
 
     if data["rarity"] not in ["common", "rare", "epic", "legendary"]:
-        raise ValidationError("Rareté invalide")
+        raise ValidationError("RaretÃ© invalide")
 
-    # Valider le coût
+    # Valider le coÃ»t
     cost = data.get("cost_coins", 0)
     if cost < 0:
-        raise ValidationError("Le coût ne peut pas être négatif")
+        raise ValidationError("Le coÃ»t ne peut pas Ãªtre nÃ©gatif")
 
     return True
 
@@ -222,16 +222,16 @@ def validate_points(points: int) -> bool:
         ValidationError: Si invalide
     """
     if not isinstance(points, int):
-        raise ValidationError("Les points doivent être un entier")
+        raise ValidationError("Les points doivent Ãªtre un entier")
 
     return True
 
 
 def validate_coins(coins: int) -> bool:
-    """Valide un nombre de pièces.
+    """Valide un nombre de piÃ¨ces.
 
     Args:
-        coins: Nombre de pièces
+        coins: Nombre de piÃ¨ces
 
     Returns:
         True si valide
@@ -240,7 +240,7 @@ def validate_coins(coins: int) -> bool:
         ValidationError: Si invalide
     """
     if not isinstance(coins, int):
-        raise ValidationError("Les pièces doivent être un entier")
+        raise ValidationError("Les piÃ¨ces doivent Ãªtre un entier")
 
     return True
 
@@ -258,9 +258,9 @@ def validate_level(level: int) -> bool:
         ValidationError: Si invalide
     """
     if not isinstance(level, int):
-        raise ValidationError("Le niveau doit être un entier")
+        raise ValidationError("Le niveau doit Ãªtre un entier")
 
     if level < 1:
-        raise ValidationError("Le niveau doit être au moins 1")
+        raise ValidationError("Le niveau doit Ãªtre au moins 1")
 
     return True
