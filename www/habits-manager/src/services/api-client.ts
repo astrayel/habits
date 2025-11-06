@@ -346,4 +346,136 @@ export class HabitsManagerAPI {
   async subscribeToUpdates(callback: (event: any) => void): Promise<() => void> {
     return this.hass.connection.subscribeEvents(callback, `${DOMAIN}_update`);
   }
+
+  // =====================================================
+  // Listing Services (fetch data via service calls)
+  // =====================================================
+
+  /**
+   * List all tasks with optional filters
+   */
+  async listTasks(filters?: {
+    assigned_to?: string;
+    type?: string;
+    category?: string;
+  }): Promise<any[]> {
+    // Since services don't directly return data, we listen for the event
+    return new Promise(async (resolve, reject) => {
+      let unsubscribe: (() => void) | null = null;
+
+      const timeout = setTimeout(() => {
+        if (unsubscribe) unsubscribe();
+        reject(new Error('Timeout waiting for list_tasks response'));
+      }, 5000);
+
+      unsubscribe = await this.hass.connection.subscribeEvents((event: any) => {
+        if (event.data.service === 'list_tasks') {
+          clearTimeout(timeout);
+          if (unsubscribe) unsubscribe();
+          resolve(event.data.data || []);
+        }
+      }, `${DOMAIN}_list_result`);
+
+      // Call the service
+      this.callService(SERVICES.LIST_TASKS, filters || {}).catch((err) => {
+        clearTimeout(timeout);
+        if (unsubscribe) unsubscribe();
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * List all habits with optional filters
+   */
+  async listHabits(filters?: {
+    assigned_to?: string;
+    frequency?: string;
+  }): Promise<any[]> {
+    return new Promise(async (resolve, reject) => {
+      let unsubscribe: (() => void) | null = null;
+
+      const timeout = setTimeout(() => {
+        if (unsubscribe) unsubscribe();
+        reject(new Error('Timeout waiting for list_habits response'));
+      }, 5000);
+
+      unsubscribe = await this.hass.connection.subscribeEvents((event: any) => {
+        if (event.data.service === 'list_habits') {
+          clearTimeout(timeout);
+          if (unsubscribe) unsubscribe();
+          resolve(event.data.data || []);
+        }
+      }, `${DOMAIN}_list_result`);
+
+      this.callService(SERVICES.LIST_HABITS, filters || {}).catch((err) => {
+        clearTimeout(timeout);
+        if (unsubscribe) unsubscribe();
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * List all rewards with optional filters
+   */
+  async listRewards(filters?: {
+    type?: string;
+    available_only?: boolean;
+  }): Promise<any[]> {
+    return new Promise(async (resolve, reject) => {
+      let unsubscribe: (() => void) | null = null;
+
+      const timeout = setTimeout(() => {
+        if (unsubscribe) unsubscribe();
+        reject(new Error('Timeout waiting for list_rewards response'));
+      }, 5000);
+
+      unsubscribe = await this.hass.connection.subscribeEvents((event: any) => {
+        if (event.data.service === 'list_rewards') {
+          clearTimeout(timeout);
+          if (unsubscribe) unsubscribe();
+          resolve(event.data.data || []);
+        }
+      }, `${DOMAIN}_list_result`);
+
+      this.callService(SERVICES.LIST_REWARDS, filters || {}).catch((err) => {
+        clearTimeout(timeout);
+        if (unsubscribe) unsubscribe();
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * List all cosmetics with optional filters
+   */
+  async listCosmetics(filters?: {
+    category?: string;
+    rarity?: string;
+    active_only?: boolean;
+  }): Promise<any[]> {
+    return new Promise(async (resolve, reject) => {
+      let unsubscribe: (() => void) | null = null;
+
+      const timeout = setTimeout(() => {
+        if (unsubscribe) unsubscribe();
+        reject(new Error('Timeout waiting for list_cosmetics response'));
+      }, 5000);
+
+      unsubscribe = await this.hass.connection.subscribeEvents((event: any) => {
+        if (event.data.service === 'list_cosmetics') {
+          clearTimeout(timeout);
+          if (unsubscribe) unsubscribe();
+          resolve(event.data.data || []);
+        }
+      }, `${DOMAIN}_list_result`);
+
+      this.callService(SERVICES.LIST_COSMETICS, filters || {}).catch((err) => {
+        clearTimeout(timeout);
+        if (unsubscribe) unsubscribe();
+        reject(err);
+      });
+    });
+  }
 }

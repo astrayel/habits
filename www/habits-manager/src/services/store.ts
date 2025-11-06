@@ -80,13 +80,33 @@ export class HabitsManagerStore {
   }
 
   /**
-   * Load all data from sensors
+   * Load all data from sensors and listing services
    */
   private async loadAllData(): Promise<void> {
+    // Load children from sensors (they exist as entities)
     this.state.children = this.api.getChildren();
-    this.state.cosmetics = this.api.getCosmetics();
-    // Note: tasks, taskInstances, habits, etc. would need backend sensor support
-    // For now, we only have children and cosmetics data from sensors
+
+    // Load tasks, habits, rewards, cosmetics from listing services
+    try {
+      const [tasks, habits, rewards, cosmetics] = await Promise.all([
+        this.api.listTasks(),
+        this.api.listHabits(),
+        this.api.listRewards(),
+        this.api.listCosmetics({ active_only: true }),
+      ]);
+
+      this.state.tasks = tasks;
+      this.state.habits = habits;
+      this.state.rewards = rewards;
+      this.state.cosmetics = cosmetics;
+    } catch (error) {
+      console.error('Error loading data from listing services:', error);
+      // Keep empty arrays on error - the UI will show "no items" messages
+      this.state.tasks = [];
+      this.state.habits = [];
+      this.state.rewards = [];
+      this.state.cosmetics = [];
+    }
   }
 
   /**
@@ -231,6 +251,14 @@ export class HabitsManagerStore {
   // Task Methods
   // =====================================================
 
+  public getTasks(): Task[] {
+    return this.state.tasks;
+  }
+
+  public getTask(taskId: string): Task | undefined {
+    return this.state.tasks.find((t) => t.id === taskId);
+  }
+
   public getTaskCounts(childId: string): { pending: number; waiting: number } {
     return this.api.getTaskCounts(childId);
   }
@@ -304,6 +332,14 @@ export class HabitsManagerStore {
   // Habit Methods
   // =====================================================
 
+  public getHabits(): Habit[] {
+    return this.state.habits;
+  }
+
+  public getHabit(habitId: string): Habit | undefined {
+    return this.state.habits.find((h) => h.id === habitId);
+  }
+
   public getHabitStats(childId: string): { count: number; longest_streak: number } {
     return this.api.getHabitStats(childId);
   }
@@ -351,6 +387,14 @@ export class HabitsManagerStore {
   // =====================================================
   // Reward Methods
   // =====================================================
+
+  public getRewards(): Reward[] {
+    return this.state.rewards;
+  }
+
+  public getReward(rewardId: string): Reward | undefined {
+    return this.state.rewards.find((r) => r.id === rewardId);
+  }
 
   public async createReward(data: any): Promise<void> {
     try {
