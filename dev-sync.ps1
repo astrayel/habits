@@ -65,39 +65,23 @@ $syncFrontend = $Frontend -or (-not $Backend)
 # ================================================================
 if ($syncBackend) {
     Write-Info "[2/4] Synchronisation du backend Python..."
+    Write-Host "  Transfert de tous les fichiers backend en une seule connexion..."
 
-    # Creer le dossier distant si necessaire
-    ssh $SshOptions "${User}@${HAHost}" "mkdir -p $RemotePath" 2>&1 | Out-Null
+    # Utiliser rsync pour transferer tous les fichiers en une seule connexion SSH
+    # Note: -e permet de passer les options SSH
+    $rsyncCmd = "rsync -avz -e `"ssh $SshOptions`" --exclude='__pycache__' --exclude='*.pyc' custom_components/habits_manager/ ${User}@${HAHost}:${RemotePath}/"
 
-    # Copier les fichiers Python
-    $files = @(
-        "custom_components/habits_manager/__init__.py",
-        "custom_components/habits_manager/const.py",
-        "custom_components/habits_manager/sensor.py",
-        "custom_components/habits_manager/manifest.json",
-        "custom_components/habits_manager/services.yaml"
-    )
+    Invoke-Expression $rsyncCmd | Out-Null
 
-    foreach ($file in $files) {
-        if (Test-Path $file) {
-            $filename = Split-Path $file -Leaf
-            Write-Host "  -> $filename"
-            scp $SshOptions -q "$file" "${User}@${HAHost}:${RemotePath}/" 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) {
-                Write-ErrorMsg "  [ERREUR] Erreur lors de la copie de $file"
-                exit 1
-            }
-        }
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "  [OK] Backend synchronise"
     }
-
-    # Copier le dossier managers
-    if (Test-Path "custom_components/habits_manager/managers") {
-        Write-Host "  -> managers/"
-        ssh $SshOptions "${User}@${HAHost}" "mkdir -p ${RemotePath}/managers" 2>&1 | Out-Null
-        scp $SshOptions -q -r "custom_components/habits_manager/managers/*" "${User}@${HAHost}:${RemotePath}/managers/" 2>&1 | Out-Null
+    else {
+        Write-ErrorMsg "  [ERREUR] Erreur lors de la synchronisation du backend"
+        Write-ErrorMsg "  Si rsync n'est pas installe, installez-le avec: winget install rsync"
+        Write-Info "  OU configurez l'authentification SSH par cle (voir SSH-QUICK-SETUP.md)"
+        exit 1
     }
-
-    Write-Success "  [OK] Backend synchronise"
 }
 
 # ================================================================
@@ -106,10 +90,7 @@ if ($syncBackend) {
 if ($syncFrontend) {
     Write-Info "[3/4] Synchronisation du frontend JavaScript..."
 
-    # Creer le dossier www distant
-    ssh $SshOptions "${User}@${HAHost}" "mkdir -p ${RemotePath}/www" 2>&1 | Out-Null
-
-    # Copier les bundles compiles
+    # Verifier que les fichiers JS existent
     $jsFiles = Get-ChildItem "custom_components/habits_manager/www/*.js" -ErrorAction SilentlyContinue
 
     if ($jsFiles.Count -eq 0) {
@@ -117,15 +98,20 @@ if ($syncFrontend) {
         Write-Warning "  Assurez-vous d'avoir compile le frontend avec 'npm run build'"
     }
     else {
-        foreach ($file in $jsFiles) {
-            Write-Host "  -> $($file.Name)"
-            scp $SshOptions -q "$($file.FullName)" "${User}@${HAHost}:${RemotePath}/www/" 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) {
-                Write-ErrorMsg "  [ERREUR] Erreur lors de la copie de $($file.Name)"
-                exit 1
-            }
+        Write-Host "  Transfert des bundles JS en une seule connexion..."
+
+        # Utiliser rsync pour transferer tous les fichiers JS en une seule connexion
+        $rsyncCmd = "rsync -avz -e `"ssh $SshOptions`" custom_components/habits_manager/www/ ${User}@${HAHost}:${RemotePath}/www/"
+
+        Invoke-Expression $rsyncCmd | Out-Null
+
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "  [OK] Frontend synchronise"
         }
-        Write-Success "  [OK] Frontend synchronise"
+        else {
+            Write-ErrorMsg "  [ERREUR] Erreur lors de la synchronisation du frontend"
+            exit 1
+        }
     }
 }
 
