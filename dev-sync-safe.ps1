@@ -17,6 +17,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Options SSH pour compatibilite
+$SshOptions = "-o MACs=hmac-sha2-512-etm@openssh.com"
+
 function Write-Success { Write-Host $args -ForegroundColor Green }
 function Write-Info { Write-Host $args -ForegroundColor Cyan }
 function Write-Warning { Write-Host $args -ForegroundColor Yellow }
@@ -30,7 +33,7 @@ Write-Host ""
 # Verifier SSH
 Write-Info "[1/4] Verification de la connexion SSH a $HAHost..."
 try {
-    $testConnection = ssh "${User}@${HAHost}" "echo 'OK'" 2>&1
+    $testConnection = ssh $SshOptions "${User}@${HAHost}" "echo 'OK'" 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "Connexion SSH echouee"
     }
@@ -54,7 +57,7 @@ $syncFrontend = $Frontend -or (-not $Backend)
 if ($syncBackend) {
     Write-Info "[2/4] Synchronisation du backend Python..."
 
-    ssh "${User}@${HAHost}" "mkdir -p $RemotePath" 2>&1 | Out-Null
+    ssh $SshOptions "${User}@${HAHost}" "mkdir -p $RemotePath" 2>&1 | Out-Null
 
     $files = @(
         "custom_components/habits_manager/__init__.py",
@@ -68,7 +71,7 @@ if ($syncBackend) {
         if (Test-Path $file) {
             $filename = Split-Path $file -Leaf
             Write-Host "  -> $filename"
-            scp -q "$file" "${User}@${HAHost}:${RemotePath}/" 2>&1 | Out-Null
+            scp $SshOptions -q "$file" "${User}@${HAHost}:${RemotePath}/" 2>&1 | Out-Null
             if ($LASTEXITCODE -ne 0) {
                 Write-ErrorMsg "  [ERREUR] Erreur lors de la copie de $file"
                 exit 1
@@ -78,8 +81,8 @@ if ($syncBackend) {
 
     if (Test-Path "custom_components/habits_manager/managers") {
         Write-Host "  -> managers/"
-        ssh "${User}@${HAHost}" "mkdir -p ${RemotePath}/managers" 2>&1 | Out-Null
-        scp -q -r "custom_components/habits_manager/managers/*" "${User}@${HAHost}:${RemotePath}/managers/" 2>&1 | Out-Null
+        ssh $SshOptions "${User}@${HAHost}" "mkdir -p ${RemotePath}/managers" 2>&1 | Out-Null
+        scp $SshOptions -q -r "custom_components/habits_manager/managers/*" "${User}@${HAHost}:${RemotePath}/managers/" 2>&1 | Out-Null
     }
 
     Write-Success "  [OK] Backend synchronise"
@@ -89,7 +92,7 @@ if ($syncBackend) {
 if ($syncFrontend) {
     Write-Info "[3/4] Synchronisation du frontend JavaScript..."
 
-    ssh "${User}@${HAHost}" "mkdir -p ${RemotePath}/www" 2>&1 | Out-Null
+    ssh $SshOptions "${User}@${HAHost}" "mkdir -p ${RemotePath}/www" 2>&1 | Out-Null
 
     $jsFiles = Get-ChildItem "custom_components/habits_manager/www/*.js" -ErrorAction SilentlyContinue
 
@@ -100,7 +103,7 @@ if ($syncFrontend) {
     else {
         foreach ($file in $jsFiles) {
             Write-Host "  -> $($file.Name)"
-            scp -q "$($file.FullName)" "${User}@${HAHost}:${RemotePath}/www/" 2>&1 | Out-Null
+            scp $SshOptions -q "$($file.FullName)" "${User}@${HAHost}:${RemotePath}/www/" 2>&1 | Out-Null
             if ($LASTEXITCODE -ne 0) {
                 Write-ErrorMsg "  [ERREUR] Erreur lors de la copie de $($file.Name)"
                 exit 1
@@ -122,7 +125,7 @@ if (-not $NoRestart) {
 
     if ($response -eq "O" -or $response -eq "o" -or $response -eq "Y" -or $response -eq "y") {
         Write-Info "  Envoi de la commande de redemarrage..."
-        ssh "${User}@${HAHost}" "ha core restart" 2>&1 | Out-Null
+        ssh $SshOptions "${User}@${HAHost}" "ha core restart" 2>&1 | Out-Null
         Write-Success "  [OK] Commande envoyee"
         Write-Info "  Home Assistant redemarre... (30-60 secondes)"
     }

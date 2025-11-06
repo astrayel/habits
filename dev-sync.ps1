@@ -15,12 +15,15 @@ param(
     [switch]$Backend,
     [switch]$Frontend,
     [switch]$NoRestart,
-    [string]$Host = "homeassistant",
+    [string]$HAHost = "homeassistant",
     [string]$User = "root",
     [string]$RemotePath = "/config/custom_components/habits_manager"
 )
 
 $ErrorActionPreference = "Stop"
+
+# Options SSH pour compatibilite
+$SshOptions = "-o MACs=hmac-sha2-512-etm@openssh.com"
 
 # Couleurs pour les messages
 function Write-Success { Write-Host $args -ForegroundColor Green }
@@ -34,16 +37,16 @@ Write-Info "==============================================================="
 Write-Host ""
 
 # Verifier que SSH fonctionne
-Write-Info "[1/4] Verification de la connexion SSH a $Host..."
+Write-Info "[1/4] Verification de la connexion SSH a $HAHost..."
 try {
-    $testConnection = ssh "${User}@${Host}" "echo 'OK'" 2>&1
+    $testConnection = ssh $SshOptions "${User}@${HAHost}" "echo 'OK'" 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "Connexion SSH echouee"
     }
     Write-Success "  [OK] Connexion SSH OK"
 }
 catch {
-    Write-ErrorMsg "  [ERREUR] Impossible de se connecter a $Host"
+    Write-ErrorMsg "  [ERREUR] Impossible de se connecter a $HAHost"
     Write-ErrorMsg "  Assurez-vous que:"
     Write-ErrorMsg "    1. SSH est active sur Home Assistant"
     Write-ErrorMsg "    2. Vous avez configure l'authentification par cle SSH"
@@ -64,7 +67,7 @@ if ($syncBackend) {
     Write-Info "[2/4] Synchronisation du backend Python..."
 
     # Creer le dossier distant si necessaire
-    ssh "${User}@${Host}" "mkdir -p $RemotePath" 2>&1 | Out-Null
+    ssh $SshOptions "${User}@${HAHost}" "mkdir -p $RemotePath" 2>&1 | Out-Null
 
     # Copier les fichiers Python
     $files = @(
@@ -79,7 +82,7 @@ if ($syncBackend) {
         if (Test-Path $file) {
             $filename = Split-Path $file -Leaf
             Write-Host "  -> $filename"
-            scp -q "$file" "${User}@${Host}:${RemotePath}/" 2>&1 | Out-Null
+            scp $SshOptions -q "$file" "${User}@${HAHost}:${RemotePath}/" 2>&1 | Out-Null
             if ($LASTEXITCODE -ne 0) {
                 Write-ErrorMsg "  [ERREUR] Erreur lors de la copie de $file"
                 exit 1
@@ -90,8 +93,8 @@ if ($syncBackend) {
     # Copier le dossier managers
     if (Test-Path "custom_components/habits_manager/managers") {
         Write-Host "  -> managers/"
-        ssh "${User}@${Host}" "mkdir -p ${RemotePath}/managers" 2>&1 | Out-Null
-        scp -q -r "custom_components/habits_manager/managers/*" "${User}@${Host}:${RemotePath}/managers/" 2>&1 | Out-Null
+        ssh $SshOptions "${User}@${HAHost}" "mkdir -p ${RemotePath}/managers" 2>&1 | Out-Null
+        scp $SshOptions -q -r "custom_components/habits_manager/managers/*" "${User}@${HAHost}:${RemotePath}/managers/" 2>&1 | Out-Null
     }
 
     Write-Success "  [OK] Backend synchronise"
@@ -104,7 +107,7 @@ if ($syncFrontend) {
     Write-Info "[3/4] Synchronisation du frontend JavaScript..."
 
     # Creer le dossier www distant
-    ssh "${User}@${Host}" "mkdir -p ${RemotePath}/www" 2>&1 | Out-Null
+    ssh $SshOptions "${User}@${HAHost}" "mkdir -p ${RemotePath}/www" 2>&1 | Out-Null
 
     # Copier les bundles compiles
     $jsFiles = Get-ChildItem "custom_components/habits_manager/www/*.js" -ErrorAction SilentlyContinue
@@ -116,7 +119,7 @@ if ($syncFrontend) {
     else {
         foreach ($file in $jsFiles) {
             Write-Host "  -> $($file.Name)"
-            scp -q "$($file.FullName)" "${User}@${Host}:${RemotePath}/www/" 2>&1 | Out-Null
+            scp $SshOptions -q "$($file.FullName)" "${User}@${HAHost}:${RemotePath}/www/" 2>&1 | Out-Null
             if ($LASTEXITCODE -ne 0) {
                 Write-ErrorMsg "  [ERREUR] Erreur lors de la copie de $($file.Name)"
                 exit 1
@@ -140,7 +143,7 @@ if (-not $NoRestart) {
 
     if ($response -eq "O" -or $response -eq "o" -or $response -eq "Y" -or $response -eq "y") {
         Write-Info "  Envoi de la commande de redemarrage..."
-        ssh "${User}@${Host}" "ha core restart" 2>&1 | Out-Null
+        ssh $SshOptions "${User}@${HAHost}" "ha core restart" 2>&1 | Out-Null
         Write-Success "  [OK] Commande de redemarrage envoyee"
         Write-Info "  Home Assistant redemarre... (attendez environ 30-60 secondes)"
     }
