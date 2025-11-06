@@ -400,23 +400,31 @@ export class HabitsManagerAPI {
     assigned_to?: string;
     frequency?: string;
   }): Promise<any[]> {
+    console.log('[API] Calling list_habits service with filters:', filters);
+
     return new Promise(async (resolve, reject) => {
       let unsubscribe: (() => void) | null = null;
 
       const timeout = setTimeout(() => {
+        console.error('[API] ✗ Timeout waiting for list_habits response (5s)');
         if (unsubscribe) unsubscribe();
         reject(new Error('Timeout waiting for list_habits response'));
       }, 5000);
 
+      console.log('[API] Subscribing to habits_manager_list_result events...');
       unsubscribe = await this.hass.connection.subscribeEvents((event: any) => {
+        console.log('[API] Received list_result event:', event.data);
         if (event.data.service === 'list_habits') {
+          console.log(`[API] ✓ list_habits responded with ${event.data.count} habits`);
           clearTimeout(timeout);
           if (unsubscribe) unsubscribe();
           resolve(event.data.data || []);
         }
       }, `${DOMAIN}_list_result`);
 
+      console.log('[API] Calling habits_manager.list_habits service...');
       this.callService(SERVICES.LIST_HABITS, filters || {}).catch((err) => {
+        console.error('[API] ✗ Error calling list_habits service:', err);
         clearTimeout(timeout);
         if (unsubscribe) unsubscribe();
         reject(err);
@@ -431,23 +439,31 @@ export class HabitsManagerAPI {
     type?: string;
     available_only?: boolean;
   }): Promise<any[]> {
+    console.log('[API] Calling list_rewards service with filters:', filters);
+
     return new Promise(async (resolve, reject) => {
       let unsubscribe: (() => void) | null = null;
 
       const timeout = setTimeout(() => {
+        console.error('[API] ✗ Timeout waiting for list_rewards response (5s)');
         if (unsubscribe) unsubscribe();
         reject(new Error('Timeout waiting for list_rewards response'));
       }, 5000);
 
+      console.log('[API] Subscribing to habits_manager_list_result events...');
       unsubscribe = await this.hass.connection.subscribeEvents((event: any) => {
+        console.log('[API] Received list_result event:', event.data);
         if (event.data.service === 'list_rewards') {
+          console.log(`[API] ✓ list_rewards responded with ${event.data.count} rewards`);
           clearTimeout(timeout);
           if (unsubscribe) unsubscribe();
           resolve(event.data.data || []);
         }
       }, `${DOMAIN}_list_result`);
 
+      console.log('[API] Calling habits_manager.list_rewards service...');
       this.callService(SERVICES.LIST_REWARDS, filters || {}).catch((err) => {
+        console.error('[API] ✗ Error calling list_rewards service:', err);
         clearTimeout(timeout);
         if (unsubscribe) unsubscribe();
         reject(err);
@@ -463,23 +479,31 @@ export class HabitsManagerAPI {
     rarity?: string;
     active_only?: boolean;
   }): Promise<any[]> {
+    console.log('[API] Calling list_cosmetics service with filters:', filters);
+
     return new Promise(async (resolve, reject) => {
       let unsubscribe: (() => void) | null = null;
 
       const timeout = setTimeout(() => {
+        console.error('[API] ✗ Timeout waiting for list_cosmetics response (5s)');
         if (unsubscribe) unsubscribe();
         reject(new Error('Timeout waiting for list_cosmetics response'));
       }, 5000);
 
+      console.log('[API] Subscribing to habits_manager_list_result events...');
       unsubscribe = await this.hass.connection.subscribeEvents((event: any) => {
+        console.log('[API] Received list_result event:', event.data);
         if (event.data.service === 'list_cosmetics') {
+          console.log(`[API] ✓ list_cosmetics responded with ${event.data.count} cosmetics`);
           clearTimeout(timeout);
           if (unsubscribe) unsubscribe();
           resolve(event.data.data || []);
         }
       }, `${DOMAIN}_list_result`);
 
+      console.log('[API] Calling habits_manager.list_cosmetics service...');
       this.callService(SERVICES.LIST_COSMETICS, filters || {}).catch((err) => {
+        console.error('[API] ✗ Error calling list_cosmetics service:', err);
         clearTimeout(timeout);
         if (unsubscribe) unsubscribe();
         reject(err);
