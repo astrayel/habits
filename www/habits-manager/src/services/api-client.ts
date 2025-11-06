@@ -352,6 +352,42 @@ export class HabitsManagerAPI {
   // =====================================================
 
   /**
+   * List all children
+   */
+  async listChildren(): Promise<any[]> {
+    console.log('[API] Calling list_children service...');
+
+    return new Promise(async (resolve, reject) => {
+      let unsubscribe: (() => void) | null = null;
+
+      const timeout = setTimeout(() => {
+        console.error('[API] ✗ Timeout waiting for list_children response (5s)');
+        if (unsubscribe) unsubscribe();
+        reject(new Error('Timeout waiting for list_children response'));
+      }, 5000);
+
+      console.log('[API] Subscribing to habits_manager_list_result events...');
+      unsubscribe = await this.hass.connection.subscribeEvents((event: any) => {
+        console.log('[API] Received list_result event:', event.data);
+        if (event.data.service === 'list_children') {
+          console.log(`[API] ✓ list_children responded with ${event.data.count} children`);
+          clearTimeout(timeout);
+          if (unsubscribe) unsubscribe();
+          resolve(event.data.data || []);
+        }
+      }, `${DOMAIN}_list_result`);
+
+      console.log('[API] Calling habits_manager.list_children service...');
+      this.callService(SERVICES.LIST_CHILDREN, {}).catch((err) => {
+        console.error('[API] ✗ Error calling list_children service:', err);
+        clearTimeout(timeout);
+        if (unsubscribe) unsubscribe();
+        reject(err);
+      });
+    });
+  }
+
+  /**
    * List all tasks with optional filters
    */
   async listTasks(filters?: {
