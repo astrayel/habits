@@ -1,14 +1,14 @@
 # ================================================================
-# Script de Synchronisation Développement - Habits Manager
+# Script de Synchronisation Developpement - Habits Manager
 # ================================================================
 # Ce script synchronise les fichiers locaux vers Home Assistant via SSH
-# et redémarre l'intégration pour appliquer les changements.
+# et redemarre l'integration pour appliquer les changements.
 #
 # Usage:
 #   .\dev-sync.ps1              # Sync tout
 #   .\dev-sync.ps1 -Backend     # Sync uniquement backend Python
 #   .\dev-sync.ps1 -Frontend    # Sync uniquement frontend JS
-#   .\dev-sync.ps1 -NoRestart   # Ne pas redémarrer HA
+#   .\dev-sync.ps1 -NoRestart   # Ne pas redemarrer HA
 # ================================================================
 
 param(
@@ -26,33 +26,34 @@ $ErrorActionPreference = "Stop"
 function Write-Success { Write-Host $args -ForegroundColor Green }
 function Write-Info { Write-Host $args -ForegroundColor Cyan }
 function Write-Warning { Write-Host $args -ForegroundColor Yellow }
-function Write-Error { Write-Host $args -ForegroundColor Red }
+function Write-ErrorMsg { Write-Host $args -ForegroundColor Red }
 
-Write-Info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-Write-Info "  Habits Manager - Synchronisation Développement"
-Write-Info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Write-Info "==============================================================="
+Write-Info "  Habits Manager - Synchronisation Developpement"
+Write-Info "==============================================================="
 Write-Host ""
 
-# Vérifier que SSH fonctionne
-Write-Info "🔍 Vérification de la connexion SSH à $Host..."
+# Verifier que SSH fonctionne
+Write-Info "[1/4] Verification de la connexion SSH a $Host..."
 try {
     $testConnection = ssh "${User}@${Host}" "echo 'OK'" 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw "Connexion SSH échouée"
+        throw "Connexion SSH echouee"
     }
-    Write-Success "✓ Connexion SSH OK"
-} catch {
-    Write-Error "✗ Impossible de se connecter à $Host"
-    Write-Error "  Assurez-vous que:"
-    Write-Error "  1. SSH est activé sur Home Assistant"
-    Write-Error "  2. Vous avez configuré l'authentification par clé SSH"
-    Write-Error "  3. L'hostname 'homeassistant' est correct"
+    Write-Success "  [OK] Connexion SSH OK"
+}
+catch {
+    Write-ErrorMsg "  [ERREUR] Impossible de se connecter a $Host"
+    Write-ErrorMsg "  Assurez-vous que:"
+    Write-ErrorMsg "    1. SSH est active sur Home Assistant"
+    Write-ErrorMsg "    2. Vous avez configure l'authentification par cle SSH"
+    Write-ErrorMsg "    3. L'hostname 'homeassistant' est correct"
     exit 1
 }
 
 Write-Host ""
 
-# Déterminer quoi synchroniser
+# Determiner quoi synchroniser
 $syncBackend = $Backend -or (-not $Frontend)
 $syncFrontend = $Frontend -or (-not $Backend)
 
@@ -60,10 +61,10 @@ $syncFrontend = $Frontend -or (-not $Backend)
 # Synchronisation Backend Python
 # ================================================================
 if ($syncBackend) {
-    Write-Info "📦 Synchronisation du backend Python..."
+    Write-Info "[2/4] Synchronisation du backend Python..."
 
-    # Créer le dossier distant si nécessaire
-    ssh "${User}@${Host}" "mkdir -p $RemotePath"
+    # Creer le dossier distant si necessaire
+    ssh "${User}@${Host}" "mkdir -p $RemotePath" 2>&1 | Out-Null
 
     # Copier les fichiers Python
     $files = @(
@@ -77,10 +78,10 @@ if ($syncBackend) {
     foreach ($file in $files) {
         if (Test-Path $file) {
             $filename = Split-Path $file -Leaf
-            Write-Host "  → $filename"
+            Write-Host "  -> $filename"
             scp -q "$file" "${User}@${Host}:${RemotePath}/" 2>&1 | Out-Null
             if ($LASTEXITCODE -ne 0) {
-                Write-Error "✗ Erreur lors de la copie de $file"
+                Write-ErrorMsg "  [ERREUR] Erreur lors de la copie de $file"
                 exit 1
             }
         }
@@ -88,75 +89,75 @@ if ($syncBackend) {
 
     # Copier le dossier managers
     if (Test-Path "custom_components/habits_manager/managers") {
-        Write-Host "  → managers/"
-        ssh "${User}@${Host}" "mkdir -p ${RemotePath}/managers"
+        Write-Host "  -> managers/"
+        ssh "${User}@${Host}" "mkdir -p ${RemotePath}/managers" 2>&1 | Out-Null
         scp -q -r "custom_components/habits_manager/managers/*" "${User}@${Host}:${RemotePath}/managers/" 2>&1 | Out-Null
     }
 
-    Write-Success "✓ Backend synchronisé"
+    Write-Success "  [OK] Backend synchronise"
 }
 
 # ================================================================
 # Synchronisation Frontend JavaScript
 # ================================================================
 if ($syncFrontend) {
-    Write-Info "📦 Synchronisation du frontend JavaScript..."
+    Write-Info "[3/4] Synchronisation du frontend JavaScript..."
 
-    # Créer le dossier www distant
-    ssh "${User}@${Host}" "mkdir -p ${RemotePath}/www"
+    # Creer le dossier www distant
+    ssh "${User}@${Host}" "mkdir -p ${RemotePath}/www" 2>&1 | Out-Null
 
-    # Copier les bundles compilés
+    # Copier les bundles compiles
     $jsFiles = Get-ChildItem "custom_components/habits_manager/www/*.js" -ErrorAction SilentlyContinue
 
     if ($jsFiles.Count -eq 0) {
-        Write-Warning "⚠ Aucun fichier JS trouvé dans custom_components/habits_manager/www/"
-        Write-Warning "  Assurez-vous d'avoir compilé le frontend avec 'npm run build'"
-    } else {
+        Write-Warning "  [ATTENTION] Aucun fichier JS trouve dans custom_components/habits_manager/www/"
+        Write-Warning "  Assurez-vous d'avoir compile le frontend avec 'npm run build'"
+    }
+    else {
         foreach ($file in $jsFiles) {
-            Write-Host "  → $($file.Name)"
+            Write-Host "  -> $($file.Name)"
             scp -q "$($file.FullName)" "${User}@${Host}:${RemotePath}/www/" 2>&1 | Out-Null
             if ($LASTEXITCODE -ne 0) {
-                Write-Error "✗ Erreur lors de la copie de $($file.Name)"
+                Write-ErrorMsg "  [ERREUR] Erreur lors de la copie de $($file.Name)"
                 exit 1
             }
         }
-        Write-Success "✓ Frontend synchronisé"
+        Write-Success "  [OK] Frontend synchronise"
     }
 }
 
 Write-Host ""
 
 # ================================================================
-# Redémarrage de Home Assistant
+# Redemarrage de Home Assistant
 # ================================================================
 if (-not $NoRestart) {
-    Write-Info "🔄 Redémarrage de l'intégration Habits Manager..."
-
-    # Option 1: Recharger uniquement les custom components (plus rapide mais pas toujours disponible)
-    # Option 2: Redémarrage complet de HA (plus lent mais garantit le chargement)
-
-    Write-Warning "⚠ Un redémarrage complet de Home Assistant est recommandé"
-    Write-Host "  Voulez-vous redémarrer maintenant ? (O/N)"
+    Write-Info "[4/4] Redemarrage de l'integration Habits Manager..."
+    Write-Host ""
+    Write-Warning "  Un redemarrage complet de Home Assistant est recommande"
+    Write-Host "  Voulez-vous redemarrer maintenant ? (O/N)"
     $response = Read-Host
 
     if ($response -eq "O" -or $response -eq "o" -or $response -eq "Y" -or $response -eq "y") {
-        Write-Info "  Envoi de la commande de redémarrage..."
+        Write-Info "  Envoi de la commande de redemarrage..."
         ssh "${User}@${Host}" "ha core restart" 2>&1 | Out-Null
-        Write-Success "✓ Commande de redémarrage envoyée"
-        Write-Info "  Home Assistant redémarre... (attendez ~30-60 secondes)"
-    } else {
-        Write-Warning "⚠ Redémarrage annulé - pensez à redémarrer manuellement"
+        Write-Success "  [OK] Commande de redemarrage envoyee"
+        Write-Info "  Home Assistant redemarre... (attendez environ 30-60 secondes)"
     }
-} else {
-    Write-Warning "⚠ Option -NoRestart activée - pensez à redémarrer HA manuellement"
+    else {
+        Write-Warning "  [ANNULE] Redemarrage annule - pensez a redemarrer manuellement"
+    }
+}
+else {
+    Write-Warning "  [INFO] Option -NoRestart activee - pensez a redemarrer HA manuellement"
 }
 
 Write-Host ""
-Write-Success "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-Write-Success "  Synchronisation terminée avec succès !"
-Write-Success "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Write-Success "==============================================================="
+Write-Success "  Synchronisation terminee avec succes !"
+Write-Success "==============================================================="
 Write-Host ""
-Write-Info "💡 Astuce: Pour synchroniser automatiquement le frontend:"
-Write-Info "   cd www/habits-manager"
-Write-Info "   npm run dev"
+Write-Info "Astuce: Pour synchroniser automatiquement le frontend:"
+Write-Info "  cd www/habits-manager"
+Write-Info "  .\dev-watch.ps1"
 Write-Host ""
