@@ -359,17 +359,23 @@ export class HabitsManagerAPI {
     type?: string;
     category?: string;
   }): Promise<any[]> {
+    console.log('[API] Calling list_tasks service with filters:', filters);
+
     // Since services don't directly return data, we listen for the event
     return new Promise(async (resolve, reject) => {
       let unsubscribe: (() => void) | null = null;
 
       const timeout = setTimeout(() => {
+        console.error('[API] ✗ Timeout waiting for list_tasks response (5s)');
         if (unsubscribe) unsubscribe();
         reject(new Error('Timeout waiting for list_tasks response'));
       }, 5000);
 
+      console.log('[API] Subscribing to habits_manager_list_result events...');
       unsubscribe = await this.hass.connection.subscribeEvents((event: any) => {
+        console.log('[API] Received list_result event:', event.data);
         if (event.data.service === 'list_tasks') {
+          console.log(`[API] ✓ list_tasks responded with ${event.data.count} tasks`);
           clearTimeout(timeout);
           if (unsubscribe) unsubscribe();
           resolve(event.data.data || []);
@@ -377,7 +383,9 @@ export class HabitsManagerAPI {
       }, `${DOMAIN}_list_result`);
 
       // Call the service
+      console.log('[API] Calling habits_manager.list_tasks service...');
       this.callService(SERVICES.LIST_TASKS, filters || {}).catch((err) => {
+        console.error('[API] ✗ Error calling list_tasks service:', err);
         clearTimeout(timeout);
         if (unsubscribe) unsubscribe();
         reject(err);

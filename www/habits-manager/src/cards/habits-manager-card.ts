@@ -233,6 +233,7 @@ export class HabitsManagerCard extends LitElement {
   }
 
   private _openChildDialog(mode: DialogMode, child?: Child): void {
+    console.log('[Manager Card] Opening child dialog in mode:', mode, child);
     this._dialogMode = mode;
     this._selectedItem = child;
     this._formData = child
@@ -247,6 +248,12 @@ export class HabitsManagerCard extends LitElement {
           avatar_photo_url: '',
         };
     this._showDialog = true;
+    console.log('[Manager Card] Dialog state updated:', {
+      showDialog: this._showDialog,
+      dialogMode: this._dialogMode,
+      formData: this._formData
+    });
+    this.requestUpdate();
   }
 
   private async _handleSaveChild(): Promise<void> {
