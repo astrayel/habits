@@ -97,7 +97,7 @@ export class HabitsManagerCard extends LitElement {
 
   protected render() {
     if (!this._config || !this.hass) {
-      return html``;
+      return html`<div>Loading Habits Manager v${CARD_VERSION}...</div>`;
     }
 
     const title = this._config.title || 'Gestionnaire de Tâches';
