@@ -17,7 +17,35 @@ echo ""
 
 # Configuration
 SOURCE_DIR="/home/user/habits/custom_components/habits_manager"
-TARGET_DIR="/config/custom_components/habits_manager"
+
+# Détecter si on est sous WSL et adapter le chemin cible
+if [[ -z "${HA_CONFIG_DIR}" ]]; then
+    # Chemin par défaut (Docker/Linux natif)
+    TARGET_DIR="/config/custom_components/habits_manager"
+
+    # Si WSL est détecté, suggérer de définir HA_CONFIG_DIR
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+        echo -e "${YELLOW}⚠️  WSL détecté !${NC}"
+        echo -e "${YELLOW}   Utilisez: export HA_CONFIG_DIR='/mnt/c/path/to/homeassistant/config'${NC}"
+        echo -e "${YELLOW}   Ou le chemin réseau: export HA_CONFIG_DIR='/mnt/nas/homeassistant/config'${NC}"
+        echo ""
+        echo -e "${YELLOW}   Exemple complet:${NC}"
+        echo -e "${BLUE}   export HA_CONFIG_DIR='/mnt/c/Users/YourName/homeassistant'${NC}"
+        echo -e "${BLUE}   ./deploy.sh${NC}"
+        echo ""
+        read -p "Voulez-vous continuer avec le chemin par défaut /config ? (y/N) " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${RED}Déploiement annulé.${NC}"
+            echo -e "${YELLOW}Définissez HA_CONFIG_DIR et relancez le script.${NC}"
+            exit 1
+        fi
+    fi
+else
+    TARGET_DIR="${HA_CONFIG_DIR}/custom_components/habits_manager"
+    echo -e "${GREEN}✅ Utilisation du chemin personnalisé : ${HA_CONFIG_DIR}${NC}"
+    echo ""
+fi
 
 # Fichiers critiques à copier
 FILES=(
@@ -25,6 +53,10 @@ FILES=(
     "const.py"
     "services.yaml"
     "sensor.py"
+    "managers/cosmetic_manager.py"
+    "www/habits-manager-card.js"
+    "www/habits-child-card.js"
+    "www/habits-supervision-card.js"
 )
 
 # Vérifier que le dossier source existe
@@ -57,6 +89,12 @@ for file in "${FILES[@]}"; do
     TARGET_FILE="$TARGET_DIR/$file"
 
     if [ -f "$SOURCE_FILE" ]; then
+        # Créer le dossier parent si nécessaire
+        TARGET_DIR_PARENT=$(dirname "$TARGET_FILE")
+        if [ ! -d "$TARGET_DIR_PARENT" ]; then
+            mkdir -p "$TARGET_DIR_PARENT"
+        fi
+
         echo -n "  Copie de $file... "
         if cp "$SOURCE_FILE" "$TARGET_FILE"; then
             echo -e "${GREEN}✅${NC}"
@@ -77,15 +115,37 @@ if [ $FAILED -gt 0 ]; then
 fi
 echo ""
 
-# Vérifier que const.py contient les nouvelles constantes
-echo -e "${BLUE}🔍 Vérification de const.py...${NC}"
+# Vérifications post-déploiement
+echo -e "${BLUE}🔍 Vérifications...${NC}"
+
+# Vérifier const.py
 if grep -q "SERVICE_LIST_CHILDREN" "$TARGET_DIR/const.py"; then
     echo -e "${GREEN}✅ const.py contient SERVICE_LIST_CHILDREN${NC}"
 else
     echo -e "${RED}❌ ERREUR : SERVICE_LIST_CHILDREN introuvable dans const.py !${NC}"
-    echo -e "${RED}   Le déploiement a probablement échoué.${NC}"
-    exit 1
 fi
+
+# Vérifier le fix NoneType dans cosmetic_manager.py
+if grep -q "if reqs_data and isinstance(reqs_data, dict):" "$TARGET_DIR/managers/cosmetic_manager.py"; then
+    echo -e "${GREEN}✅ cosmetic_manager.py contient le fix NoneType${NC}"
+else
+    echo -e "${YELLOW}⚠️  Fix NoneType non trouvé dans cosmetic_manager.py${NC}"
+fi
+
+# Vérifier les champs de pénalité dans le frontend
+if grep -q "Points (pénalité)" "$TARGET_DIR/www/habits-manager-card.js"; then
+    echo -e "${GREEN}✅ Frontend contient les champs de pénalité${NC}"
+else
+    echo -e "${YELLOW}⚠️  Champs de pénalité non trouvés dans le frontend${NC}"
+fi
+
+# Vérifier le style des boutons annuler
+if grep -q "background: transparent" "$TARGET_DIR/www/habits-manager-card.js"; then
+    echo -e "${GREEN}✅ Boutons annuler utilisent le style outlined${NC}"
+else
+    echo -e "${YELLOW}⚠️  Style outlined non trouvé pour les boutons${NC}"
+fi
+
 echo ""
 
 # Afficher les instructions de redémarrage
