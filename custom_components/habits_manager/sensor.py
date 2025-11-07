@@ -76,9 +76,10 @@ def _create_child_sensors(hass: HomeAssistant, child_id: str, child_data: dict) 
         ChildLongestStreakSensor(hass, child_id, child_data),
         # Binary sensor (1 sensor)
         ChildHasPendingValidationSensor(hass, child_id, child_data),
-        # Nouveaux sensors avec listes complètes - DÉSACTIVÉS (problèmes async)
+        # Sensor avec liste des tâches en attente de validation
+        ChildTasksWaitingValidationListSensor(hass, child_id, child_data),
+        # Autres sensors avec listes complètes - DÉSACTIVÉS (problèmes async)
         # TODO: Réécrire ces sensors avec async_update() pour gérer correctement les coroutines
-        # ChildTasksWaitingValidationListSensor(hass, child_id, child_data),
         # ChildPendingClaimsSensor(hass, child_id, child_data),
         # ChildDailyTasksSensor(hass, child_id, child_data),
         # ChildHabitsListSensor(hass, child_id, child_data),
@@ -423,6 +424,12 @@ class ChildLongestStreakSensor(BaseChildSensor):
 class ChildTasksWaitingValidationListSensor(BaseChildSensor):
     """Sensor pour les tâches en attente de validation avec liste complète."""
 
+    def __init__(self, hass, child_id, child_data):
+        """Initialize the sensor."""
+        super().__init__(hass, child_id, child_data)
+        self._instances_data = []
+        self._state = 0
+
     @property
     def name(self):
         """Nom du sensor."""
@@ -436,28 +443,12 @@ class ChildTasksWaitingValidationListSensor(BaseChildSensor):
     @property
     def state(self):
         """État du sensor: nombre de tâches en attente de validation."""
-        try:
-            if DOMAIN not in self.hass.data:
-                return 0
-            task_mgr = self.hass.data[DOMAIN].get("task_manager")
-            if not task_mgr:
-                return 0
-
-            from .core.models import TaskInstanceStatus
-            instances = task_mgr.get_task_instances(
-                child_id=self._child_id,
-                status=TaskInstanceStatus.COMPLETED_WAITING
-            )
-            return len(instances)
-        except Exception as err:
-            _LOGGER.error(f"Error getting tasks waiting validation count: {err}")
-            return 0
+        return self._state
 
     @property
     def icon(self):
         """Icône du sensor."""
-        count = self.state
-        if count > 0:
+        if self._state > 0:
             return "mdi:clipboard-check-outline"
         else:
             return "mdi:clipboard-check"
@@ -471,66 +462,51 @@ class ChildTasksWaitingValidationListSensor(BaseChildSensor):
     def extra_state_attributes(self):
         """Attributs avec la liste complète des tâches en attente."""
         attrs = super().extra_state_attributes.copy()
+        attrs["instances"] = self._instances_data
+        return attrs
 
+    async def async_update(self):
+        """Mise à jour asynchrone des données du sensor."""
         try:
             if DOMAIN not in self.hass.data:
-                attrs["instances"] = []
-                return attrs
+                self._state = 0
+                self._instances_data = []
+                return
 
             task_mgr = self.hass.data[DOMAIN].get("task_manager")
             if not task_mgr:
-                attrs["instances"] = []
-                return attrs
+                self._state = 0
+                self._instances_data = []
+                return
 
             from .core.models import TaskInstanceStatus
-            instances = task_mgr.get_task_instances(
+            instances = await task_mgr.get_task_instances(
                 child_id=self._child_id,
                 status=TaskInstanceStatus.COMPLETED_WAITING
             )
 
-            attrs["instances"] = [
-                {
+            self._state = len(instances)
+            self._instances_data = []
+
+            for inst in instances:
+                task = await task_mgr.get_task(inst.task_id)
+                task_data = {
                     "instance_id": inst.id,
                     "task_id": inst.task_id,
-                    "task_title": self._get_task_title(inst.task_id),
+                    "task_title": task.title if task else "Unknown",
                     "completed_at": inst.completed_at.isoformat() if inst.completed_at else None,
-                    "rewards": self._get_task_rewards(inst.task_id)
+                    "rewards": {
+                        "points": task.rewards.points if task else 0,
+                        "coins": task.rewards.coins if task else 0,
+                        "experience": task.rewards.experience if task else 0
+                    }
                 }
-                for inst in instances
-            ]
+                self._instances_data.append(task_data)
+
         except Exception as err:
-            _LOGGER.error(f"Error getting tasks waiting validation list: {err}")
-            attrs["instances"] = []
-
-        return attrs
-
-    def _get_task_title(self, task_id: str) -> str:
-        """Récupère le titre d'une tâche."""
-        try:
-            task_mgr = self.hass.data[DOMAIN].get("task_manager")
-            if not task_mgr:
-                return "Unknown"
-            task = task_mgr.get_task(task_id)
-            return task.title if task else "Unknown"
-        except Exception:
-            return "Unknown"
-
-    def _get_task_rewards(self, task_id: str) -> dict:
-        """Récupère les récompenses d'une tâche."""
-        try:
-            task_mgr = self.hass.data[DOMAIN].get("task_manager")
-            if not task_mgr:
-                return {"points": 0, "coins": 0, "experience": 0}
-            task = task_mgr.get_task(task_id)
-            if not task:
-                return {"points": 0, "coins": 0, "experience": 0}
-            return {
-                "points": task.rewards.points,
-                "coins": task.rewards.coins,
-                "experience": task.rewards.experience
-            }
-        except Exception:
-            return {"points": 0, "coins": 0, "experience": 0}
+            _LOGGER.error(f"Error updating tasks waiting validation list sensor: {err}", exc_info=True)
+            self._state = 0
+            self._instances_data = []
 
 
 class ChildPendingClaimsSensor(BaseChildSensor):
