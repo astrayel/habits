@@ -3,7 +3,7 @@
 This integration provides a gamified task and habit management system for children.
 """
 from datetime import datetime, date
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import discovery
@@ -777,14 +777,10 @@ async def register_services(hass: HomeAssistant):
             # Convertir en dictionnaires
             children_data = [child.to_dict() for child in children]
 
-            # Émettre un événement avec les résultats
-            hass.bus.fire(f"{DOMAIN}_list_result", {
-                "service": "list_children",
-                "data": children_data,
-                "count": len(children_data),
-            })
+            _LOGGER.debug(f"Service call: list_children returned {len(children_data)} children")
 
-            _LOGGER.info(f"Service call: list_children returned {len(children_data)} children")
+            # Retourner les données directement au lieu d'émettre un événement
+            return {"children": children_data}
 
         except Exception as err:
             _LOGGER.error(f"Error in list_children: {err}")
@@ -823,19 +819,10 @@ async def register_services(hass: HomeAssistant):
             # Convertir en dictionnaires
             tasks_data = [task.to_dict() for task in filtered_tasks]
 
-            # Émettre un événement avec les résultats
-            hass.bus.fire(f"{DOMAIN}_list_result", {
-                "service": "list_tasks",
-                "data": tasks_data,
-                "count": len(tasks_data),
-                "filters": {
-                    "assigned_to": assigned_to,
-                    "type": task_type,
-                    "category": category,
-                },
-            })
+            _LOGGER.debug(f"Service call: list_tasks returned {len(tasks_data)} tasks (filters: assigned_to={assigned_to}, type={task_type}, category={category})")
 
-            _LOGGER.info(f"Service call: list_tasks returned {len(tasks_data)} tasks")
+            # Retourner les données directement
+            return {"tasks": tasks_data}
 
         except Exception as err:
             _LOGGER.error(f"Error in list_tasks: {err}")
@@ -882,18 +869,10 @@ async def register_services(hass: HomeAssistant):
 
                 habits_data.append(habit_dict)
 
-            # Émettre un événement avec les résultats
-            hass.bus.fire(f"{DOMAIN}_list_result", {
-                "service": "list_habits",
-                "data": habits_data,
-                "count": len(habits_data),
-                "filters": {
-                    "assigned_to": assigned_to,
-                    "frequency": frequency,
-                },
-            })
+            _LOGGER.debug(f"Service call: list_habits returned {len(habits_data)} habits (filters: assigned_to={assigned_to}, frequency={frequency})")
 
-            _LOGGER.info(f"Service call: list_habits returned {len(habits_data)} habits")
+            # Retourner les données directement
+            return {"habits": habits_data}
 
         except Exception as err:
             _LOGGER.error(f"Error in list_habits: {err}")
@@ -928,18 +907,10 @@ async def register_services(hass: HomeAssistant):
             # Convertir en dictionnaires
             rewards_data = [reward.to_dict() for reward in filtered_rewards]
 
-            # Émettre un événement avec les résultats
-            hass.bus.fire(f"{DOMAIN}_list_result", {
-                "service": "list_rewards",
-                "data": rewards_data,
-                "count": len(rewards_data),
-                "filters": {
-                    "type": reward_type,
-                    "available_only": available_only,
-                },
-            })
+            _LOGGER.debug(f"Service call: list_rewards returned {len(rewards_data)} rewards (filters: type={reward_type}, available_only={available_only})")
 
-            _LOGGER.info(f"Service call: list_rewards returned {len(rewards_data)} rewards")
+            # Retourner les données directement
+            return {"rewards": rewards_data}
 
         except Exception as err:
             _LOGGER.error(f"Error in list_rewards: {err}")
@@ -976,19 +947,10 @@ async def register_services(hass: HomeAssistant):
             # Convertir en dictionnaires
             cosmetics_data = [cosmetic.to_dict() for cosmetic in filtered_cosmetics]
 
-            # Émettre un événement avec les résultats
-            hass.bus.fire(f"{DOMAIN}_list_result", {
-                "service": "list_cosmetics",
-                "data": cosmetics_data,
-                "count": len(cosmetics_data),
-                "filters": {
-                    "category": category,
-                    "rarity": rarity,
-                    "active_only": active_only,
-                },
-            })
+            _LOGGER.debug(f"Service call: list_cosmetics returned {len(cosmetics_data)} cosmetics (filters: category={category}, rarity={rarity}, active_only={active_only})")
 
-            _LOGGER.info(f"Service call: list_cosmetics returned {len(cosmetics_data)} cosmetics")
+            # Retourner les données directement
+            return {"cosmetics": cosmetics_data}
 
         except Exception as err:
             _LOGGER.error(f"Error in list_cosmetics: {err}")
@@ -1018,12 +980,12 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_CREATE_COSMETIC, handle_create_cosmetic)
     hass.services.async_register(DOMAIN, SERVICE_PURCHASE_COSMETIC, handle_purchase_cosmetic)
 
-    # Listing services
-    hass.services.async_register(DOMAIN, SERVICE_LIST_CHILDREN, handle_list_children)
-    hass.services.async_register(DOMAIN, SERVICE_LIST_TASKS, handle_list_tasks)
-    hass.services.async_register(DOMAIN, SERVICE_LIST_HABITS, handle_list_habits)
-    hass.services.async_register(DOMAIN, SERVICE_LIST_REWARDS, handle_list_rewards)
-    hass.services.async_register(DOMAIN, SERVICE_LIST_COSMETICS, handle_list_cosmetics)
+    # Services de lecture (avec support de réponse)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_CHILDREN, handle_list_children, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_TASKS, handle_list_tasks, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_HABITS, handle_list_habits, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_REWARDS, handle_list_rewards, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_COSMETICS, handle_list_cosmetics, supports_response=SupportsResponse.ONLY)
 
     _LOGGER.info(f"Registered {23} services for {DOMAIN} (11 Phase 1 + 7 Phase 2 + 5 Listing)")
 
