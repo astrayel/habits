@@ -405,6 +405,24 @@ export const baseStyles = css`
     gap: 24px;
   }
 
+  /* Form layouts */
+  .form-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .form-row > * {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (max-width: 600px) {
+    .form-row {
+      flex-direction: column;
+    }
+  }
+
   /* Loading state */
   .loading {
     display: flex;

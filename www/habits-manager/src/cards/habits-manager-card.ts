@@ -70,8 +70,14 @@ export class HabitsManagerCard extends LitElement {
     super.updated(changedProps);
 
     if (changedProps.has('hass') && this.hass && !this._store) {
+      console.log('[Manager Card] Initializing store with hass:', !!this.hass);
       this._store = createStore(this.hass);
-      this._store.subscribe(() => this.requestUpdate());
+      this._store.subscribe(() => {
+        console.log('[Manager Card] Store state changed, requesting update');
+        this.requestUpdate();
+      });
+      // Force immediate update to show loading state
+      this.requestUpdate();
     }
   }
 
@@ -176,9 +182,30 @@ export class HabitsManagerCard extends LitElement {
   // =====================================================
 
   private _renderChildrenSection() {
-    if (!this._store) return html`<div class="loading">Chargement...</div>`;
+    if (!this._store) {
+      console.log('[Manager Card] No store available yet');
+      return html`<div class="loading">Initialisation du store...</div>`;
+    }
 
-    const children = this._store.getChildren();
+    const state = this._store.getState();
+    console.log('[Manager Card] Rendering children section, loading:', state.loading, 'children count:', state.children.length);
+
+    if (state.loading) {
+      return html`<div class="loading">Chargement des données...</div>`;
+    }
+
+    if (state.error) {
+      return html`
+        <div class="section">
+          <div class="error-banner">
+            <span>Erreur: ${state.error}</span>
+            <button class="btn btn-text" @click="${() => this._store?.refresh()}">Réessayer</button>
+          </div>
+        </div>
+      `;
+    }
+
+    const children = state.children;
 
     return html`
       <div class="section">
@@ -309,9 +336,25 @@ export class HabitsManagerCard extends LitElement {
   // =====================================================
 
   private _renderTasksSection() {
-    if (!this._store) return html`<div class="loading">Chargement...</div>`;
+    if (!this._store) return html`<div class="loading">Initialisation du store...</div>`;
 
     const state = this._store.getState();
+
+    if (state.loading) {
+      return html`<div class="loading">Chargement des données...</div>`;
+    }
+
+    if (state.error) {
+      return html`
+        <div class="section">
+          <div class="error-banner">
+            <span>Erreur: ${state.error}</span>
+            <button class="btn btn-text" @click="${() => this._store?.refresh()}">Réessayer</button>
+          </div>
+        </div>
+      `;
+    }
+
     const tasks = state.tasks;
 
     return html`
@@ -490,9 +533,25 @@ export class HabitsManagerCard extends LitElement {
   // =====================================================
 
   private _renderHabitsSection() {
-    if (!this._store) return html`<div class="loading">Chargement...</div>`;
+    if (!this._store) return html`<div class="loading">Initialisation du store...</div>`;
 
     const state = this._store.getState();
+
+    if (state.loading) {
+      return html`<div class="loading">Chargement des données...</div>`;
+    }
+
+    if (state.error) {
+      return html`
+        <div class="section">
+          <div class="error-banner">
+            <span>Erreur: ${state.error}</span>
+            <button class="btn btn-text" @click="${() => this._store?.refresh()}">Réessayer</button>
+          </div>
+        </div>
+      `;
+    }
+
     const habits = state.habits;
 
     return html`
@@ -650,9 +709,25 @@ export class HabitsManagerCard extends LitElement {
   // =====================================================
 
   private _renderRewardsSection() {
-    if (!this._store) return html`<div class="loading">Chargement...</div>`;
+    if (!this._store) return html`<div class="loading">Initialisation du store...</div>`;
 
     const state = this._store.getState();
+
+    if (state.loading) {
+      return html`<div class="loading">Chargement des données...</div>`;
+    }
+
+    if (state.error) {
+      return html`
+        <div class="section">
+          <div class="error-banner">
+            <span>Erreur: ${state.error}</span>
+            <button class="btn btn-text" @click="${() => this._store?.refresh()}">Réessayer</button>
+          </div>
+        </div>
+      `;
+    }
+
     const rewards = state.rewards;
 
     return html`
@@ -1365,9 +1440,26 @@ export class HabitsManagerCard extends LitElement {
   // =====================================================
 
   private _renderCosmeticsSection() {
-    if (!this._store) return html`<div class="loading">Chargement...</div>`;
+    if (!this._store) return html`<div class="loading">Initialisation du store...</div>`;
 
-    const cosmetics = this._store.getCosmetics();
+    const state = this._store.getState();
+
+    if (state.loading) {
+      return html`<div class="loading">Chargement des données...</div>`;
+    }
+
+    if (state.error) {
+      return html`
+        <div class="section">
+          <div class="error-banner">
+            <span>Erreur: ${state.error}</span>
+            <button class="btn btn-text" @click="${() => this._store?.refresh()}">Réessayer</button>
+          </div>
+        </div>
+      `;
+    }
+
+    const cosmetics = state.cosmetics;
 
     return html`
       <div class="section">
