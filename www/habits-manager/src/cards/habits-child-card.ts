@@ -10,6 +10,7 @@ import { HabitsManagerStore, createStore } from '../services/store';
 import { baseStyles } from '../styles/base-styles';
 import { getLevelColor, getStreakColor } from '../styles/theme';
 import { CARD_TYPE_CHILD } from '../types/constants';
+import { API_VERSION } from '../services/api-client';
 import type { Child } from '../types/models';
 import '../components/item-card';
 import '../components/cosmetics-shop';
@@ -21,6 +22,8 @@ interface HabitsChildCardConfig extends CardConfig {
 }
 
 type ViewMode = 'overview' | 'shop' | 'customizer';
+
+const CARD_VERSION = '2025-11-07T19:30:00Z';
 
 @customElement('habits-child-card')
 export class HabitsChildCard extends LitElement {
@@ -80,6 +83,12 @@ export class HabitsChildCard extends LitElement {
       throw new Error('child_id is required');
     }
     this._config = config;
+    console.log(`%c╔═══════════════════════════════════════════════════════╗`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c║  👶 Habits Child Card                                ║`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c║  Version: ${CARD_VERSION}                ║`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c║  API Version: ${API_VERSION}         ║`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c║  Child ID: ${config.child_id.padEnd(39, ' ')}║`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c╚═══════════════════════════════════════════════════════╝`, 'color: #4caf50; font-weight: bold');
   }
 
   public getCardSize(): number {

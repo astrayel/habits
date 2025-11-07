@@ -9,6 +9,7 @@ import { HomeAssistant, CardConfig } from '../types/home-assistant';
 import { HabitsManagerStore, createStore } from '../services/store';
 import { baseStyles } from '../styles/base-styles';
 import { CARD_TYPE_SUPERVISION } from '../types/constants';
+import { API_VERSION } from '../services/api-client';
 import type { Child } from '../types/models';
 
 // Import shared components
@@ -20,6 +21,8 @@ import '../components/form-checkbox';
 interface HabitsSupervisionCardConfig extends CardConfig {
   title?: string;
 }
+
+const CARD_VERSION = '2025-11-07T19:30:00Z';
 
 @customElement('habits-supervision-card')
 export class HabitsSupervisionCard extends LitElement {
@@ -47,6 +50,11 @@ export class HabitsSupervisionCard extends LitElement {
       throw new Error('Invalid configuration');
     }
     this._config = config;
+    console.log(`%c╔═══════════════════════════════════════════════════════╗`, 'color: #ff9800; font-weight: bold');
+    console.log(`%c║  👨‍👩‍👧‍👦 Habits Supervision Card                         ║`, 'color: #ff9800; font-weight: bold');
+    console.log(`%c║  Version: ${CARD_VERSION}                ║`, 'color: #ff9800; font-weight: bold');
+    console.log(`%c║  API Version: ${API_VERSION}         ║`, 'color: #ff9800; font-weight: bold');
+    console.log(`%c╚═══════════════════════════════════════════════════════╝`, 'color: #ff9800; font-weight: bold');
   }
 
   public getCardSize(): number {

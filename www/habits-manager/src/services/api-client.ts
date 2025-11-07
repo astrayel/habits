@@ -11,17 +11,21 @@ import type {
   Habit,
 } from '../types/models';
 
+export const API_VERSION = '2025-11-07T19:30:00Z';
+
 export class HabitsManagerAPI {
   private hass: HomeAssistant;
 
   constructor(hass: HomeAssistant) {
     this.hass = hass;
+    console.log(`%c[Habits Manager API v${API_VERSION}]`, 'color: #03a9f4; font-weight: bold', 'Initialized with WebSocket API for return_response');
   }
 
   /**
    * Call a service on the habits_manager domain
    */
   private async callService(service: string, data: any = {}): Promise<any> {
+    console.log(`[API] callService: ${DOMAIN}.${service}`, data);
     return this.hass.callService(DOMAIN, service, data);
   }
 
@@ -30,13 +34,24 @@ export class HabitsManagerAPI {
    * Uses WebSocket API directly since hass.callService doesn't properly support return_response
    */
   private async callServiceWithResponse(service: string, data: any = {}): Promise<any> {
-    return this.hass.connection.sendMessagePromise({
+    const message = {
       type: 'call_service',
       domain: DOMAIN,
       service: service,
       service_data: data,
       return_response: true,
-    });
+    };
+    console.log(`%c[API] callServiceWithResponse: ${DOMAIN}.${service}`, 'color: #4caf50; font-weight: bold');
+    console.log('[API] WebSocket message:', JSON.stringify(message, null, 2));
+
+    try {
+      const response = await this.hass.connection.sendMessagePromise(message);
+      console.log(`%c[API] ✓ Response received for ${service}:`, 'color: #4caf50', response);
+      return response;
+    } catch (error) {
+      console.error(`%c[API] ✗ Error calling ${service}:`, 'color: #f44336; font-weight: bold', error);
+      throw error;
+    }
   }
 
   // =====================================================

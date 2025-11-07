@@ -10,6 +10,7 @@ import { HomeAssistant, CardConfig } from '../types/home-assistant';
 import { HabitsManagerStore, createStore } from '../services/store';
 import { baseStyles } from '../styles/base-styles';
 import { CARD_TYPE_MANAGER } from '../types/constants';
+import { API_VERSION } from '../services/api-client';
 import type {
   Child,
   Task,
@@ -41,7 +42,7 @@ interface HabitsManagerCardConfig extends CardConfig {
 type TabType = 'children' | 'tasks' | 'habits' | 'rewards' | 'cosmetics';
 type DialogMode = 'create' | 'edit';
 
-const CARD_VERSION = '0.1.0';
+const CARD_VERSION = '2025-11-07T19:30:00Z';
 
 @customElement('habits-manager-card')
 export class HabitsManagerCard extends LitElement {
@@ -63,6 +64,11 @@ export class HabitsManagerCard extends LitElement {
       throw new Error('Invalid configuration');
     }
     this._config = config;
+    console.log(`%c╔═══════════════════════════════════════════════════════╗`, 'color: #03a9f4; font-weight: bold');
+    console.log(`%c║  🏠 Habits Manager Card (Manager)                    ║`, 'color: #03a9f4; font-weight: bold');
+    console.log(`%c║  Version: ${CARD_VERSION}                ║`, 'color: #03a9f4; font-weight: bold');
+    console.log(`%c║  API Version: ${API_VERSION}         ║`, 'color: #03a9f4; font-weight: bold');
+    console.log(`%c╚═══════════════════════════════════════════════════════╝`, 'color: #03a9f4; font-weight: bold');
   }
 
   public getCardSize(): number {
