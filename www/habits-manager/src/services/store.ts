@@ -400,6 +400,14 @@ export class HabitsManagerStore {
     return this.api.getHabitStats(childId);
   }
 
+  public getTasksWaitingValidation(childId: string): any[] {
+    return this.api.getTasksWaitingValidation(childId);
+  }
+
+  public getPendingClaims(childId: string): any[] {
+    return this.api.getPendingClaims(childId);
+  }
+
   public async createHabit(data: any): Promise<void> {
     try {
       await this.api.createHabit(data);

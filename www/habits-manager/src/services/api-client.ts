@@ -351,6 +351,28 @@ export class HabitsManagerAPI {
   }
 
   /**
+   * Get tasks waiting validation for a child
+   */
+  getTasksWaitingValidation(childId: string): any[] {
+    const sensor = this.hass.states[`sensor.habits_${childId}_tasks_waiting_validation_list`];
+    if (!sensor || !sensor.attributes.instances) {
+      return [];
+    }
+    return sensor.attributes.instances;
+  }
+
+  /**
+   * Get pending reward claims for a child
+   */
+  getPendingClaims(childId: string): any[] {
+    const sensor = this.hass.states[`sensor.habits_${childId}_pending_claims`];
+    if (!sensor || !sensor.attributes.claims) {
+      return [];
+    }
+    return sensor.attributes.claims;
+  }
+
+  /**
    * Get all cosmetics from sensor
    * Note: This assumes there's a sensor exposing cosmetics, or we fetch from a config
    * For now, returns empty array (cosmetics would need to be loaded from backend)
