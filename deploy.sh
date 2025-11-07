@@ -154,8 +154,10 @@ if [[ "$USE_SSH" == true ]]; then
         ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "mkdir -p '$TARGET_DIR'"
     fi
 
-    # Créer un backup distant
-    BACKUP_DIR="$(dirname $TARGET_DIR)/habits_manager.backup.$(date +%Y%m%d_%H%M%S)"
+    # Créer un backup distant (en dehors de custom_components pour éviter les erreurs d'import)
+    BACKUP_BASE="${HA_SSH_PATH:-/config}/backups"
+    ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "mkdir -p '$BACKUP_BASE'" 2>/dev/null
+    BACKUP_DIR="$BACKUP_BASE/habits_manager.backup.$(date +%Y%m%d_%H%M%S)"
     echo -e "${YELLOW}📦 Création d'un backup distant : $BACKUP_DIR${NC}"
     ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "cp -r '$TARGET_DIR' '$BACKUP_DIR'"
     echo -e "${GREEN}✅ Backup créé${NC}"
@@ -222,8 +224,14 @@ else
         mkdir -p "$TARGET_DIR"
     fi
 
-    # Créer un backup local
-    BACKUP_DIR="$(dirname $TARGET_DIR)/habits_manager.backup.$(date +%Y%m%d_%H%M%S)"
+    # Créer un backup local (en dehors de custom_components pour éviter les erreurs d'import)
+    if [[ -n "${HA_CONFIG_DIR}" ]]; then
+        BACKUP_BASE="${HA_CONFIG_DIR}/backups"
+    else
+        BACKUP_BASE="/config/backups"
+    fi
+    mkdir -p "$BACKUP_BASE" 2>/dev/null
+    BACKUP_DIR="$BACKUP_BASE/habits_manager.backup.$(date +%Y%m%d_%H%M%S)"
     echo -e "${YELLOW}📦 Création d'un backup : $BACKUP_DIR${NC}"
     cp -r "$TARGET_DIR" "$BACKUP_DIR"
     echo -e "${GREEN}✅ Backup créé${NC}"
