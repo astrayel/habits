@@ -21,6 +21,7 @@ export interface HomeAssistant {
 export interface Connection {
   subscribeEvents: (callback: (event: any) => void, eventType?: string) => Promise<() => void>;
   sendMessage: (message: any) => void;
+  sendMessagePromise: (message: any) => Promise<any>;
 }
 
 export interface HassEntity {
