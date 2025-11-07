@@ -892,7 +892,37 @@ function t(t,e,s,i){var r,a=arguments.length,o=a<3?e:null===i?i=Object.getOwnPro
       margin-left: 26px;
       color: var(--secondary-text-color, #727272);
     }
-  `,t([dt({type:String})],qt.prototype,"label",void 0),t([dt({type:Boolean})],qt.prototype,"checked",void 0),t([dt({type:Boolean})],qt.prototype,"disabled",void 0),t([dt({type:String})],qt.prototype,"helper",void 0),customElements.get("hm-form-checkbox")||customElements.define("hm-form-checkbox",qt);let Bt=class extends ot{constructor(){super(...arguments),this._children=[],this._showValidateDialog=!1,this._showRefuseDialog=!1,this._showApproveClaimDialog=!1,this._validationNote="",this._refuseNote="",this._applyPenalty=!1,this._loading=!1}setConfig(t){if(!t)throw new Error("Invalid configuration");this._config=t}getCardSize(){return 3}updated(t){var e;super.updated(t),t.has("hass")&&this.hass&&(this._store||(this._store=(e=this.hass,new Ot(e)),this._unsubscribe=this._store.subscribe(()=>{this._loadData(),this.requestUpdate()}),this._loadData()))}disconnectedCallback(){super.disconnectedCallback(),this._unsubscribe&&this._unsubscribe(),this._store&&this._store.destroy()}_loadData(){this._store&&(this._children=this._store.getChildren())}render(){if(!this._config||!this.hass)return V``;const t=this._config.title||"Supervision";return V`
+  `,t([dt({type:String})],qt.prototype,"label",void 0),t([dt({type:Boolean})],qt.prototype,"checked",void 0),t([dt({type:Boolean})],qt.prototype,"disabled",void 0),t([dt({type:String})],qt.prototype,"helper",void 0),customElements.get("hm-form-checkbox")||customElements.define("hm-form-checkbox",qt);let Bt=class extends ot{constructor(){super(...arguments),this._children=[],this._showValidateDialog=!1,this._showRefuseDialog=!1,this._showApproveClaimDialog=!1,this._validationNote="",this._refuseNote="",this._applyPenalty=!1,this._loading=!1}setConfig(t){if(!t)throw new Error("Invalid configuration");this._config=t}getCardSize(){return 3}updated(t){var e;super.updated(t),t.has("hass")&&this.hass&&(this._store||(this._store=(e=this.hass,new Ot(e)),this._unsubscribe=this._store.subscribe(()=>{this._loadData(),this.requestUpdate()}),this._loadData(),this.requestUpdate()))}disconnectedCallback(){super.disconnectedCallback(),this._unsubscribe&&this._unsubscribe(),this._store&&this._store.destroy()}_loadData(){this._store&&(this._children=this._store.getChildren())}render(){if(!this._config||!this.hass)return V``;const t=this._config.title||"Supervision";if(!this._store)return V`
+        <ha-card>
+          <div class="card">
+            <div class="card-header">
+              <h1 class="card-title">${t}</h1>
+            </div>
+            <div class="loading">Initialisation du store...</div>
+          </div>
+        </ha-card>
+      `;const e=this._store.getState();return e.loading?V`
+        <ha-card>
+          <div class="card">
+            <div class="card-header">
+              <h1 class="card-title">${t}</h1>
+            </div>
+            <div class="loading">Chargement des données...</div>
+          </div>
+        </ha-card>
+      `:e.error?V`
+        <ha-card>
+          <div class="card">
+            <div class="card-header">
+              <h1 class="card-title">${t}</h1>
+            </div>
+            <div class="error-banner">
+              <span>Erreur: ${e.error}</span>
+              <button class="btn btn-text" @click="${()=>this._store?.refresh()}">Réessayer</button>
+            </div>
+          </div>
+        </ha-card>
+      `:V`
       <ha-card>
         <div class="card">
           <div class="card-header">

@@ -58,12 +58,16 @@ export class HabitsSupervisionCard extends LitElement {
 
     if (changedProps.has('hass') && this.hass) {
       if (!this._store) {
+        console.log('[Supervision Card] Initializing store with hass:', !!this.hass);
         this._store = createStore(this.hass);
         this._unsubscribe = this._store.subscribe(() => {
+          console.log('[Supervision Card] Store state changed, requesting update');
           this._loadData();
           this.requestUpdate();
         });
         this._loadData();
+        // Force immediate update to show loading state
+        this.requestUpdate();
       }
     }
   }
@@ -89,6 +93,51 @@ export class HabitsSupervisionCard extends LitElement {
     }
 
     const title = this._config.title || 'Supervision';
+
+    // Check store loading state
+    if (!this._store) {
+      return html`
+        <ha-card>
+          <div class="card">
+            <div class="card-header">
+              <h1 class="card-title">${title}</h1>
+            </div>
+            <div class="loading">Initialisation du store...</div>
+          </div>
+        </ha-card>
+      `;
+    }
+
+    const state = this._store.getState();
+
+    if (state.loading) {
+      return html`
+        <ha-card>
+          <div class="card">
+            <div class="card-header">
+              <h1 class="card-title">${title}</h1>
+            </div>
+            <div class="loading">Chargement des données...</div>
+          </div>
+        </ha-card>
+      `;
+    }
+
+    if (state.error) {
+      return html`
+        <ha-card>
+          <div class="card">
+            <div class="card-header">
+              <h1 class="card-title">${title}</h1>
+            </div>
+            <div class="error-banner">
+              <span>Erreur: ${state.error}</span>
+              <button class="btn btn-text" @click="${() => this._store?.refresh()}">Réessayer</button>
+            </div>
+          </div>
+        </ha-card>
+      `;
+    }
 
     return html`
       <ha-card>

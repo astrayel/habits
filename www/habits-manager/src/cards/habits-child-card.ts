@@ -91,11 +91,15 @@ export class HabitsChildCard extends LitElement {
 
     if (changedProps.has('hass') && this.hass) {
       if (!this._store) {
+        console.log('[Child Card] Initializing store with hass:', !!this.hass);
         this._store = createStore(this.hass);
         this._unsubscribe = this._store.subscribe(() => {
+          console.log('[Child Card] Store state changed, requesting update');
           this._loadChild();
           this.requestUpdate();
         });
+        // Force immediate update to show loading state
+        this.requestUpdate();
       }
       this._loadChild();
     }
@@ -121,11 +125,50 @@ export class HabitsChildCard extends LitElement {
       return html``;
     }
 
+    // Check store loading state
+    if (!this._store) {
+      return html`
+        <ha-card>
+          <div class="card">
+            <div class="loading">Initialisation du store...</div>
+          </div>
+        </ha-card>
+      `;
+    }
+
+    const state = this._store.getState();
+
+    if (state.loading) {
+      return html`
+        <ha-card>
+          <div class="card">
+            <div class="loading">Chargement des données...</div>
+          </div>
+        </ha-card>
+      `;
+    }
+
+    if (state.error) {
+      return html`
+        <ha-card>
+          <div class="card">
+            <div class="error-banner">
+              <span>Erreur: ${state.error}</span>
+              <button class="btn btn-text" @click="${() => this._store?.refresh()}">Réessayer</button>
+            </div>
+          </div>
+        </ha-card>
+      `;
+    }
+
     if (!this._child) {
       return html`
         <ha-card>
           <div class="card">
-            <div class="loading">Chargement...</div>
+            <div class="empty-state">
+              <ha-icon icon="mdi:account-child"></ha-icon>
+              <p>Enfant non trouvé (ID: ${this._config.child_id})</p>
+            </div>
           </div>
         </ha-card>
       `;
