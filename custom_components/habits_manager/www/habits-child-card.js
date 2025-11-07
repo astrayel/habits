@@ -100,8 +100,14 @@ function t(t,e,i,s){var r,a=arguments.length,o=a<3?e:null===s?s=Object.getOwnPro
 
   .btn-secondary,
   .button-secondary {
-    background: var(--secondary-background-color, #e0e0e0);
-    color: var(--primary-text-color, #212121);
+    background: transparent;
+    color: var(--primary-color, #03a9f4);
+    border: 1px solid var(--primary-color, #03a9f4);
+  }
+
+  .btn-secondary:hover,
+  .button-secondary:hover {
+    background: rgba(3, 169, 244, 0.08);
   }
 
   .btn-success,

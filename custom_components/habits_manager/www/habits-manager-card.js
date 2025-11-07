@@ -100,8 +100,14 @@ function e(e,t,i,r){var a,s=arguments.length,o=s<3?t:null===r?r=Object.getOwnPro
 
   .btn-secondary,
   .button-secondary {
-    background: var(--secondary-background-color, #e0e0e0);
-    color: var(--primary-text-color, #212121);
+    background: transparent;
+    color: var(--primary-color, #03a9f4);
+    border: 1px solid var(--primary-color, #03a9f4);
+  }
+
+  .btn-secondary:hover,
+  .button-secondary:hover {
+    background: rgba(3, 169, 244, 0.08);
   }
 
   .btn-success,
@@ -1358,7 +1364,7 @@ function e(e,t,i,r){var a,s=arguments.length,o=s<3?t:null===r?r=Object.getOwnPro
 
       <div class="form-row">
         <hm-form-input
-          label="Points"
+          label="Points (récompense)"
           .value="${String(this._formData.rewards_points||10)}"
           type="number"
           min="0"
@@ -1367,7 +1373,7 @@ function e(e,t,i,r){var a,s=arguments.length,o=s<3?t:null===r?r=Object.getOwnPro
         ></hm-form-input>
 
         <hm-form-input
-          label="Pièces"
+          label="Pièces (récompense)"
           .value="${String(this._formData.rewards_coins||5)}"
           type="number"
           min="0"
@@ -1382,6 +1388,28 @@ function e(e,t,i,r){var a,s=arguments.length,o=s<3?t:null===r?r=Object.getOwnPro
           min="0"
           required
           @value-changed="${e=>this._formData.rewards_experience=e.detail.value}"
+        ></hm-form-input>
+      </div>
+
+      <div class="form-row">
+        <hm-form-input
+          label="Points (pénalité)"
+          .value="${String(this._formData.penalties_points||5)}"
+          type="number"
+          min="0"
+          required
+          helper="Points perdus si la tâche échoue"
+          @value-changed="${e=>this._formData.penalties_points=e.detail.value}"
+        ></hm-form-input>
+
+        <hm-form-input
+          label="Pièces (pénalité)"
+          .value="${String(this._formData.penalties_coins||2)}"
+          type="number"
+          min="0"
+          required
+          helper="Pièces perdues si la tâche échoue"
+          @value-changed="${e=>this._formData.penalties_coins=e.detail.value}"
         ></hm-form-input>
       </div>
 

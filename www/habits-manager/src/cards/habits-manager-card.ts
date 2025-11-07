@@ -1042,7 +1042,7 @@ export class HabitsManagerCard extends LitElement {
 
       <div class="form-row">
         <hm-form-input
-          label="Points"
+          label="Points (récompense)"
           .value="${String(this._formData.rewards_points || 10)}"
           type="number"
           min="0"
@@ -1051,7 +1051,7 @@ export class HabitsManagerCard extends LitElement {
         ></hm-form-input>
 
         <hm-form-input
-          label="Pièces"
+          label="Pièces (récompense)"
           .value="${String(this._formData.rewards_coins || 5)}"
           type="number"
           min="0"
@@ -1067,6 +1067,28 @@ export class HabitsManagerCard extends LitElement {
           required
           @value-changed="${(e: CustomEvent) =>
             (this._formData.rewards_experience = e.detail.value)}"
+        ></hm-form-input>
+      </div>
+
+      <div class="form-row">
+        <hm-form-input
+          label="Points (pénalité)"
+          .value="${String(this._formData.penalties_points || 5)}"
+          type="number"
+          min="0"
+          required
+          helper="Points perdus si la tâche échoue"
+          @value-changed="${(e: CustomEvent) => (this._formData.penalties_points = e.detail.value)}"
+        ></hm-form-input>
+
+        <hm-form-input
+          label="Pièces (pénalité)"
+          .value="${String(this._formData.penalties_coins || 2)}"
+          type="number"
+          min="0"
+          required
+          helper="Pièces perdues si la tâche échoue"
+          @value-changed="${(e: CustomEvent) => (this._formData.penalties_coins = e.detail.value)}"
         ></hm-form-input>
       </div>
 
