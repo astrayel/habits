@@ -27,9 +27,16 @@ export class HabitsManagerAPI {
 
   /**
    * Call a service that returns a response
+   * Uses WebSocket API directly since hass.callService doesn't properly support return_response
    */
   private async callServiceWithResponse(service: string, data: any = {}): Promise<any> {
-    return this.hass.callService(DOMAIN, service, data, { return_response: true });
+    return this.hass.connection.sendMessagePromise({
+      type: 'call_service',
+      domain: DOMAIN,
+      service: service,
+      service_data: data,
+      return_response: true,
+    });
   }
 
   // =====================================================
