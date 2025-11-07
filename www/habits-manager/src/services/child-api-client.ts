@@ -45,15 +45,34 @@ export class ChildApiClient {
    * Get child data from sensors
    */
   getChild(): Child | null {
-    const pointsSensor = this.hass.states[`sensor.${DOMAIN}_${this.childId}_points`];
+    // Try to find the sensor - check both with and without 'habits_manager' prefix
+    const sensorId1 = `sensor.${DOMAIN}_${this.childId}_points`;
+    const sensorId2 = `sensor.habits_${this.childId}_points`;
+
+    console.log(`[ChildAPI] Looking for child sensors:`, {
+      childId: this.childId,
+      trying: [sensorId1, sensorId2],
+      availableSensors: Object.keys(this.hass.states).filter(s => s.includes(this.childId)).slice(0, 5)
+    });
+
+    let pointsSensor = this.hass.states[sensorId1] || this.hass.states[sensorId2];
+
     if (!pointsSensor) {
       console.warn(`[ChildAPI] Child sensor not found for ${this.childId}`);
+      console.warn(`[ChildAPI] Available sensors matching child ID:`,
+        Object.keys(this.hass.states).filter(s => s.includes(this.childId))
+      );
       return null;
     }
 
-    const coinsSensor = this.hass.states[`sensor.${DOMAIN}_${this.childId}_coins`];
-    const levelSensor = this.hass.states[`sensor.${DOMAIN}_${this.childId}_level`];
-    const experienceSensor = this.hass.states[`sensor.${DOMAIN}_${this.childId}_experience`];
+    // Use the same prefix format for all sensors
+    const prefix = pointsSensor.entity_id.startsWith('sensor.habits_manager_') ? DOMAIN : 'habits';
+
+    const coinsSensor = this.hass.states[`sensor.${prefix}_${this.childId}_coins`];
+    const levelSensor = this.hass.states[`sensor.${prefix}_${this.childId}_level`];
+    const experienceSensor = this.hass.states[`sensor.${prefix}_${this.childId}_experience`];
+
+    console.log(`[ChildAPI] Using sensor prefix: ${prefix}`);
 
     return {
       id: this.childId,
@@ -71,11 +90,25 @@ export class ChildApiClient {
   }
 
   /**
+   * Get the sensor prefix based on what's available
+   */
+  private getSensorPrefix(): string {
+    // Check which format the sensors use
+    const testId1 = `sensor.${DOMAIN}_${this.childId}_points`;
+    const testId2 = `sensor.habits_${this.childId}_points`;
+
+    if (this.hass.states[testId1]) return DOMAIN;
+    if (this.hass.states[testId2]) return 'habits';
+    return DOMAIN; // default
+  }
+
+  /**
    * Get task counts for this child
    */
   getTaskCounts(): { pending: number; waiting: number } {
-    const pendingSensor = this.hass.states[`sensor.${DOMAIN}_${this.childId}_tasks_pending`];
-    const waitingSensor = this.hass.states[`sensor.${DOMAIN}_${this.childId}_tasks_completed_waiting`];
+    const prefix = this.getSensorPrefix();
+    const pendingSensor = this.hass.states[`sensor.${prefix}_${this.childId}_tasks_pending`];
+    const waitingSensor = this.hass.states[`sensor.${prefix}_${this.childId}_tasks_completed_waiting`];
 
     return {
       pending: pendingSensor ? parseInt(pendingSensor.state) || 0 : 0,
@@ -98,8 +131,9 @@ export class ChildApiClient {
    * Get habit stats for this child
    */
   getHabitStats(): { count: number; longest_streak: number } {
-    const habitsSensor = this.hass.states[`sensor.${DOMAIN}_${this.childId}_habits_count`];
-    const streakSensor = this.hass.states[`sensor.${DOMAIN}_${this.childId}_longest_streak`];
+    const prefix = this.getSensorPrefix();
+    const habitsSensor = this.hass.states[`sensor.${prefix}_${this.childId}_habits_count`];
+    const streakSensor = this.hass.states[`sensor.${prefix}_${this.childId}_longest_streak`];
 
     return {
       count: habitsSensor ? parseInt(habitsSensor.state) || 0 : 0,
