@@ -25,12 +25,15 @@ async def async_setup_platform(
         async_add_entities: Callback pour ajouter les entités
         discovery_info: Informations de découverte
     """
+    _LOGGER.info("Setting up Habits Manager sensor platform")
+
     if DOMAIN not in hass.data:
-        _LOGGER.warning("Habits Manager domain not found in hass.data")
+        _LOGGER.error("❌ Habits Manager domain not found in hass.data - sensors will not be created!")
         return
 
     if "children_entities" not in hass.data[DOMAIN]:
-        _LOGGER.warning("No children entities data found")
+        _LOGGER.error("❌ No children_entities data found in hass.data[DOMAIN] - sensors will not be created!")
+        _LOGGER.error(f"Available keys in hass.data[DOMAIN]: {list(hass.data[DOMAIN].keys())}")
         return
 
     # Stocker le callback pour création dynamique ultérieure
@@ -39,16 +42,25 @@ async def async_setup_platform(
     entities = []
     children_data = hass.data[DOMAIN]["children_entities"]
 
+    _LOGGER.info(f"Found {len(children_data)} children in children_entities: {list(children_data.keys())}")
+
     # Créer les sensors pour chaque enfant
     for child_id, child_data in children_data.items():
-        entities.extend(_create_child_sensors(hass, child_id, child_data))
+        _LOGGER.debug(f"Creating sensors for child: {child_id} - {child_data.get('name', 'Unknown')}")
+        child_sensors = _create_child_sensors(hass, child_id, child_data)
+        _LOGGER.debug(f"  Created {len(child_sensors)} sensors for {child_id}")
+        entities.extend(child_sensors)
 
     # Créer les sensors globaux pour task instances et reward claims
     entities.append(AllTaskInstancesSensor(hass))
     entities.append(AllRewardClaimsSensor(hass))
 
     async_add_entities(entities, True)
-    _LOGGER.info(f"Created {len(entities)} sensor entities for {len(children_data)} children + 2 global sensors")
+    _LOGGER.info(f"✅ Successfully created {len(entities)} sensor entities ({len(entities)-2} child sensors + 2 global sensors) for {len(children_data)} children")
+
+    # Log les unique_ids créés pour debug
+    sensor_ids = [e.unique_id if hasattr(e, 'unique_id') else 'no_id' for e in entities[:5]]
+    _LOGGER.debug(f"Sample sensor unique_ids: {sensor_ids}")
 
 
 
