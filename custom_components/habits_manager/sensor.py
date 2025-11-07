@@ -166,6 +166,10 @@ class BaseChildSensor(SensorEntity):
         return {
             "child_id": self._child_id,
             "child_name": self._child_data.get('name', 'Unknown'),
+            "person_entity": self._child_data.get('person_entity', ''),
+            "avatar": self._child_data.get('avatar', {}),
+            "badges": self._child_data.get('badges', []),
+            "owned_cosmetics": self._child_data.get('owned_cosmetics', []),
         }
 
     async def async_added_to_hass(self):
@@ -204,7 +208,8 @@ class ChildPointsSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Points"
+        # Inclure l'ID dans le nom pour générer un entity_id prévisible
+        return f"habits {self._child_id} points"
 
     @property
     def unique_id(self):
@@ -233,7 +238,7 @@ class ChildCoinsSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Coins"
+        return f"habits {self._child_id} coins"
 
     @property
     def unique_id(self):
@@ -262,7 +267,7 @@ class ChildLevelSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Level"
+        return f"habits {self._child_id} level"
 
     @property
     def unique_id(self):
@@ -297,7 +302,7 @@ class ChildExperienceSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Experience"
+        return f"habits {self._child_id} experience"
 
     @property
     def unique_id(self):
@@ -338,7 +343,7 @@ class ChildTasksPendingSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Tasks Pending"
+        return f"habits {self._child_id} tasks pending"
 
     @property
     def unique_id(self):
@@ -371,7 +376,7 @@ class ChildTasksWaitingSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Tasks Waiting Validation"
+        return f"habits {self._child_id} tasks waiting"
 
     @property
     def unique_id(self):
@@ -404,7 +409,7 @@ class ChildLongestStreakSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Longest Streak"
+        return f"habits {self._child_id} longest streak"
 
     @property
     def unique_id(self):
@@ -445,7 +450,7 @@ class ChildTasksWaitingValidationListSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Tasks Waiting Validation List"
+        return f"habits {self._child_id} tasks waiting validation list"
 
     @property
     def unique_id(self):
@@ -533,7 +538,7 @@ class ChildPendingClaimsSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Pending Claims"
+        return f"habits {self._child_id} pending claims"
 
     @property
     def unique_id(self):
@@ -614,7 +619,7 @@ class ChildDailyTasksSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Daily Tasks"
+        return f"habits {self._child_id} daily tasks"
 
     @property
     def unique_id(self):
@@ -761,7 +766,7 @@ class ChildHabitsListSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Habits List"
+        return f"habits {self._child_id} habits list"
 
     @property
     def unique_id(self):
@@ -877,7 +882,7 @@ class ChildHasPendingValidationSensor(BinarySensorEntity):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Has Pending Validation"
+        return f"habits {self._child_id} has pending validation"
 
     @property
     def unique_id(self):
