@@ -111,8 +111,13 @@ export class HabitsChildCard extends LitElement {
         }).then((unsub) => {
           this._unsubscribe = unsub;
         });
+
+        // Load initial data only once
+        this._loadData();
+      } else {
+        // Update the API's hass reference when hass changes
+        this._api.updateHass(this.hass);
       }
-      this._loadData();
     }
   }
 
@@ -136,7 +141,7 @@ export class HabitsChildCard extends LitElement {
       tasks: this._tasks.length,
     });
 
-    this.requestUpdate();
+    // No need for requestUpdate() - @state() properties trigger renders automatically
   }
 
   protected render() {

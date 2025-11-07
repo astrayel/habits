@@ -42,6 +42,13 @@ export class ChildApiClient {
   constructor(private hass: HomeAssistant, private childId: string) {}
 
   /**
+   * Update the hass reference when Home Assistant updates
+   */
+  updateHass(hass: HomeAssistant): void {
+    this.hass = hass;
+  }
+
+  /**
    * Get child data from sensors
    */
   getChild(): Child | null {
