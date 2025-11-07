@@ -536,3 +536,172 @@ create_cosmetic:
       example: "/local/cosmetics/pirate_shirt.png"
       selector:
         text:
+
+purchase_cosmetic:
+  name: Acheter un cosmétique
+  description: Permet à un enfant d'acheter un cosmétique avec ses pièces
+  fields:
+    cosmetic_id:
+      name: ID cosmétique
+      description: Identifiant du cosmétique à acheter
+      required: true
+      example: "cosmetic_clothes_001"
+      selector:
+        text:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant qui achète
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES DE LISTAGE
+# ========================================================================
+
+list_children:
+  name: Lister les enfants
+  description: Retourne la liste complète de tous les enfants avec leurs statistiques
+
+list_tasks:
+  name: Lister les tâches
+  description: Retourne la liste des tâches avec filtres optionnels
+  fields:
+    assigned_to:
+      name: Assignée à
+      description: Filtrer par ID d'enfant assigné
+      required: false
+      example: "child_123abc"
+      selector:
+        text:
+    type:
+      name: Type
+      description: Filtrer par type de tâche
+      required: false
+      example: "one_time"
+      selector:
+        select:
+          options:
+            - label: "Ponctuelle"
+              value: "one_time"
+            - label: "Récurrente"
+              value: "recurring"
+    category:
+      name: Catégorie
+      description: Filtrer par catégorie de tâche
+      required: false
+      example: "chores"
+      selector:
+        select:
+          options:
+            - label: "Corvées"
+              value: "chores"
+            - label: "Devoirs"
+              value: "homework"
+            - label: "Hygiène"
+              value: "hygiene"
+            - label: "Autre"
+              value: "other"
+
+list_habits:
+  name: Lister les habitudes
+  description: Retourne la liste des habitudes avec filtres optionnels et les streaks actuels
+  fields:
+    assigned_to:
+      name: Assignée à
+      description: Filtrer par ID d'enfant assigné
+      required: false
+      example: "child_123abc"
+      selector:
+        text:
+    frequency:
+      name: Fréquence
+      description: Filtrer par fréquence
+      required: false
+      example: "daily"
+      selector:
+        select:
+          options:
+            - label: "Quotidienne"
+              value: "daily"
+            - label: "Hebdomadaire"
+              value: "weekly"
+            - label: "Mensuelle"
+              value: "monthly"
+
+list_rewards:
+  name: Lister les récompenses
+  description: Retourne la liste des récompenses avec filtres optionnels
+  fields:
+    type:
+      name: Type
+      description: Filtrer par type de récompense
+      required: false
+      example: "physical"
+      selector:
+        select:
+          options:
+            - label: "Physique"
+              value: "physical"
+            - label: "Privilège"
+              value: "privilege"
+            - label: "Spécial"
+              value: "special"
+    available_only:
+      name: Disponibles uniquement
+      description: Ne retourner que les récompenses en stock
+      required: false
+      default: false
+      example: true
+      selector:
+        boolean:
+
+list_cosmetics:
+  name: Lister les cosmétiques
+  description: Retourne la liste des cosmétiques avec filtres optionnels
+  fields:
+    category:
+      name: Catégorie
+      description: Filtrer par catégorie
+      required: false
+      example: "clothes"
+      selector:
+        select:
+          options:
+            - label: "Vêtement"
+              value: "clothes"
+            - label: "Accessoire"
+              value: "accessory"
+            - label: "Pet"
+              value: "pet"
+            - label: "Thème"
+              value: "theme"
+            - label: "Badge"
+              value: "badge"
+            - label: "Animation"
+              value: "animation"
+    rarity:
+      name: Rareté
+      description: Filtrer par rareté
+      required: false
+      example: "rare"
+      selector:
+        select:
+          options:
+            - label: "Commun"
+              value: "common"
+            - label: "Rare"
+              value: "rare"
+            - label: "Épique"
+              value: "epic"
+            - label: "Légendaire"
+              value: "legendary"
+    active_only:
+      name: Actifs uniquement
+      description: Ne retourner que les cosmétiques actifs
+      required: false
+      default: false
+      example: true
+      selector:
+        boolean:

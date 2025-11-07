@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Home Assistant
+*.db
+*.db-shm
+*.db-wal
+
+# Node / NPM
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend build (les bundles sont copiés dans custom_components/*/www/)
+www/habits-manager/dist/
+
+# Documentation temporaire générée par agents
+CHANGELOG_LISTING_SERVICES.md
+DIFF_SUMMARY.md
+FILES_INDEX.md
+IMPLEMENTATION_SUMMARY.txt
+LISTING_SERVICES.md
+README_LISTING_SERVICES.md
+test_listing_services.yaml

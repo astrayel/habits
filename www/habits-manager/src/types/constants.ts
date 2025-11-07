@@ -59,6 +59,13 @@ export const SERVICES = {
   // Cosmetic services
   CREATE_COSMETIC: 'create_cosmetic',
   PURCHASE_COSMETIC: 'purchase_cosmetic',
+
+  // Listing services
+  LIST_CHILDREN: 'list_children',
+  LIST_TASKS: 'list_tasks',
+  LIST_HABITS: 'list_habits',
+  LIST_REWARDS: 'list_rewards',
+  LIST_COSMETICS: 'list_cosmetics',
 };
 
 // Card types

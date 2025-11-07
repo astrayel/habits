@@ -60,19 +60,36 @@ export class HabitsManagerStore {
    * Initialize store and subscribe to updates
    */
   private async initialize(): Promise<void> {
+    console.log('[Store] Initializing Habits Manager Store...');
+
     try {
+      // Add timeout to prevent infinite loading
+      const loadTimeout = setTimeout(() => {
+        console.warn('[Store] Data loading is taking longer than expected (10s)');
+      }, 10000);
+
       await this.loadAllData();
+      clearTimeout(loadTimeout);
 
       // Subscribe to Home Assistant events
+      console.log('[Store] Subscribing to Home Assistant updates...');
       this.unsubscribe = await this.api.subscribeToUpdates((event) => {
-        console.log('Store received update:', event);
+        console.log('[Store] Received update event:', event);
         this.handleUpdate(event);
       });
 
       this.state.loading = false;
+      console.log('[Store] ✓ Store initialized successfully');
+      console.log('[Store] State:', {
+        children: this.state.children.length,
+        tasks: this.state.tasks.length,
+        habits: this.state.habits.length,
+        rewards: this.state.rewards.length,
+        cosmetics: this.state.cosmetics.length,
+      });
       this.notifyListeners();
     } catch (error) {
-      console.error('Failed to initialize store:', error);
+      console.error('[Store] ✗ Failed to initialize store:', error);
       this.state.error = error instanceof Error ? error.message : 'Unknown error';
       this.state.loading = false;
       this.notifyListeners();
@@ -80,13 +97,72 @@ export class HabitsManagerStore {
   }
 
   /**
-   * Load all data from sensors
+   * Load all data from listing services
    */
   private async loadAllData(): Promise<void> {
-    this.state.children = this.api.getChildren();
-    this.state.cosmetics = this.api.getCosmetics();
-    // Note: tasks, taskInstances, habits, etc. would need backend sensor support
-    // For now, we only have children and cosmetics data from sensors
+    console.log('[Store] Loading all data from listing services...');
+
+    // Load all data using listing services with Promise.allSettled
+    // This allows graceful handling of individual failures
+    const results = await Promise.allSettled([
+      this.api.listChildren(),
+      this.api.listTasks(),
+      this.api.listHabits(),
+      this.api.listRewards(),
+      this.api.listCosmetics({ active_only: true }),
+    ]);
+
+    // Children
+    if (results[0].status === 'fulfilled') {
+      this.state.children = results[0].value;
+      console.log(`[Store] ✓ Loaded ${this.state.children.length} children`);
+    } else {
+      console.error('[Store] ✗ Error loading children:', results[0].reason);
+      console.warn('[Store]   This is normal if no children exist yet');
+      this.state.children = [];
+    }
+
+    // Tasks
+    if (results[1].status === 'fulfilled') {
+      this.state.tasks = results[1].value;
+      console.log(`[Store] ✓ Loaded ${this.state.tasks.length} tasks`);
+    } else {
+      console.error('[Store] ✗ Error loading tasks:', results[1].reason);
+      console.warn('[Store]   This is normal if no tasks exist yet');
+      this.state.tasks = [];
+    }
+
+    // Habits
+    if (results[2].status === 'fulfilled') {
+      this.state.habits = results[2].value;
+      console.log(`[Store] ✓ Loaded ${this.state.habits.length} habits`);
+    } else {
+      console.error('[Store] ✗ Error loading habits:', results[2].reason);
+      console.warn('[Store]   This is normal if no habits exist yet');
+      this.state.habits = [];
+    }
+
+    // Rewards
+    if (results[3].status === 'fulfilled') {
+      this.state.rewards = results[3].value;
+      console.log(`[Store] ✓ Loaded ${this.state.rewards.length} rewards`);
+    } else {
+      console.error('[Store] ✗ Error loading rewards:', results[3].reason);
+      console.warn('[Store]   This is normal if no rewards exist yet');
+      this.state.rewards = [];
+    }
+
+    // Cosmetics
+    if (results[4].status === 'fulfilled') {
+      this.state.cosmetics = results[4].value;
+      console.log(`[Store] ✓ Loaded ${this.state.cosmetics.length} cosmetics`);
+    } else {
+      console.error('[Store] ✗ Error loading cosmetics:', results[4].reason);
+      console.warn('[Store]   This is normal if no cosmetics exist yet');
+      this.state.cosmetics = [];
+    }
+
+    console.log('[Store] ✓ All data loading completed');
   }
 
   /**
@@ -231,6 +307,14 @@ export class HabitsManagerStore {
   // Task Methods
   // =====================================================
 
+  public getTasks(): Task[] {
+    return this.state.tasks;
+  }
+
+  public getTask(taskId: string): Task | undefined {
+    return this.state.tasks.find((t) => t.id === taskId);
+  }
+
   public getTaskCounts(childId: string): { pending: number; waiting: number } {
     return this.api.getTaskCounts(childId);
   }
@@ -304,6 +388,14 @@ export class HabitsManagerStore {
   // Habit Methods
   // =====================================================
 
+  public getHabits(): Habit[] {
+    return this.state.habits;
+  }
+
+  public getHabit(habitId: string): Habit | undefined {
+    return this.state.habits.find((h) => h.id === habitId);
+  }
+
   public getHabitStats(childId: string): { count: number; longest_streak: number } {
     return this.api.getHabitStats(childId);
   }
@@ -351,6 +443,14 @@ export class HabitsManagerStore {
   // =====================================================
   // Reward Methods
   // =====================================================
+
+  public getRewards(): Reward[] {
+    return this.state.rewards;
+  }
+
+  public getReward(rewardId: string): Reward | undefined {
+    return this.state.rewards.find((r) => r.id === rewardId);
+  }
 
   public async createReward(data: any): Promise<void> {
     try {

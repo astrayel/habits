@@ -60,54 +60,152 @@ export const baseStyles = css`
   }
 
   /* Buttons */
+  .btn,
   .button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 16px;
+    padding: 10px 20px;
     border: none;
     border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: var(--primary-color, #03a9f4);
-    color: var(--text-primary-color, white);
+    background: var(--secondary-background-color, #f5f5f5);
+    color: var(--primary-text-color, #212121);
+    text-decoration: none;
+    outline: none;
   }
 
+  .btn:hover,
   .button:hover {
     opacity: 0.9;
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
+  .btn:active,
   .button:active {
     transform: translateY(0);
   }
 
+  .btn:disabled,
   .button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
+  .btn-primary {
+    background: var(--primary-color, #03a9f4);
+    color: var(--text-primary-color, white);
+  }
+
+  .btn-primary:hover {
+    background: var(--primary-color-dark, #0288d1);
+  }
+
+  .btn-secondary,
   .button-secondary {
-    background: var(--secondary-color, #e0e0e0);
+    background: var(--secondary-background-color, #e0e0e0);
     color: var(--primary-text-color, #212121);
   }
 
+  .btn-success,
   .button-success {
     background: var(--success-color, #4caf50);
     color: white;
   }
 
+  .btn-danger,
   .button-danger {
     background: var(--error-color, #f44336);
     color: white;
   }
 
+  .btn-text {
+    background: transparent;
+    color: var(--primary-color, #03a9f4);
+    padding: 8px 12px;
+  }
+
+  .btn-text:hover {
+    background: rgba(3, 169, 244, 0.08);
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-icon,
   .button-icon {
     padding: 8px;
     border-radius: 50%;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--secondary-text-color, #727272);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    min-width: 100px;
+    outline: none;
+  }
+
+  .tab:hover {
+    background: var(--secondary-background-color, rgba(0, 0, 0, 0.05));
+    color: var(--primary-text-color, #212121);
+  }
+
+  .tab.active {
+    color: var(--primary-color, #03a9f4);
+    border-bottom-color: var(--primary-color, #03a9f4);
+    background: transparent;
+  }
+
+  .tab-icon {
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  .tab-label {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  /* Section Header (used in tabs content) */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section-header .section-title {
+    margin-bottom: 0;
   }
 
   /* Icons */
@@ -129,7 +227,7 @@ export const baseStyles = css`
   }
 
   .section-title {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 500;
     margin-bottom: 12px;
     color: var(--primary-text-color, #212121);
@@ -147,6 +245,47 @@ export const baseStyles = css`
   .item-card:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
+  }
+
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .empty-message {
+    padding: 32px;
+    text-align: center;
+    color: var(--secondary-text-color, #727272);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  /* Error banner */
+  .error-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    background: var(--error-color, #f44336);
+    color: white;
+    border-radius: 8px;
+    font-size: 14px;
+    animation: slideIn 0.3s ease;
+  }
+
+  .error-banner .btn {
+    color: white;
+    background: transparent;
+    border: 1px solid white;
+    padding: 4px 12px;
+    font-size: 12px;
+    min-width: auto;
+  }
+
+  .error-banner .btn:hover {
+    background: rgba(255, 255, 255, 0.1);
   }
 
   /* Badges */
@@ -264,6 +403,24 @@ export const baseStyles = css`
 
   .flex-gap-lg {
     gap: 24px;
+  }
+
+  /* Form layouts */
+  .form-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .form-row > * {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (max-width: 600px) {
+    .form-row {
+      flex-direction: column;
+    }
   }
 
   /* Loading state */
