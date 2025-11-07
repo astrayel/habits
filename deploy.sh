@@ -31,10 +31,22 @@ if [[ -n "${HA_SSH_HOST}" ]]; then
     echo -e "${BLUE}   Chemin: ${TARGET_DIR}${NC}"
     echo ""
 
-    # Tester la connexion SSH
+    # Configurer la connexion SSH persistante pour éviter de redemander le mot de passe
+    SSH_CONTROL_PATH="/tmp/ssh-deploy-habits-$$"
+    SSH_OPTS="-o ControlMaster=auto -o ControlPath=$SSH_CONTROL_PATH -o ControlPersist=300"
+
+    # Fonction pour fermer la connexion SSH à la fin
+    cleanup_ssh() {
+        if [ -S "$SSH_CONTROL_PATH" ]; then
+            ssh -O exit -o ControlPath="$SSH_CONTROL_PATH" "${SSH_USER}@${SSH_HOST}" 2>/dev/null
+        fi
+    }
+    trap cleanup_ssh EXIT
+
+    # Tester la connexion SSH (ouvre la connexion persistante)
     echo -e "${YELLOW}🔌 Test de connexion SSH...${NC}"
-    if ssh -o ConnectTimeout=5 "${SSH_USER}@${SSH_HOST}" "echo 'OK'" &>/dev/null; then
-        echo -e "${GREEN}✅ Connexion SSH réussie${NC}"
+    if ssh $SSH_OPTS -o ConnectTimeout=5 "${SSH_USER}@${SSH_HOST}" "echo 'OK'" &>/dev/null; then
+        echo -e "${GREEN}✅ Connexion SSH réussie (connexion persistante établie)${NC}"
         echo ""
     else
         echo -e "${RED}❌ Impossible de se connecter à ${SSH_USER}@${SSH_HOST}${NC}"
@@ -100,15 +112,15 @@ fi
 if [[ "$USE_SSH" == true ]]; then
     # Mode SSH - Vérifier que le dossier cible existe
     echo -e "${YELLOW}🔍 Vérification du dossier distant...${NC}"
-    if ! ssh "${SSH_USER}@${SSH_HOST}" "[ -d '$TARGET_DIR' ]"; then
+    if ! ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "[ -d '$TARGET_DIR' ]"; then
         echo -e "${YELLOW}⚠️  Le dossier n'existe pas, création...${NC}"
-        ssh "${SSH_USER}@${SSH_HOST}" "mkdir -p '$TARGET_DIR'"
+        ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "mkdir -p '$TARGET_DIR'"
     fi
 
     # Créer un backup distant
     BACKUP_DIR="$(dirname $TARGET_DIR)/habits_manager.backup.$(date +%Y%m%d_%H%M%S)"
     echo -e "${YELLOW}📦 Création d'un backup distant : $BACKUP_DIR${NC}"
-    ssh "${SSH_USER}@${SSH_HOST}" "cp -r '$TARGET_DIR' '$BACKUP_DIR'"
+    ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "cp -r '$TARGET_DIR' '$BACKUP_DIR'"
     echo -e "${GREEN}✅ Backup créé${NC}"
     echo ""
 
@@ -124,10 +136,10 @@ if [[ "$USE_SSH" == true ]]; then
         if [ -f "$SOURCE_FILE" ]; then
             # Créer le dossier parent si nécessaire
             TARGET_DIR_PARENT=$(dirname "$TARGET_FILE")
-            ssh "${SSH_USER}@${SSH_HOST}" "mkdir -p '$TARGET_DIR_PARENT'" 2>/dev/null
+            ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "mkdir -p '$TARGET_DIR_PARENT'" 2>/dev/null
 
             echo -n "  Copie de $file... "
-            if scp -q "$SOURCE_FILE" "${SSH_USER}@${SSH_HOST}:$TARGET_FILE"; then
+            if scp -q $SSH_OPTS "$SOURCE_FILE" "${SSH_USER}@${SSH_HOST}:$TARGET_FILE"; then
                 echo -e "${GREEN}✅${NC}"
                 ((COPIED++))
             else
@@ -195,25 +207,25 @@ echo -e "${BLUE}🔍 Vérifications...${NC}"
 
 if [[ "$USE_SSH" == true ]]; then
     # Vérifications via SSH
-    if ssh "${SSH_USER}@${SSH_HOST}" "grep -q 'SERVICE_LIST_CHILDREN' '$TARGET_DIR/const.py'"; then
+    if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "grep -q 'SERVICE_LIST_CHILDREN' '$TARGET_DIR/const.py'"; then
         echo -e "${GREEN}✅ const.py contient SERVICE_LIST_CHILDREN${NC}"
     else
         echo -e "${RED}❌ ERREUR : SERVICE_LIST_CHILDREN introuvable dans const.py !${NC}"
     fi
 
-    if ssh "${SSH_USER}@${SSH_HOST}" "grep -q 'if reqs_data and isinstance(reqs_data, dict):' '$TARGET_DIR/managers/cosmetic_manager.py'"; then
+    if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "grep -q 'if reqs_data and isinstance(reqs_data, dict):' '$TARGET_DIR/managers/cosmetic_manager.py'"; then
         echo -e "${GREEN}✅ cosmetic_manager.py contient le fix NoneType${NC}"
     else
         echo -e "${YELLOW}⚠️  Fix NoneType non trouvé dans cosmetic_manager.py${NC}"
     fi
 
-    if ssh "${SSH_USER}@${SSH_HOST}" "grep -q 'Points (pénalité)' '$TARGET_DIR/www/habits-manager-card.js'"; then
+    if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "grep -q 'Points (pénalité)' '$TARGET_DIR/www/habits-manager-card.js'"; then
         echo -e "${GREEN}✅ Frontend contient les champs de pénalité${NC}"
     else
         echo -e "${YELLOW}⚠️  Champs de pénalité non trouvés dans le frontend${NC}"
     fi
 
-    if ssh "${SSH_USER}@${SSH_HOST}" "grep -q 'background: transparent' '$TARGET_DIR/www/habits-manager-card.js'"; then
+    if ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "grep -q 'background: transparent' '$TARGET_DIR/www/habits-manager-card.js'"; then
         echo -e "${GREEN}✅ Boutons annuler utilisent le style outlined${NC}"
     else
         echo -e "${YELLOW}⚠️  Style outlined non trouvé pour les boutons${NC}"
