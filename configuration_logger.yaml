@@ -1,0 +1,15 @@
+# Configuration pour activer les logs détaillés de Habits Manager
+#
+# À ajouter dans votre configuration.yaml de Home Assistant
+# Puis redémarrer Home Assistant pour appliquer les changements
+
+logger:
+  default: info
+  logs:
+    # Logs détaillés pour l'intégration Habits Manager
+    custom_components.habits_manager: debug
+
+    # Si vous voulez des logs encore plus détaillés (optionnel):
+    # custom_components.habits_manager.storage: debug
+    # custom_components.habits_manager.managers: debug
+    # custom_components.habits_manager.sensor: debug
