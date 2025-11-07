@@ -49,19 +49,23 @@ export class ChildApiClient {
     const sensorId1 = `sensor.${DOMAIN}_${this.childId}_points`;
     const sensorId2 = `sensor.habits_${this.childId}_points`;
 
+    // Debug: Show all habits sensors available
+    const allHabitsSensors = Object.keys(this.hass.states).filter(s =>
+      s.startsWith('sensor.habits') || s.includes('habits_manager')
+    );
+
     console.log(`[ChildAPI] Looking for child sensors:`, {
       childId: this.childId,
       trying: [sensorId1, sensorId2],
-      availableSensors: Object.keys(this.hass.states).filter(s => s.includes(this.childId)).slice(0, 5)
+      allHabitsSensors: allHabitsSensors.slice(0, 20)  // Show first 20 habits sensors
     });
 
     let pointsSensor = this.hass.states[sensorId1] || this.hass.states[sensorId2];
 
     if (!pointsSensor) {
-      console.warn(`[ChildAPI] Child sensor not found for ${this.childId}`);
-      console.warn(`[ChildAPI] Available sensors matching child ID:`,
-        Object.keys(this.hass.states).filter(s => s.includes(this.childId))
-      );
+      console.error(`[ChildAPI] ❌ Child sensor not found for ${this.childId}`);
+      console.error(`[ChildAPI] All available habits sensors:`, allHabitsSensors);
+      console.error(`[ChildAPI] Please check your card config 'child_id' matches the actual sensor ID`);
       return null;
     }
 
