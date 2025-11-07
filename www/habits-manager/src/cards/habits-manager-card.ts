@@ -1,6 +1,7 @@
 /**
  * Habits Manager Card
  * Management card for parents/admins to configure children, tasks, habits, and rewards
+ * @version 0.1.0
  */
 
 import { LitElement, html, PropertyValues } from 'lit';
@@ -39,6 +40,8 @@ interface HabitsManagerCardConfig extends CardConfig {
 
 type TabType = 'children' | 'tasks' | 'habits' | 'rewards' | 'cosmetics';
 type DialogMode = 'create' | 'edit';
+
+const CARD_VERSION = '0.1.0';
 
 @customElement('habits-manager-card')
 export class HabitsManagerCard extends LitElement {
@@ -94,7 +97,7 @@ export class HabitsManagerCard extends LitElement {
 
   protected render() {
     if (!this._config || !this.hass) {
-      return html``;
+      return html`<div>Loading Habits Manager v${CARD_VERSION}...</div>`;
     }
 
     const title = this._config.title || 'Gestionnaire de Tâches';
