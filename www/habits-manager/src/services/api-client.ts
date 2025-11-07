@@ -387,8 +387,10 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_children service with return_response...');
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_CHILDREN, {});
-      console.log(`[API] ✓ list_children responded with ${response.children?.length || 0} children`);
-      return response.children || [];
+      console.log('[API] Full response:', response);
+      const children = response.response?.children || response.children || [];
+      console.log(`[API] ✓ list_children responded with ${children.length} children`);
+      return children;
     } catch (err) {
       console.error('[API] ✗ Error calling list_children service:', err);
       throw err;
@@ -406,8 +408,9 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_tasks service with return_response, filters:', filters);
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_TASKS, filters || {});
-      console.log(`[API] ✓ list_tasks responded with ${response.tasks?.length || 0} tasks`);
-      return response.tasks || [];
+      const tasks = response.response?.tasks || response.tasks || [];
+      console.log(`[API] ✓ list_tasks responded with ${tasks.length} tasks`);
+      return tasks;
     } catch (err) {
       console.error('[API] ✗ Error calling list_tasks service:', err);
       throw err;
@@ -424,8 +427,9 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_habits service with return_response, filters:', filters);
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_HABITS, filters || {});
-      console.log(`[API] ✓ list_habits responded with ${response.habits?.length || 0} habits`);
-      return response.habits || [];
+      const habits = response.response?.habits || response.habits || [];
+      console.log(`[API] ✓ list_habits responded with ${habits.length} habits`);
+      return habits;
     } catch (err) {
       console.error('[API] ✗ Error calling list_habits service:', err);
       throw err;
@@ -442,8 +446,9 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_rewards service with return_response, filters:', filters);
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_REWARDS, filters || {});
-      console.log(`[API] ✓ list_rewards responded with ${response.rewards?.length || 0} rewards`);
-      return response.rewards || [];
+      const rewards = response.response?.rewards || response.rewards || [];
+      console.log(`[API] ✓ list_rewards responded with ${rewards.length} rewards`);
+      return rewards;
     } catch (err) {
       console.error('[API] ✗ Error calling list_rewards service:', err);
       throw err;
@@ -461,8 +466,9 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_cosmetics service with return_response, filters:', filters);
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_COSMETICS, filters || {});
-      console.log(`[API] ✓ list_cosmetics responded with ${response.cosmetics?.length || 0} cosmetics`);
-      return response.cosmetics || [];
+      const cosmetics = response.response?.cosmetics || response.cosmetics || [];
+      console.log(`[API] ✓ list_cosmetics responded with ${cosmetics.length} cosmetics`);
+      return cosmetics;
     } catch (err) {
       console.error('[API] ✗ Error calling list_cosmetics service:', err);
       throw err;
