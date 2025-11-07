@@ -76,11 +76,11 @@ def _create_child_sensors(hass: HomeAssistant, child_id: str, child_data: dict) 
         ChildLongestStreakSensor(hass, child_id, child_data),
         # Binary sensor (1 sensor)
         ChildHasPendingValidationSensor(hass, child_id, child_data),
-        # Sensor avec liste des tâches en attente de validation
+        # Sensors avec listes complètes réécrits avec async_update
         ChildTasksWaitingValidationListSensor(hass, child_id, child_data),
+        ChildPendingClaimsSensor(hass, child_id, child_data),
         # Autres sensors avec listes complètes - DÉSACTIVÉS (problèmes async)
         # TODO: Réécrire ces sensors avec async_update() pour gérer correctement les coroutines
-        # ChildPendingClaimsSensor(hass, child_id, child_data),
         # ChildDailyTasksSensor(hass, child_id, child_data),
         # ChildHabitsListSensor(hass, child_id, child_data),
     ]
@@ -512,6 +512,12 @@ class ChildTasksWaitingValidationListSensor(BaseChildSensor):
 class ChildPendingClaimsSensor(BaseChildSensor):
     """Sensor pour les réclamations de récompenses en attente avec liste complète."""
 
+    def __init__(self, hass, child_id, child_data):
+        """Initialize the sensor."""
+        super().__init__(hass, child_id, child_data)
+        self._claims_data = []
+        self._state = 0
+
     @property
     def name(self):
         """Nom du sensor."""
@@ -525,28 +531,12 @@ class ChildPendingClaimsSensor(BaseChildSensor):
     @property
     def state(self):
         """État du sensor: nombre de réclamations en attente."""
-        try:
-            if DOMAIN not in self.hass.data:
-                return 0
-            reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
-            if not reward_mgr:
-                return 0
-
-            from .core.models import RewardClaimStatus
-            claims = reward_mgr.get_claims(
-                child_id=self._child_id,
-                status=RewardClaimStatus.PENDING
-            )
-            return len(claims)
-        except Exception as err:
-            _LOGGER.error(f"Error getting pending claims count: {err}")
-            return 0
+        return self._state
 
     @property
     def icon(self):
         """Icône du sensor."""
-        count = self.state
-        if count > 0:
+        if self._state > 0:
             return "mdi:gift-open"
         else:
             return "mdi:gift-outline"
@@ -560,72 +550,50 @@ class ChildPendingClaimsSensor(BaseChildSensor):
     def extra_state_attributes(self):
         """Attributs avec la liste complète des réclamations en attente."""
         attrs = super().extra_state_attributes.copy()
-
-        try:
-            if DOMAIN not in self.hass.data:
-                attrs["claims"] = []
-                return attrs
-
-            reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
-            if not reward_mgr:
-                attrs["claims"] = []
-                return attrs
-
-            from .core.models import RewardClaimStatus
-            claims = reward_mgr.get_claims(
-                child_id=self._child_id,
-                status=RewardClaimStatus.PENDING
-            )
-
-            attrs["claims"] = [
-                {
-                    "claim_id": claim.id,
-                    "reward_id": claim.reward_id,
-                    "reward_title": self._get_reward_title(claim.reward_id),
-                    "claimed_at": claim.claimed_at.isoformat() if claim.claimed_at else None,
-                    "cost_points": self._get_reward_cost_points(claim.reward_id),
-                    "cost_coins": self._get_reward_cost_coins(claim.reward_id)
-                }
-                for claim in claims
-            ]
-        except Exception as err:
-            _LOGGER.error(f"Error getting pending claims list: {err}")
-            attrs["claims"] = []
-
+        attrs["claims"] = self._claims_data
         return attrs
 
-    def _get_reward_title(self, reward_id: str) -> str:
-        """Récupère le titre d'une récompense."""
+    async def async_update(self):
+        """Mise à jour asynchrone des données du sensor."""
         try:
-            reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
-            if not reward_mgr:
-                return "Unknown"
-            reward = reward_mgr.get_reward(reward_id)
-            return reward.title if reward else "Unknown"
-        except Exception:
-            return "Unknown"
+            if DOMAIN not in self.hass.data:
+                self._state = 0
+                self._claims_data = []
+                return
 
-    def _get_reward_cost_points(self, reward_id: str) -> int:
-        """Récupère le coût en points d'une récompense."""
-        try:
             reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
             if not reward_mgr:
-                return 0
-            reward = reward_mgr.get_reward(reward_id)
-            return reward.cost_points if reward else 0
-        except Exception:
-            return 0
+                self._state = 0
+                self._claims_data = []
+                return
 
-    def _get_reward_cost_coins(self, reward_id: str) -> int:
-        """Récupère le coût en pièces d'une récompense."""
-        try:
-            reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
-            if not reward_mgr:
-                return 0
-            reward = reward_mgr.get_reward(reward_id)
-            return reward.cost_coins if reward else 0
-        except Exception:
-            return 0
+            from .core.models import RewardClaimStatus
+
+            # Récupérer toutes les réclamations de cet enfant
+            all_claims = await reward_mgr.get_claims_for_child(self._child_id)
+
+            # Filtrer les réclamations en attente
+            pending_claims = [c for c in all_claims if c.status == RewardClaimStatus.PENDING]
+
+            self._state = len(pending_claims)
+            self._claims_data = []
+
+            for claim in pending_claims:
+                reward = await reward_mgr.get_reward(claim.reward_id)
+                claim_data = {
+                    "claim_id": claim.id,
+                    "reward_id": claim.reward_id,
+                    "reward_title": reward.title if reward else "Unknown",
+                    "claimed_at": claim.claimed_at.isoformat() if claim.claimed_at else None,
+                    "cost_points": reward.cost_points if reward else 0,
+                    "cost_coins": reward.cost_coins if reward else 0
+                }
+                self._claims_data.append(claim_data)
+
+        except Exception as err:
+            _LOGGER.error(f"Error updating pending claims sensor: {err}", exc_info=True)
+            self._state = 0
+            self._claims_data = []
 
 
 class ChildDailyTasksSensor(BaseChildSensor):
