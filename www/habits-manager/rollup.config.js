@@ -31,7 +31,7 @@ const createConfig = (cardName, isLast = false) => ({
         comments: false,
       },
       compress: {
-        drop_console: true,
+        drop_console: false, // Keep console.log for debugging
       },
     }),
     // Copy all dist files after the last card is built
