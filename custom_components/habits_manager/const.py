@@ -67,6 +67,11 @@ SERVICE_APPROVE_CLAIM = "approve_claim"
 SERVICE_CREATE_COSMETIC = "create_cosmetic"
 SERVICE_PURCHASE_COSMETIC = "purchase_cosmetic"
 SERVICE_VALIDATE_PENALTY = "validate_penalty"
+SERVICE_LIST_CHILDREN = "list_children"
+SERVICE_LIST_TASKS = "list_tasks"
+SERVICE_LIST_HABITS = "list_habits"
+SERVICE_LIST_REWARDS = "list_rewards"
+SERVICE_LIST_COSMETICS = "list_cosmetics"
 
 # Entités
 SENSOR_PREFIX = f"sensor.{DOMAIN}_"

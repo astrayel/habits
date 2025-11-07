@@ -43,8 +43,13 @@ async def async_setup_platform(
     for child_id, child_data in children_data.items():
         entities.extend(_create_child_sensors(hass, child_id, child_data))
 
+    # Créer les sensors globaux pour task instances et reward claims
+    entities.append(AllTaskInstancesSensor(hass))
+    entities.append(AllRewardClaimsSensor(hass))
+
     async_add_entities(entities, True)
-    _LOGGER.info(f"Created {len(entities)} sensor entities for {len(children_data)} children")
+    _LOGGER.info(f"Created {len(entities)} sensor entities for {len(children_data)} children + 2 global sensors")
+
 
 
 def _create_child_sensors(hass: HomeAssistant, child_id: str, child_data: dict) -> list:
@@ -979,3 +984,183 @@ class ChildHasPendingValidationSensor(BinarySensorEntity):
         self.async_on_remove(
             self.hass.bus.async_listen(f"{DOMAIN}_entity_delete", handle_entity_delete)
         )
+
+
+# =========================================================================
+# Global Sensors (not child-specific)
+# =========================================================================
+
+
+class AllTaskInstancesSensor(SensorEntity):
+    """Sensor global exposant toutes les task instances."""
+
+    def __init__(self, hass: HomeAssistant):
+        """Initialise le sensor.
+
+        Args:
+            hass: Instance Home Assistant
+        """
+        self.hass = hass
+        self._attr_should_poll = False
+        self._task_instances = []
+
+    @property
+    def name(self):
+        """Nom du sensor."""
+        return "Habits Manager Task Instances"
+
+    @property
+    def unique_id(self):
+        """ID unique du sensor."""
+        return f"{DOMAIN}_all_task_instances"
+
+    @property
+    def state(self):
+        """État du sensor (nombre de task instances)."""
+        return len(self._task_instances)
+
+    @property
+    def icon(self):
+        """Icône du sensor."""
+        return "mdi:format-list-checks"
+
+    @property
+    def unit_of_measurement(self):
+        """Unité de mesure."""
+        return "instances"
+
+    @property
+    def extra_state_attributes(self):
+        """Attributs avec la liste complète des task instances."""
+        return {
+            "task_instances": [
+                {
+                    "id": instance.id,
+                    "task_id": instance.task_id,
+                    "child_id": instance.child_id,
+                    "date": instance.date.isoformat(),
+                    "status": instance.status.value,
+                    "completed_at": instance.completed_at.isoformat() if instance.completed_at else None,
+                    "validated_at": instance.validated_at.isoformat() if instance.validated_at else None,
+                    "validated_by": instance.validated_by,
+                    "refused": instance.refused,
+                    "refused_at": instance.refused_at.isoformat() if instance.refused_at else None,
+                    "penalty_applied": instance.penalty_applied,
+                }
+                for instance in self._task_instances
+            ]
+        }
+
+    async def async_added_to_hass(self):
+        """S'abonne aux événements de mise à jour."""
+
+        @callback
+        def handle_update(event):
+            """Handle update event."""
+            # Recharger les task instances
+            self.hass.async_create_task(self._async_update_data())
+
+        # S'abonner aux événements habits_manager_update
+        self.async_on_remove(
+            self.hass.bus.async_listen(f"{DOMAIN}_update", handle_update)
+        )
+
+        # Charger les données initiales
+        await self._async_update_data()
+
+    async def _async_update_data(self):
+        """Charge les task instances depuis le storage."""
+        try:
+            storage = self.hass.data[DOMAIN].get("storage")
+            if storage:
+                self._task_instances = await storage.load_task_instances()
+                self.async_write_ha_state()
+                _LOGGER.debug(f"Loaded {len(self._task_instances)} task instances")
+        except Exception as e:
+            _LOGGER.error(f"Error loading task instances: {e}")
+
+
+class AllRewardClaimsSensor(SensorEntity):
+    """Sensor global exposant tous les reward claims."""
+
+    def __init__(self, hass: HomeAssistant):
+        """Initialise le sensor.
+
+        Args:
+            hass: Instance Home Assistant
+        """
+        self.hass = hass
+        self._attr_should_poll = False
+        self._reward_claims = []
+
+    @property
+    def name(self):
+        """Nom du sensor."""
+        return "Habits Manager Reward Claims"
+
+    @property
+    def unique_id(self):
+        """ID unique du sensor."""
+        return f"{DOMAIN}_all_reward_claims"
+
+    @property
+    def state(self):
+        """État du sensor (nombre de reward claims)."""
+        return len(self._reward_claims)
+
+    @property
+    def icon(self):
+        """Icône du sensor."""
+        return "mdi:gift-open"
+
+    @property
+    def unit_of_measurement(self):
+        """Unité de mesure."""
+        return "claims"
+
+    @property
+    def extra_state_attributes(self):
+        """Attributs avec la liste complète des reward claims."""
+        return {
+            "reward_claims": [
+                {
+                    "id": claim.id,
+                    "reward_id": claim.reward_id,
+                    "child_id": claim.child_id,
+                    "claimed_at": claim.claimed_at.isoformat(),
+                    "status": claim.status.value,
+                    "approved_by": claim.approved_by,
+                    "approved_at": claim.approved_at.isoformat() if claim.approved_at else None,
+                    "used_at": claim.used_at.isoformat() if claim.used_at else None,
+                }
+                for claim in self._reward_claims
+            ]
+        }
+
+    async def async_added_to_hass(self):
+        """S'abonne aux événements de mise à jour."""
+
+        @callback
+        def handle_update(event):
+            """Handle update event."""
+            # Recharger les reward claims
+            self.hass.async_create_task(self._async_update_data())
+
+        # S'abonner aux événements habits_manager_update
+        self.async_on_remove(
+            self.hass.bus.async_listen(f"{DOMAIN}_update", handle_update)
+        )
+
+        # Charger les données initiales
+        await self._async_update_data()
+
+    async def _async_update_data(self):
+        """Charge les reward claims depuis le storage."""
+        try:
+            storage = self.hass.data[DOMAIN].get("storage")
+            if storage:
+                self._reward_claims = await storage.load_reward_claims()
+                self.async_write_ha_state()
+                _LOGGER.debug(f"Loaded {len(self._reward_claims)} reward claims")
+        except Exception as e:
+            _LOGGER.error(f"Error loading reward claims: {e}")

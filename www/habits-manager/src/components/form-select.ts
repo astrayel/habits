@@ -15,7 +15,7 @@ export interface SelectOption {
 
 export class FormSelect extends LitElement {
   @property({ type: String }) label = '';
-  @property({ type: String }) value = '';
+  @property() value: string | string[] = '';
   @property({ type: Array }) options: SelectOption[] = [];
   @property({ type: Boolean }) required = false;
   @property({ type: Boolean }) disabled = false;
@@ -110,13 +110,14 @@ export class FormSelect extends LitElement {
   }
 
   render() {
+    const selectedValues = this.multiple && Array.isArray(this.value) ? this.value : [this.value];
+
     return html`
       <div class="select-container">
         ${this.label
           ? html`<label class="${this.required ? 'required' : ''}">${this.label}</label>`
           : ''}
         <select
-          .value="${this.value}"
           ?required="${this.required}"
           ?disabled="${this.disabled}"
           ?multiple="${this.multiple}"
@@ -128,7 +129,11 @@ export class FormSelect extends LitElement {
             : ''}
           ${this.options.map(
             (option) => html`
-              <option value="${option.value}" ?disabled="${option.disabled}">
+              <option
+                value="${option.value}"
+                ?disabled="${option.disabled}"
+                ?selected="${selectedValues.includes(option.value)}"
+              >
                 ${option.label}
               </option>
             `

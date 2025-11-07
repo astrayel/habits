@@ -30,6 +30,11 @@ from .const import (
     SERVICE_APPROVE_CLAIM,
     SERVICE_CREATE_COSMETIC,
     SERVICE_PURCHASE_COSMETIC,
+    SERVICE_LIST_CHILDREN,
+    SERVICE_LIST_TASKS,
+    SERVICE_LIST_HABITS,
+    SERVICE_LIST_REWARDS,
+    SERVICE_LIST_COSMETICS,
 )
 from .storage.storage_manager import StorageManager
 from .storage.entity_manager import EntityManager
@@ -753,6 +758,242 @@ async def register_services(hass: HomeAssistant):
             _LOGGER.error(f"Error in purchase_cosmetic: {err}")
             raise HomeAssistantError(f"Failed to purchase cosmetic: {err}")
 
+    # ========================================================================
+    # SERVICES LISTING (Phase 2)
+    # ========================================================================
+
+    async def handle_list_children(call: ServiceCall):
+        """Service: Lister tous les enfants.
+
+        Retourne la liste complète de tous les enfants avec leurs statistiques.
+        Aucun filtre n'est nécessaire.
+        """
+        try:
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+
+            # Récupérer tous les enfants
+            children = await child_mgr.get_all_children()
+
+            # Convertir en dictionnaires
+            children_data = [child.to_dict() for child in children]
+
+            # Émettre un événement avec les résultats
+            hass.bus.fire(f"{DOMAIN}_list_result", {
+                "service": "list_children",
+                "data": children_data,
+                "count": len(children_data),
+            })
+
+            _LOGGER.info(f"Service call: list_children returned {len(children_data)} children")
+
+        except Exception as err:
+            _LOGGER.error(f"Error in list_children: {err}")
+            raise HomeAssistantError(f"Failed to list children: {err}")
+
+    async def handle_list_tasks(call: ServiceCall):
+        """Service: Lister toutes les tâches.
+
+        Filtres optionnels:
+        - assigned_to (child_id): Filtrer par enfant assigné
+        - type (one_time, recurring): Filtrer par type
+        - category: Filtrer par catégorie
+        """
+        try:
+            task_mgr = hass.data[DOMAIN]["task_manager"]
+
+            # Récupérer toutes les tâches
+            tasks = await task_mgr.get_all_tasks()
+
+            # Appliquer les filtres
+            assigned_to = call.data.get("assigned_to")
+            task_type = call.data.get("type")
+            category = call.data.get("category")
+
+            filtered_tasks = tasks
+
+            if assigned_to:
+                filtered_tasks = [t for t in filtered_tasks if assigned_to in t.assigned_to]
+
+            if task_type:
+                filtered_tasks = [t for t in filtered_tasks if t.type.value == task_type]
+
+            if category:
+                filtered_tasks = [t for t in filtered_tasks if t.category.value == category]
+
+            # Convertir en dictionnaires
+            tasks_data = [task.to_dict() for task in filtered_tasks]
+
+            # Émettre un événement avec les résultats
+            hass.bus.fire(f"{DOMAIN}_list_result", {
+                "service": "list_tasks",
+                "data": tasks_data,
+                "count": len(tasks_data),
+                "filters": {
+                    "assigned_to": assigned_to,
+                    "type": task_type,
+                    "category": category,
+                },
+            })
+
+            _LOGGER.info(f"Service call: list_tasks returned {len(tasks_data)} tasks")
+
+        except Exception as err:
+            _LOGGER.error(f"Error in list_tasks: {err}")
+            raise HomeAssistantError(f"Failed to list tasks: {err}")
+
+    async def handle_list_habits(call: ServiceCall):
+        """Service: Lister toutes les habitudes.
+
+        Filtres optionnels:
+        - assigned_to (child_id): Filtrer par enfant assigné
+        - frequency (daily, weekly, custom): Filtrer par fréquence
+        """
+        try:
+            habit_mgr = hass.data[DOMAIN]["habit_manager"]
+
+            # Récupérer toutes les habitudes
+            habits = await habit_mgr.get_all_habits()
+
+            # Appliquer les filtres
+            assigned_to = call.data.get("assigned_to")
+            frequency = call.data.get("frequency")
+
+            filtered_habits = habits
+
+            if assigned_to:
+                filtered_habits = [h for h in filtered_habits if assigned_to in h.assigned_to]
+
+            if frequency:
+                filtered_habits = [h for h in filtered_habits if h.frequency.value == frequency]
+
+            # Convertir en dictionnaires avec streaks actuels
+            habits_data = []
+            for habit in filtered_habits:
+                habit_dict = habit.to_dict()
+
+                # Ajouter les streaks pour chaque enfant assigné
+                habit_dict["streaks"] = {}
+                for child_id in habit.assigned_to:
+                    streak = await habit_mgr.get_streak(habit.id, child_id)
+                    if streak:
+                        habit_dict["streaks"][child_id] = streak.to_dict()
+                    else:
+                        habit_dict["streaks"][child_id] = None
+
+                habits_data.append(habit_dict)
+
+            # Émettre un événement avec les résultats
+            hass.bus.fire(f"{DOMAIN}_list_result", {
+                "service": "list_habits",
+                "data": habits_data,
+                "count": len(habits_data),
+                "filters": {
+                    "assigned_to": assigned_to,
+                    "frequency": frequency,
+                },
+            })
+
+            _LOGGER.info(f"Service call: list_habits returned {len(habits_data)} habits")
+
+        except Exception as err:
+            _LOGGER.error(f"Error in list_habits: {err}")
+            raise HomeAssistantError(f"Failed to list habits: {err}")
+
+    async def handle_list_rewards(call: ServiceCall):
+        """Service: Lister toutes les récompenses.
+
+        Filtres optionnels:
+        - type (physical, privilege, special): Filtrer par type
+        - available_only (bool): Ne retourner que les récompenses en stock
+        """
+        try:
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            # Récupérer toutes les récompenses
+            rewards = await reward_mgr.get_all_rewards()
+
+            # Appliquer les filtres
+            reward_type = call.data.get("type")
+            available_only = call.data.get("available_only", False)
+
+            filtered_rewards = rewards
+
+            if reward_type:
+                filtered_rewards = [r for r in filtered_rewards if r.type.value == reward_type]
+
+            if available_only:
+                # Filtrer: stock is None (illimité) ou stock > 0
+                filtered_rewards = [r for r in filtered_rewards if r.stock is None or r.stock > 0]
+
+            # Convertir en dictionnaires
+            rewards_data = [reward.to_dict() for reward in filtered_rewards]
+
+            # Émettre un événement avec les résultats
+            hass.bus.fire(f"{DOMAIN}_list_result", {
+                "service": "list_rewards",
+                "data": rewards_data,
+                "count": len(rewards_data),
+                "filters": {
+                    "type": reward_type,
+                    "available_only": available_only,
+                },
+            })
+
+            _LOGGER.info(f"Service call: list_rewards returned {len(rewards_data)} rewards")
+
+        except Exception as err:
+            _LOGGER.error(f"Error in list_rewards: {err}")
+            raise HomeAssistantError(f"Failed to list rewards: {err}")
+
+    async def handle_list_cosmetics(call: ServiceCall):
+        """Service: Lister tous les cosmétiques.
+
+        Filtres optionnels:
+        - category (clothes, accessory, pet, theme, badge, animation): Filtrer par catégorie
+        - rarity (common, rare, epic, legendary): Filtrer par rareté
+        - active_only (bool): Ne retourner que les cosmétiques actifs
+        """
+        try:
+            cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
+
+            # Récupérer les paramètres
+            category = call.data.get("category")
+            rarity = call.data.get("rarity")
+            active_only = call.data.get("active_only", False)
+
+            # Récupérer tous les cosmétiques
+            cosmetics = await cosmetic_mgr.get_all_cosmetics(active_only=active_only)
+
+            # Appliquer les filtres
+            filtered_cosmetics = cosmetics
+
+            if category:
+                filtered_cosmetics = [c for c in filtered_cosmetics if c.category.value == category]
+
+            if rarity:
+                filtered_cosmetics = [c for c in filtered_cosmetics if c.rarity.value == rarity]
+
+            # Convertir en dictionnaires
+            cosmetics_data = [cosmetic.to_dict() for cosmetic in filtered_cosmetics]
+
+            # Émettre un événement avec les résultats
+            hass.bus.fire(f"{DOMAIN}_list_result", {
+                "service": "list_cosmetics",
+                "data": cosmetics_data,
+                "count": len(cosmetics_data),
+                "filters": {
+                    "category": category,
+                    "rarity": rarity,
+                    "active_only": active_only,
+                },
+            })
+
+            _LOGGER.info(f"Service call: list_cosmetics returned {len(cosmetics_data)} cosmetics")
+
+        except Exception as err:
+            _LOGGER.error(f"Error in list_cosmetics: {err}")
+            raise HomeAssistantError(f"Failed to list cosmetics: {err}")
+
     # Enregistrer tous les services
     hass.services.async_register(DOMAIN, SERVICE_CREATE_CHILD, handle_create_child)
     hass.services.async_register(DOMAIN, SERVICE_UPDATE_CHILD, handle_update_child)
@@ -777,7 +1018,14 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_CREATE_COSMETIC, handle_create_cosmetic)
     hass.services.async_register(DOMAIN, SERVICE_PURCHASE_COSMETIC, handle_purchase_cosmetic)
 
-    _LOGGER.info(f"Registered {18} services for {DOMAIN} (11 Phase 1 + 7 Phase 2)")
+    # Listing services
+    hass.services.async_register(DOMAIN, SERVICE_LIST_CHILDREN, handle_list_children)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_TASKS, handle_list_tasks)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_HABITS, handle_list_habits)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_REWARDS, handle_list_rewards)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_COSMETICS, handle_list_cosmetics)
+
+    _LOGGER.info(f"Registered {23} services for {DOMAIN} (11 Phase 1 + 7 Phase 2 + 5 Listing)")
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

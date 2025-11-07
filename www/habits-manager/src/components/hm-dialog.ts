@@ -7,7 +7,7 @@ import { LitElement, html, css } from 'lit';
 import { property } from 'lit/decorators.js';
 
 export class HMDialog extends LitElement {
-  @property({ type: Boolean }) open = false;
+  @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: String }) title = '';
   @property({ type: Boolean }) hideActions = false;
   @property({ type: String }) confirmText = 'Confirmer';
