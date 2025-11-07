@@ -14,7 +14,7 @@ export interface HomeAssistant {
   language: string;
   translationMetadata: any;
   localize: (key: string, ...args: any[]) => string;
-  callService: (domain: string, service: string, serviceData?: any) => Promise<any>;
+  callService: (domain: string, service: string, serviceData?: any, options?: { return_response?: boolean }) => Promise<any>;
   callApi: <T>(method: string, path: string, parameters?: any) => Promise<T>;
 }
 
