@@ -38,11 +38,13 @@ class CosmeticManager:
         unlock_reqs = None
         if "unlock_requirements" in cosmetic_data:
             reqs_data = cosmetic_data["unlock_requirements"]
-            unlock_reqs = CosmeticUnlockRequirements(
-                min_level=reqs_data.get("min_level"),
-                required_badge=reqs_data.get("required_badge"),
-                min_streak=reqs_data.get("min_streak"),
-            )
+            # Vérifier que reqs_data n'est pas None et est un dict
+            if reqs_data and isinstance(reqs_data, dict):
+                unlock_reqs = CosmeticUnlockRequirements(
+                    min_level=reqs_data.get("min_level"),
+                    required_badge=reqs_data.get("required_badge"),
+                    min_streak=reqs_data.get("min_streak"),
+                )
 
         # Créer le cosmétique
         cosmetic = CosmeticItem(
