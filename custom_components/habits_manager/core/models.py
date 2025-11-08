@@ -101,9 +101,52 @@ class BadgeConditionType(Enum):
     POINTS_EARNED = "points_earned"
 
 
+class HistoryActionType(Enum):
+    """Type d'action dans l'historique des points."""
+    TASK_COMPLETED = "task_completed"
+    TASK_VALIDATED = "task_validated"
+    TASK_REFUSED = "task_refused"
+    HABIT_COMPLETED = "habit_completed"
+    PENALTY_APPLIED = "penalty_applied"
+    REWARD_CLAIMED = "reward_claimed"
+    MANUAL_ADJUSTMENT = "manual_adjustment"
+
+
 # ============================================================================
 # CHILD (ENFANT)
 # ============================================================================
+
+
+@dataclass
+class PointsHistoryEntry:
+    """Entrée dans l'historique des points."""
+    id: str
+    timestamp: datetime
+    action_type: HistoryActionType
+    points_delta: int
+    coins_delta: int = 0
+    experience_delta: int = 0
+    description: str = ""
+    related_entity_type: str = ""
+    related_entity_id: str = ""
+    related_entity_name: str = ""
+    validator_id: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        """Convertit en dictionnaire."""
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat(),
+            "action_type": self.action_type.value,
+            "points_delta": self.points_delta,
+            "coins_delta": self.coins_delta,
+            "experience_delta": self.experience_delta,
+            "description": self.description,
+            "related_entity_type": self.related_entity_type,
+            "related_entity_id": self.related_entity_id,
+            "related_entity_name": self.related_entity_name,
+            "validator_id": self.validator_id,
+        }
 
 
 @dataclass
@@ -152,8 +195,20 @@ class Child:
     avatar: Avatar = field(default_factory=lambda: Avatar(photo_url=""))
     badges: List[str] = field(default_factory=list)
     owned_cosmetics: List[str] = field(default_factory=list)
+    points_history: List[PointsHistoryEntry] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
+
+    def add_history_entry(self, entry: PointsHistoryEntry) -> None:
+        """Ajoute une entrée dans l'historique et garde les 50 plus récentes.
+
+        Args:
+            entry: L'entrée d'historique à ajouter
+        """
+        self.points_history.insert(0, entry)
+        # Limite à 50 entrées pour éviter une croissance infinie
+        if len(self.points_history) > 50:
+            self.points_history = self.points_history[:50]
 
     def to_dict(self) -> dict:
         """Convertit en dictionnaire pour stockage/API."""
@@ -169,6 +224,7 @@ class Child:
             "avatar": self.avatar.to_dict(),
             "badges": self.badges,
             "owned_cosmetics": self.owned_cosmetics,
+            "points_history": [entry.to_dict() for entry in self.points_history],
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -244,7 +300,29 @@ class Task:
     estimated_duration: int = 10  # minutes
     category: TaskCategory = TaskCategory.OTHER
     active: bool = True
+    suspended: bool = False
+    suspended_until: Optional[datetime] = None
+    suspended_reason: str = ""
     created_at: datetime = field(default_factory=datetime.now)
+
+    def is_available(self) -> bool:
+        """Vérifie si la tâche est disponible (pas suspendue ou suspension expirée).
+
+        Returns:
+            True si la tâche est disponible
+        """
+        if not self.active:
+            return False
+
+        if not self.suspended:
+            return True
+
+        # Si suspendue avec date d'expiration
+        if self.suspended_until:
+            return datetime.now() > self.suspended_until
+
+        # Suspendue indéfiniment
+        return False
 
     def to_dict(self) -> dict:
         """Convertit en dictionnaire."""
@@ -263,6 +341,9 @@ class Task:
             "estimated_duration": self.estimated_duration,
             "category": self.category.value,
             "active": self.active,
+            "suspended": self.suspended,
+            "suspended_until": self.suspended_until.isoformat() if self.suspended_until else None,
+            "suspended_reason": self.suspended_reason,
             "created_at": self.created_at.isoformat(),
         }
 

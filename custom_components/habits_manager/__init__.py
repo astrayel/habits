@@ -1,4 +1,5 @@
 """Habits Manager integration for Home Assistant.
+import uuid
 
 This integration provides a gamified task and habit management system for children.
 """
@@ -35,6 +36,20 @@ from .const import (
     SERVICE_LIST_HABITS,
     SERVICE_LIST_REWARDS,
     SERVICE_LIST_COSMETICS,
+    SERVICE_GET_POINTS_HISTORY,
+    SERVICE_BACKUP_DATA,
+    SERVICE_RESTORE_DATA,
+    SERVICE_SUSPEND_TASK,
+    SERVICE_RESUME_TASK,
+    SERVICE_CHECK_EXPIRED_SUSPENSIONS,
+    SERVICE_ADD_POINTS,
+    SERVICE_REMOVE_POINTS,
+    SERVICE_ADD_COINS,
+    SERVICE_REMOVE_COINS,
+    SERVICE_RESET_DAILY_TASKS,
+    SERVICE_RESET_WEEKLY_TASKS,
+    SERVICE_RESET_MONTHLY_TASKS,
+    SERVICE_CLEAR_ALL_DATA,
 )
 from .storage.storage_manager import StorageManager
 from .storage.entity_manager import EntityManager
@@ -44,6 +59,7 @@ from .managers.habit_manager import HabitManager
 from .managers.validation_manager import ValidationManager
 from .managers.reward_manager import RewardManager
 from .managers.cosmetic_manager import CosmeticManager
+from .managers.backup_manager import BackupManager
 from .services.points_calculator import PointsCalculator
 from .services.level_calculator import LevelCalculator
 from .services.scheduler import Scheduler
@@ -86,6 +102,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     validation_mgr = ValidationManager(storage, entity_mgr)
     reward_mgr = RewardManager(storage)
     cosmetic_mgr = CosmeticManager(storage)
+    backup_mgr = BackupManager(storage)
 
     # Initialiser le scheduler
     scheduler = Scheduler(task_mgr, habit_mgr, entity_mgr)
@@ -100,6 +117,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         "validation_manager": validation_mgr,
         "reward_manager": reward_mgr,
         "cosmetic_manager": cosmetic_mgr,
+        "backup_manager": backup_mgr,
         "scheduler": scheduler,
         "points_calculator": PointsCalculator(),
         "level_calculator": LevelCalculator(),
@@ -484,6 +502,25 @@ async def register_services(hass: HomeAssistant):
                 xp=rewards["experience"]
             )
 
+            # Charger l'habit pour avoir le titre
+            habit = await habit_mgr.get_habit(habit_id)
+            
+            # Créer l'entrée d'historique
+            from .core.models import PointsHistoryEntry, HistoryActionType
+            history_entry = PointsHistoryEntry(
+                id=f"history_{uuid.uuid4().hex[:8]}",
+                timestamp=datetime.now(),
+                action_type=HistoryActionType.HABIT_COMPLETED,
+                points_delta=rewards["points"],
+                coins_delta=rewards["coins"],
+                experience_delta=rewards["experience"],
+                description=f"Habitude complétée : {habit.title} (streak: {streak.current_streak})",
+                related_entity_type="habit",
+                related_entity_id=habit.id,
+                related_entity_name=habit.title,
+            )
+            await child_mgr.add_points_history(child_id, history_entry)
+
             # Mettre Ã  jour le longest_streak dynamiquement
             entity_mgr = hass.data[DOMAIN]["entity_manager"]
             longest_streak = await habit_mgr.get_child_longest_streak(child_id)
@@ -538,6 +575,23 @@ async def register_services(hass: HomeAssistant):
                 xp=rewards["experience"]
             )
 
+            # Créer l'entrée d'historique
+            from .core.models import PointsHistoryEntry, HistoryActionType
+            history_entry = PointsHistoryEntry(
+                id=f"history_{uuid.uuid4().hex[:8]}",
+                timestamp=datetime.now(),
+                action_type=HistoryActionType.TASK_VALIDATED,
+                points_delta=rewards["points"],
+                coins_delta=rewards["coins"],
+                experience_delta=rewards["experience"],
+                description=f"Tâche validée : {task.title}",
+                related_entity_type="task",
+                related_entity_id=task.id,
+                related_entity_name=task.title,
+                validator_id=validator_id,
+            )
+            await child_mgr.add_points_history(instance.child_id, history_entry)
+
             # Mettre Ã  jour les compteurs
             entity_mgr = hass.data[DOMAIN]["entity_manager"]
             all_instances = await task_mgr.get_task_instances(child_id=instance.child_id)
@@ -589,6 +643,26 @@ async def register_services(hass: HomeAssistant):
                     coins=penalties["coins"],
                     xp=0
                 )
+
+                # Charger la task pour avoir le titre
+                task = await task_mgr.get_task(instance.task_id)
+                
+                # Créer l'entrée d'historique
+                from .core.models import PointsHistoryEntry, HistoryActionType
+                history_entry = PointsHistoryEntry(
+                    id=f"history_{uuid.uuid4().hex[:8]}",
+                    timestamp=datetime.now(),
+                    action_type=HistoryActionType.PENALTY_APPLIED,
+                    points_delta=penalties["points"],
+                    coins_delta=penalties["coins"],
+                    experience_delta=0,
+                    description=f"Pénalité appliquée : {task.title}",
+                    related_entity_type="task",
+                    related_entity_id=task.id,
+                    related_entity_name=task.title,
+                    validator_id=validator_id,
+                )
+                await child_mgr.add_points_history(instance.child_id, history_entry)
 
             # Mettre Ã  jour les compteurs
             entity_mgr = hass.data[DOMAIN]["entity_manager"]
@@ -654,6 +728,25 @@ async def register_services(hass: HomeAssistant):
             # DÃ©duire les points/coins
             await child_mgr.update_points(child_id, points=-points_cost, coins=-coins_cost, xp=0)
 
+
+            # Charger la reward pour avoir le titre
+            reward = await reward_mgr.get_reward(reward_id)
+            
+            # Créer l'entrée d'historique
+            from .core.models import PointsHistoryEntry, HistoryActionType
+            history_entry = PointsHistoryEntry(
+                id=f"history_{uuid.uuid4().hex[:8]}",
+                timestamp=datetime.now(),
+                action_type=HistoryActionType.REWARD_CLAIMED,
+                points_delta=-points_cost,
+                coins_delta=-coins_cost,
+                experience_delta=0,
+                description=f"Récompense réclamée : {reward.title}",
+                related_entity_type="reward",
+                related_entity_id=reward.id,
+                related_entity_name=reward.title,
+            )
+            await child_mgr.add_points_history(child_id, history_entry)
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "reward_claimed",
                 "reward_id": reward_id,
@@ -961,6 +1054,309 @@ async def register_services(hass: HomeAssistant):
             _LOGGER.error(f"Error in list_cosmetics: {err}")
             raise HomeAssistantError(f"Failed to list cosmetics: {err}")
 
+
+    async def handle_get_points_history(call: ServiceCall):
+        """Service: Récupérer l'historique des points d'un enfant.
+
+        Paramètres:
+        - child_id (str): ID de l'enfant
+        - limit (int, optional): Nombre max d'entrées (défaut 20, max 50)
+        - action_type_filter (str, optional): Filtrer par type d'action
+        """
+        try:
+            child_id = call.data["child_id"]
+            limit = call.data.get("limit", 20)
+            action_type_filter = call.data.get("action_type_filter")
+
+            # Limiter entre 1 et 50
+            limit = max(1, min(50, limit))
+
+            # Récupérer l'enfant
+            child = await child_mgr.get_child(child_id)
+
+            # Filtrer l'historique si nécessaire
+            history = child.points_history
+            if action_type_filter:
+                from .core.models import HistoryActionType
+                history = [
+                    entry for entry in history
+                    if entry.action_type.value == action_type_filter
+                ]
+
+            # Limiter le nombre d'entrées
+            history = history[:limit]
+
+            # Convertir en dictionnaires
+            history_data = [entry.to_dict() for entry in history]
+
+            _LOGGER.debug(f"Service call: get_points_history for {child.name} returned {len(history_data)} entries")
+
+            return {"history": history_data}
+
+        except ChildNotFoundError as err:
+            _LOGGER.error(f"Child not found: {err}")
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in get_points_history: {err}")
+            raise HomeAssistantError(f"Failed to get points history: {err}")
+
+
+    async def handle_backup_data(call: ServiceCall):
+        """Service: Créer un backup complet des données.
+
+        Paramètres:
+        - include_history (bool, optional): Inclure l'historique des points (défaut: true)
+        - include_cosmetics (bool, optional): Inclure les cosmétiques possédés (défaut: true)
+
+        Retourne un dictionnaire avec toutes les données du système.
+        """
+        try:
+            backup_mgr = hass.data[DOMAIN]["backup_manager"]
+
+            include_history = call.data.get("include_history", True)
+            include_cosmetics = call.data.get("include_cosmetics", True)
+
+            # Créer le backup
+            backup = await backup_mgr.create_backup(
+                include_history=include_history,
+                include_cosmetics=include_cosmetics
+            )
+
+            _LOGGER.info(
+                f"Service call: backup_data created successfully "
+                f"({backup['metadata']['children_count']} children, "
+                f"{backup['metadata']['tasks_count']} tasks)"
+            )
+
+            return backup
+
+        except Exception as err:
+            _LOGGER.error(f"Error in backup_data: {err}")
+            raise HomeAssistantError(f"Failed to create backup: {err}")
+
+    async def handle_restore_data(call: ServiceCall):
+        """Service: Restaurer les données depuis un backup.
+
+        Paramètres:
+        - backup_data (dict): Données du backup à restaurer
+        - merge_strategy (str, optional): Stratégie de fusion (overwrite|merge|skip, défaut: overwrite)
+            - overwrite: Écrase toutes les données existantes
+            - merge: Fusionne avec les données existantes (garde les plus récentes)
+            - skip: Ignore les conflits (garde les données existantes)
+
+        Retourne les statistiques de restauration.
+        """
+        try:
+            backup_mgr = hass.data[DOMAIN]["backup_manager"]
+
+            backup_data = call.data.get("backup_data")
+            if not backup_data:
+                raise HomeAssistantError("backup_data is required")
+
+            merge_strategy = call.data.get("merge_strategy", "overwrite")
+
+            # Restaurer le backup
+            stats = await backup_mgr.restore_backup(
+                backup_data=backup_data,
+                merge_strategy=merge_strategy
+            )
+
+            _LOGGER.info(
+                f"Service call: restore_data completed "
+                f"({stats['children_restored']} children, "
+                f"{stats['tasks_restored']} tasks restored, "
+                f"{stats['skipped']} skipped)"
+            )
+
+            return stats
+
+        except ValidationError as err:
+            _LOGGER.error(f"Backup validation error: {err}")
+            raise HomeAssistantError(f"Invalid backup data: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in restore_data: {err}")
+            raise HomeAssistantError(f"Failed to restore backup: {err}")
+
+    async def handle_suspend_task(call: ServiceCall):
+        """Service: Suspendre une tâche."""
+        try:
+            task_id = call.data["task_id"]
+            until_str = call.data.get("until")
+            reason = call.data.get("reason", "")
+
+            until = None
+            if until_str:
+                until = datetime.fromisoformat(until_str)
+
+            task = await task_mgr.suspend_task(task_id, until, reason)
+
+            _LOGGER.info(f"Service call: suspend_task - {task.title}")
+            return {"task_id": task.id, "suspended": task.suspended}
+
+        except TaskNotFoundError as err:
+            raise HomeAssistantError(f"Task not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in suspend_task: {err}")
+            raise HomeAssistantError(f"Failed to suspend task: {err}")
+
+    async def handle_resume_task(call: ServiceCall):
+        """Service: Lever la suspension d'une tâche."""
+        try:
+            task_id = call.data["task_id"]
+
+            task = await task_mgr.resume_task(task_id)
+
+            _LOGGER.info(f"Service call: resume_task - {task.title}")
+            return {"task_id": task.id, "suspended": task.suspended}
+
+        except TaskNotFoundError as err:
+            raise HomeAssistantError(f"Task not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in resume_task: {err}")
+            raise HomeAssistantError(f"Failed to resume task: {err}")
+
+    async def handle_check_expired_suspensions(call: ServiceCall):
+        """Service: Vérifier et lever les suspensions expirées."""
+        try:
+            resumed_tasks = await task_mgr.check_expired_suspensions()
+
+            _LOGGER.info(f"Service call: check_expired_suspensions - {len(resumed_tasks)} tasks resumed")
+            return {
+                "resumed_count": len(resumed_tasks),
+                "resumed_tasks": [{"id": t.id, "title": t.title} for t in resumed_tasks]
+            }
+
+        except Exception as err:
+            _LOGGER.error(f"Error in check_expired_suspensions: {err}")
+            raise HomeAssistantError(f"Failed to check expired suspensions: {err}")
+
+
+    async def handle_add_points(call: ServiceCall):
+        """Service: Ajouter des points manuellement."""
+        try:
+            child_id = call.data["child_id"]
+            points = call.data["points"]
+            reason = call.data.get("reason", "Ajustement manuel de points")
+            
+            child = await child_mgr.add_currency_manual(child_id, points=points, coins=0, reason=reason)
+            _LOGGER.info(f"Service call: add_points - {points} points for {child.name}")
+            return {"child_id": child.id, "points": child.points}
+        except ChildNotFoundError as err:
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in add_points: {err}")
+            raise HomeAssistantError(f"Failed to add points: {err}")
+
+    async def handle_remove_points(call: ServiceCall):
+        """Service: Retirer des points manuellement."""
+        try:
+            child_id = call.data["child_id"]
+            points = call.data["points"]
+            reason = call.data.get("reason", "Retrait manuel de points")
+            
+            child = await child_mgr.add_currency_manual(child_id, points=-points, coins=0, reason=reason)
+            _LOGGER.info(f"Service call: remove_points - {points} points for {child.name}")
+            return {"child_id": child.id, "points": child.points}
+        except ChildNotFoundError as err:
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in remove_points: {err}")
+            raise HomeAssistantError(f"Failed to remove points: {err}")
+
+    async def handle_add_coins(call: ServiceCall):
+        """Service: Ajouter des pièces manuellement."""
+        try:
+            child_id = call.data["child_id"]
+            coins = call.data["coins"]
+            reason = call.data.get("reason", "Ajustement manuel de pièces")
+            
+            child = await child_mgr.add_currency_manual(child_id, points=0, coins=coins, reason=reason)
+            _LOGGER.info(f"Service call: add_coins - {coins} coins for {child.name}")
+            return {"child_id": child.id, "coins": child.coins}
+        except ChildNotFoundError as err:
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in add_coins: {err}")
+            raise HomeAssistantError(f"Failed to add coins: {err}")
+
+    async def handle_remove_coins(call: ServiceCall):
+        """Service: Retirer des pièces manuellement."""
+        try:
+            child_id = call.data["child_id"]
+            coins = call.data["coins"]
+            reason = call.data.get("reason", "Retrait manuel de pièces")
+            
+            child = await child_mgr.add_currency_manual(child_id, points=0, coins=-coins, reason=reason)
+            _LOGGER.info(f"Service call: remove_coins - {coins} coins for {child.name}")
+            return {"child_id": child.id, "coins": child.coins}
+        except ChildNotFoundError as err:
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in remove_coins: {err}")
+            raise HomeAssistantError(f"Failed to remove coins: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in remove_coins: {err}")
+            raise HomeAssistantError(f"Failed to remove coins: {err}")
+            _LOGGER.error(f"Error in check_expired_suspensions: {err}")
+            raise HomeAssistantError(f"Failed to check expired suspensions: {err}")
+
+    async def handle_reset_daily_tasks(call: ServiceCall):
+        """Service: Réinitialiser toutes les tâches quotidiennes."""
+        try:
+            count = await task_mgr.reset_tasks_by_schedule("daily")
+            _LOGGER.info(f"Service call: reset_daily_tasks - {count} instances reset")
+            return {"reset_count": count}
+        except Exception as err:
+            _LOGGER.error(f"Error in reset_daily_tasks: {err}")
+            raise HomeAssistantError(f"Failed to reset daily tasks: {err}")
+
+    async def handle_reset_weekly_tasks(call: ServiceCall):
+        """Service: Réinitialiser toutes les tâches hebdomadaires."""
+        try:
+            count = await task_mgr.reset_tasks_by_schedule("weekly")
+            _LOGGER.info(f"Service call: reset_weekly_tasks - {count} instances reset")
+            return {"reset_count": count}
+        except Exception as err:
+            _LOGGER.error(f"Error in reset_weekly_tasks: {err}")
+            raise HomeAssistantError(f"Failed to reset weekly tasks: {err}")
+
+    async def handle_reset_monthly_tasks(call: ServiceCall):
+        """Service: Réinitialiser toutes les tâches mensuelles."""
+        try:
+            count = await task_mgr.reset_tasks_by_schedule("monthly")
+            _LOGGER.info(f"Service call: reset_monthly_tasks - {count} instances reset")
+            return {"reset_count": count}
+        except Exception as err:
+            _LOGGER.error(f"Error in reset_monthly_tasks: {err}")
+            raise HomeAssistantError(f"Failed to reset monthly tasks: {err}")
+
+    async def handle_clear_all_data(call: ServiceCall):
+        """Service: Effacer TOUTES les données (DESTRUCTIF)."""
+        try:
+            confirm = call.data.get("confirm", False)
+            if not confirm:
+                raise HomeAssistantError("Must set confirm=true to clear all data")
+            
+            # Supprimer tous les enfants (cascade)
+            children = await storage.load_children()
+            for child in children:
+                await child_mgr.delete_child(child.id)
+            
+            # Supprimer toutes les tâches
+            tasks = await storage.load_tasks()
+            for task in tasks:
+                await task_mgr.delete_task(task.id)
+            
+            # Supprimer toutes les habitudes
+            habits = await storage.load_habits()
+            for habit in habits:
+                await habit_mgr.delete_habit(habit.id)
+            
+            _LOGGER.warning("Service call: clear_all_data - ALL DATA DELETED")
+            return {"status": "all_data_cleared"}
+        except Exception as err:
+            _LOGGER.error(f"Error in clear_all_data: {err}")
+            raise HomeAssistantError(f"Failed to clear data: {err}")
     # Enregistrer tous les services
     hass.services.async_register(DOMAIN, SERVICE_CREATE_CHILD, handle_create_child)
     hass.services.async_register(DOMAIN, SERVICE_UPDATE_CHILD, handle_update_child)
@@ -991,6 +1387,70 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_LIST_HABITS, handle_list_habits, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_LIST_REWARDS, handle_list_rewards, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_LIST_COSMETICS, handle_list_cosmetics, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_GET_POINTS_HISTORY, handle_get_points_history, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_BACKUP_DATA, handle_backup_data, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_RESTORE_DATA, handle_restore_data, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_SUSPEND_TASK, handle_suspend_task, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_RESUME_TASK, handle_resume_task, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_CHECK_EXPIRED_SUSPENSIONS, handle_check_expired_suspensions, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_ADD_POINTS, handle_add_points, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_REMOVE_POINTS, handle_remove_points, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_ADD_COINS, handle_add_coins, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_REMOVE_COINS, handle_remove_coins, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_RESET_DAILY_TASKS, handle_reset_daily_tasks, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_RESET_WEEKLY_TASKS, handle_reset_weekly_tasks, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_RESET_MONTHLY_TASKS, handle_reset_monthly_tasks, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_CLEAR_ALL_DATA, handle_clear_all_data, supports_response=SupportsResponse.ONLY)
+    SERVICE_RESET_DAILY_TASKS,
+    SERVICE_RESET_WEEKLY_TASKS,
+    SERVICE_RESET_MONTHLY_TASKS,
+    SERVICE_CLEAR_ALL_DATA,
+    SERVICE_ADD_POINTS,
+    SERVICE_REMOVE_POINTS,
+    SERVICE_ADD_COINS,
+    SERVICE_REMOVE_COINS,
+    SERVICE_RESET_DAILY_TASKS,
+    SERVICE_RESET_WEEKLY_TASKS,
+    SERVICE_RESET_MONTHLY_TASKS,
+    SERVICE_CLEAR_ALL_DATA,
+    SERVICE_SUSPEND_TASK,
+    SERVICE_RESUME_TASK,
+    SERVICE_CHECK_EXPIRED_SUSPENSIONS,
+    SERVICE_ADD_POINTS,
+    SERVICE_REMOVE_POINTS,
+    SERVICE_ADD_COINS,
+    SERVICE_REMOVE_COINS,
+    SERVICE_RESET_DAILY_TASKS,
+    SERVICE_RESET_WEEKLY_TASKS,
+    SERVICE_RESET_MONTHLY_TASKS,
+    SERVICE_CLEAR_ALL_DATA,
+    SERVICE_BACKUP_DATA,
+    SERVICE_RESTORE_DATA,
+    SERVICE_SUSPEND_TASK,
+    SERVICE_RESUME_TASK,
+    SERVICE_CHECK_EXPIRED_SUSPENSIONS,
+    SERVICE_ADD_POINTS,
+    SERVICE_REMOVE_POINTS,
+    SERVICE_ADD_COINS,
+    SERVICE_REMOVE_COINS,
+    SERVICE_RESET_DAILY_TASKS,
+    SERVICE_RESET_WEEKLY_TASKS,
+    SERVICE_RESET_MONTHLY_TASKS,
+    SERVICE_CLEAR_ALL_DATA,
+    SERVICE_GET_POINTS_HISTORY,
+    SERVICE_BACKUP_DATA,
+    SERVICE_RESTORE_DATA,
+    SERVICE_SUSPEND_TASK,
+    SERVICE_RESUME_TASK,
+    SERVICE_CHECK_EXPIRED_SUSPENSIONS,
+    SERVICE_ADD_POINTS,
+    SERVICE_REMOVE_POINTS,
+    SERVICE_ADD_COINS,
+    SERVICE_REMOVE_COINS,
+    SERVICE_RESET_DAILY_TASKS,
+    SERVICE_RESET_WEEKLY_TASKS,
+    SERVICE_RESET_MONTHLY_TASKS,
+    SERVICE_CLEAR_ALL_DATA,
 
     _LOGGER.info(f"Registered {23} services for {DOMAIN} (11 Phase 1 + 7 Phase 2 + 5 Listing)")
 
