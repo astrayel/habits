@@ -51,11 +51,15 @@ class EntityManager:
 
         self.hass.data[DOMAIN]["children_entities"][child.id] = {
             "name": child.name,
+            "person_entity": child.person_entity,
             "points": child.points,
             "coins": child.coins,
             "level": child.level,
             "experience": child.experience,
             "experience_to_next_level": child.experience_to_next_level,
+            "avatar": child.avatar.to_dict() if hasattr(child.avatar, 'to_dict') else {},
+            "badges": child.badges,
+            "owned_cosmetics": child.owned_cosmetics,
             "tasks_pending": 0,  # Sera mis à jour par les managers
             "tasks_waiting": 0,  # Sera mis à jour par les managers
             "longest_streak": 0,  # Sera mis à jour par les managers
@@ -84,11 +88,15 @@ class EntityManager:
         # Mettre à jour les données
         entity_data = self.hass.data[DOMAIN]["children_entities"][child.id]
         entity_data["name"] = child.name
+        entity_data["person_entity"] = child.person_entity
         entity_data["points"] = child.points
         entity_data["coins"] = child.coins
         entity_data["level"] = child.level
         entity_data["experience"] = child.experience
         entity_data["experience_to_next_level"] = child.experience_to_next_level
+        entity_data["avatar"] = child.avatar.to_dict() if hasattr(child.avatar, 'to_dict') else {}
+        entity_data["badges"] = child.badges
+        entity_data["owned_cosmetics"] = child.owned_cosmetics
 
         # Déclencher une mise à jour des entités
         # Les entités sensor.py écouteront les changements dans hass.data

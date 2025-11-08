@@ -25,12 +25,15 @@ async def async_setup_platform(
         async_add_entities: Callback pour ajouter les entités
         discovery_info: Informations de découverte
     """
+    _LOGGER.info("Setting up Habits Manager sensor platform")
+
     if DOMAIN not in hass.data:
-        _LOGGER.warning("Habits Manager domain not found in hass.data")
+        _LOGGER.error("❌ Habits Manager domain not found in hass.data - sensors will not be created!")
         return
 
     if "children_entities" not in hass.data[DOMAIN]:
-        _LOGGER.warning("No children entities data found")
+        _LOGGER.error("❌ No children_entities data found in hass.data[DOMAIN] - sensors will not be created!")
+        _LOGGER.error(f"Available keys in hass.data[DOMAIN]: {list(hass.data[DOMAIN].keys())}")
         return
 
     # Stocker le callback pour création dynamique ultérieure
@@ -39,16 +42,25 @@ async def async_setup_platform(
     entities = []
     children_data = hass.data[DOMAIN]["children_entities"]
 
+    _LOGGER.info(f"Found {len(children_data)} children in children_entities: {list(children_data.keys())}")
+
     # Créer les sensors pour chaque enfant
     for child_id, child_data in children_data.items():
-        entities.extend(_create_child_sensors(hass, child_id, child_data))
+        _LOGGER.debug(f"Creating sensors for child: {child_id} - {child_data.get('name', 'Unknown')}")
+        child_sensors = _create_child_sensors(hass, child_id, child_data)
+        _LOGGER.debug(f"  Created {len(child_sensors)} sensors for {child_id}")
+        entities.extend(child_sensors)
 
     # Créer les sensors globaux pour task instances et reward claims
     entities.append(AllTaskInstancesSensor(hass))
     entities.append(AllRewardClaimsSensor(hass))
 
     async_add_entities(entities, True)
-    _LOGGER.info(f"Created {len(entities)} sensor entities for {len(children_data)} children + 2 global sensors")
+    _LOGGER.info(f"✅ Successfully created {len(entities)} sensor entities ({len(entities)-2} child sensors + 2 global sensors) for {len(children_data)} children")
+
+    # Log les unique_ids créés pour debug
+    sensor_ids = [e.unique_id if hasattr(e, 'unique_id') else 'no_id' for e in entities[:5]]
+    _LOGGER.debug(f"Sample sensor unique_ids: {sensor_ids}")
 
 
 
@@ -76,10 +88,11 @@ def _create_child_sensors(hass: HomeAssistant, child_id: str, child_data: dict) 
         ChildLongestStreakSensor(hass, child_id, child_data),
         # Binary sensor (1 sensor)
         ChildHasPendingValidationSensor(hass, child_id, child_data),
-        # Nouveaux sensors avec listes complètes - DÉSACTIVÉS (problèmes async)
+        # Sensors avec listes complètes réécrits avec async_update
+        ChildTasksWaitingValidationListSensor(hass, child_id, child_data),
+        ChildPendingClaimsSensor(hass, child_id, child_data),
+        # Autres sensors avec listes complètes - DÉSACTIVÉS (problèmes async)
         # TODO: Réécrire ces sensors avec async_update() pour gérer correctement les coroutines
-        # ChildTasksWaitingValidationListSensor(hass, child_id, child_data),
-        # ChildPendingClaimsSensor(hass, child_id, child_data),
         # ChildDailyTasksSensor(hass, child_id, child_data),
         # ChildHabitsListSensor(hass, child_id, child_data),
     ]
@@ -153,6 +166,10 @@ class BaseChildSensor(SensorEntity):
         return {
             "child_id": self._child_id,
             "child_name": self._child_data.get('name', 'Unknown'),
+            "person_entity": self._child_data.get('person_entity', ''),
+            "avatar": self._child_data.get('avatar', {}),
+            "badges": self._child_data.get('badges', []),
+            "owned_cosmetics": self._child_data.get('owned_cosmetics', []),
         }
 
     async def async_added_to_hass(self):
@@ -191,7 +208,8 @@ class ChildPointsSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Points"
+        # Inclure l'ID dans le nom pour générer un entity_id prévisible
+        return f"habits {self._child_id} points"
 
     @property
     def unique_id(self):
@@ -220,7 +238,7 @@ class ChildCoinsSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Coins"
+        return f"habits {self._child_id} coins"
 
     @property
     def unique_id(self):
@@ -249,7 +267,7 @@ class ChildLevelSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Level"
+        return f"habits {self._child_id} level"
 
     @property
     def unique_id(self):
@@ -284,7 +302,7 @@ class ChildExperienceSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Experience"
+        return f"habits {self._child_id} experience"
 
     @property
     def unique_id(self):
@@ -325,7 +343,7 @@ class ChildTasksPendingSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Tasks Pending"
+        return f"habits {self._child_id} tasks pending"
 
     @property
     def unique_id(self):
@@ -358,7 +376,7 @@ class ChildTasksWaitingSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Tasks Waiting Validation"
+        return f"habits {self._child_id} tasks waiting"
 
     @property
     def unique_id(self):
@@ -391,7 +409,7 @@ class ChildLongestStreakSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Longest Streak"
+        return f"habits {self._child_id} longest streak"
 
     @property
     def unique_id(self):
@@ -423,10 +441,16 @@ class ChildLongestStreakSensor(BaseChildSensor):
 class ChildTasksWaitingValidationListSensor(BaseChildSensor):
     """Sensor pour les tâches en attente de validation avec liste complète."""
 
+    def __init__(self, hass, child_id, child_data):
+        """Initialize the sensor."""
+        super().__init__(hass, child_id, child_data)
+        self._instances_data = []
+        self._state = 0
+
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Tasks Waiting Validation List"
+        return f"habits {self._child_id} tasks waiting validation list"
 
     @property
     def unique_id(self):
@@ -436,28 +460,12 @@ class ChildTasksWaitingValidationListSensor(BaseChildSensor):
     @property
     def state(self):
         """État du sensor: nombre de tâches en attente de validation."""
-        try:
-            if DOMAIN not in self.hass.data:
-                return 0
-            task_mgr = self.hass.data[DOMAIN].get("task_manager")
-            if not task_mgr:
-                return 0
-
-            from .core.models import TaskInstanceStatus
-            instances = task_mgr.get_task_instances(
-                child_id=self._child_id,
-                status=TaskInstanceStatus.COMPLETED_WAITING
-            )
-            return len(instances)
-        except Exception as err:
-            _LOGGER.error(f"Error getting tasks waiting validation count: {err}")
-            return 0
+        return self._state
 
     @property
     def icon(self):
         """Icône du sensor."""
-        count = self.state
-        if count > 0:
+        if self._state > 0:
             return "mdi:clipboard-check-outline"
         else:
             return "mdi:clipboard-check"
@@ -471,75 +479,66 @@ class ChildTasksWaitingValidationListSensor(BaseChildSensor):
     def extra_state_attributes(self):
         """Attributs avec la liste complète des tâches en attente."""
         attrs = super().extra_state_attributes.copy()
+        attrs["instances"] = self._instances_data
+        return attrs
 
+    async def async_update(self):
+        """Mise à jour asynchrone des données du sensor."""
         try:
             if DOMAIN not in self.hass.data:
-                attrs["instances"] = []
-                return attrs
+                self._state = 0
+                self._instances_data = []
+                return
 
             task_mgr = self.hass.data[DOMAIN].get("task_manager")
             if not task_mgr:
-                attrs["instances"] = []
-                return attrs
+                self._state = 0
+                self._instances_data = []
+                return
 
             from .core.models import TaskInstanceStatus
-            instances = task_mgr.get_task_instances(
+            instances = await task_mgr.get_task_instances(
                 child_id=self._child_id,
                 status=TaskInstanceStatus.COMPLETED_WAITING
             )
 
-            attrs["instances"] = [
-                {
+            self._state = len(instances)
+            self._instances_data = []
+
+            for inst in instances:
+                task = await task_mgr.get_task(inst.task_id)
+                task_data = {
                     "instance_id": inst.id,
                     "task_id": inst.task_id,
-                    "task_title": self._get_task_title(inst.task_id),
+                    "task_title": task.title if task else "Unknown",
                     "completed_at": inst.completed_at.isoformat() if inst.completed_at else None,
-                    "rewards": self._get_task_rewards(inst.task_id)
+                    "rewards": {
+                        "points": task.rewards.points if task else 0,
+                        "coins": task.rewards.coins if task else 0,
+                        "experience": task.rewards.experience if task else 0
+                    }
                 }
-                for inst in instances
-            ]
+                self._instances_data.append(task_data)
+
         except Exception as err:
-            _LOGGER.error(f"Error getting tasks waiting validation list: {err}")
-            attrs["instances"] = []
-
-        return attrs
-
-    def _get_task_title(self, task_id: str) -> str:
-        """Récupère le titre d'une tâche."""
-        try:
-            task_mgr = self.hass.data[DOMAIN].get("task_manager")
-            if not task_mgr:
-                return "Unknown"
-            task = task_mgr.get_task(task_id)
-            return task.title if task else "Unknown"
-        except Exception:
-            return "Unknown"
-
-    def _get_task_rewards(self, task_id: str) -> dict:
-        """Récupère les récompenses d'une tâche."""
-        try:
-            task_mgr = self.hass.data[DOMAIN].get("task_manager")
-            if not task_mgr:
-                return {"points": 0, "coins": 0, "experience": 0}
-            task = task_mgr.get_task(task_id)
-            if not task:
-                return {"points": 0, "coins": 0, "experience": 0}
-            return {
-                "points": task.rewards.points,
-                "coins": task.rewards.coins,
-                "experience": task.rewards.experience
-            }
-        except Exception:
-            return {"points": 0, "coins": 0, "experience": 0}
+            _LOGGER.error(f"Error updating tasks waiting validation list sensor: {err}", exc_info=True)
+            self._state = 0
+            self._instances_data = []
 
 
 class ChildPendingClaimsSensor(BaseChildSensor):
     """Sensor pour les réclamations de récompenses en attente avec liste complète."""
 
+    def __init__(self, hass, child_id, child_data):
+        """Initialize the sensor."""
+        super().__init__(hass, child_id, child_data)
+        self._claims_data = []
+        self._state = 0
+
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Pending Claims"
+        return f"habits {self._child_id} pending claims"
 
     @property
     def unique_id(self):
@@ -549,28 +548,12 @@ class ChildPendingClaimsSensor(BaseChildSensor):
     @property
     def state(self):
         """État du sensor: nombre de réclamations en attente."""
-        try:
-            if DOMAIN not in self.hass.data:
-                return 0
-            reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
-            if not reward_mgr:
-                return 0
-
-            from .core.models import RewardClaimStatus
-            claims = reward_mgr.get_claims(
-                child_id=self._child_id,
-                status=RewardClaimStatus.PENDING
-            )
-            return len(claims)
-        except Exception as err:
-            _LOGGER.error(f"Error getting pending claims count: {err}")
-            return 0
+        return self._state
 
     @property
     def icon(self):
         """Icône du sensor."""
-        count = self.state
-        if count > 0:
+        if self._state > 0:
             return "mdi:gift-open"
         else:
             return "mdi:gift-outline"
@@ -584,72 +567,50 @@ class ChildPendingClaimsSensor(BaseChildSensor):
     def extra_state_attributes(self):
         """Attributs avec la liste complète des réclamations en attente."""
         attrs = super().extra_state_attributes.copy()
-
-        try:
-            if DOMAIN not in self.hass.data:
-                attrs["claims"] = []
-                return attrs
-
-            reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
-            if not reward_mgr:
-                attrs["claims"] = []
-                return attrs
-
-            from .core.models import RewardClaimStatus
-            claims = reward_mgr.get_claims(
-                child_id=self._child_id,
-                status=RewardClaimStatus.PENDING
-            )
-
-            attrs["claims"] = [
-                {
-                    "claim_id": claim.id,
-                    "reward_id": claim.reward_id,
-                    "reward_title": self._get_reward_title(claim.reward_id),
-                    "claimed_at": claim.claimed_at.isoformat() if claim.claimed_at else None,
-                    "cost_points": self._get_reward_cost_points(claim.reward_id),
-                    "cost_coins": self._get_reward_cost_coins(claim.reward_id)
-                }
-                for claim in claims
-            ]
-        except Exception as err:
-            _LOGGER.error(f"Error getting pending claims list: {err}")
-            attrs["claims"] = []
-
+        attrs["claims"] = self._claims_data
         return attrs
 
-    def _get_reward_title(self, reward_id: str) -> str:
-        """Récupère le titre d'une récompense."""
+    async def async_update(self):
+        """Mise à jour asynchrone des données du sensor."""
         try:
-            reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
-            if not reward_mgr:
-                return "Unknown"
-            reward = reward_mgr.get_reward(reward_id)
-            return reward.title if reward else "Unknown"
-        except Exception:
-            return "Unknown"
+            if DOMAIN not in self.hass.data:
+                self._state = 0
+                self._claims_data = []
+                return
 
-    def _get_reward_cost_points(self, reward_id: str) -> int:
-        """Récupère le coût en points d'une récompense."""
-        try:
             reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
             if not reward_mgr:
-                return 0
-            reward = reward_mgr.get_reward(reward_id)
-            return reward.cost_points if reward else 0
-        except Exception:
-            return 0
+                self._state = 0
+                self._claims_data = []
+                return
 
-    def _get_reward_cost_coins(self, reward_id: str) -> int:
-        """Récupère le coût en pièces d'une récompense."""
-        try:
-            reward_mgr = self.hass.data[DOMAIN].get("reward_manager")
-            if not reward_mgr:
-                return 0
-            reward = reward_mgr.get_reward(reward_id)
-            return reward.cost_coins if reward else 0
-        except Exception:
-            return 0
+            from .core.models import RewardClaimStatus
+
+            # Récupérer toutes les réclamations de cet enfant
+            all_claims = await reward_mgr.get_claims_for_child(self._child_id)
+
+            # Filtrer les réclamations en attente
+            pending_claims = [c for c in all_claims if c.status == RewardClaimStatus.PENDING]
+
+            self._state = len(pending_claims)
+            self._claims_data = []
+
+            for claim in pending_claims:
+                reward = await reward_mgr.get_reward(claim.reward_id)
+                claim_data = {
+                    "claim_id": claim.id,
+                    "reward_id": claim.reward_id,
+                    "reward_title": reward.title if reward else "Unknown",
+                    "claimed_at": claim.claimed_at.isoformat() if claim.claimed_at else None,
+                    "cost_points": reward.cost_points if reward else 0,
+                    "cost_coins": reward.cost_coins if reward else 0
+                }
+                self._claims_data.append(claim_data)
+
+        except Exception as err:
+            _LOGGER.error(f"Error updating pending claims sensor: {err}", exc_info=True)
+            self._state = 0
+            self._claims_data = []
 
 
 class ChildDailyTasksSensor(BaseChildSensor):
@@ -658,7 +619,7 @@ class ChildDailyTasksSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Daily Tasks"
+        return f"habits {self._child_id} daily tasks"
 
     @property
     def unique_id(self):
@@ -805,7 +766,7 @@ class ChildHabitsListSensor(BaseChildSensor):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Habits List"
+        return f"habits {self._child_id} habits list"
 
     @property
     def unique_id(self):
@@ -921,7 +882,7 @@ class ChildHasPendingValidationSensor(BinarySensorEntity):
     @property
     def name(self):
         """Nom du sensor."""
-        return f"{self._child_data.get('name', 'Unknown')} Has Pending Validation"
+        return f"habits {self._child_id} has pending validation"
 
     @property
     def unique_id(self):

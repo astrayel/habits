@@ -42,37 +42,58 @@ Tous les composants sont conçus pour être réutilisables, évitant toute dupli
 
 ## 📚 Documentation
 
+### Documentation Principale
+
 | Document | Description |
 |----------|-------------|
-| **[QUICKSTART.md](QUICKSTART.md)** | ⚡ **Commencez ici !** Guide de démarrage rapide |
-| **[architecture.md](architecture.md)** | 🏛️ Architecture complète et plan de mise en œuvre |
-| **[DATAMODELS.md](DATAMODELS.md)** | 📊 Modèles de données (Python ↔ TypeScript) |
+| **[INSTALLATION.md](INSTALLATION.md)** | 📦 Guide d'installation |
+| **[architecture.md](architecture.md)** | 🏛️ Architecture technique complète |
+| **[DATAMODELS.md](DATAMODELS.md)** | 📊 Modèles de données (source de vérité) |
+| **[ADR.md](ADR.md)** | 📝 Décisions architecturales |
 | **[AGENTS.md](AGENTS.md)** | 🤖 Définition des agents spécialisés |
+| **[COSMETICS_CATALOG.md](COSMETICS_CATALOG.md)** | 👕 Catalogue des cosmétiques |
+
+### Documentation de Développement
+
+- **[docs/development/QUICKSTART.md](docs/development/QUICKSTART.md)** ⚡ Démarrage rapide pour développeurs
+- **[docs/development/SSH_SETUP.md](docs/development/SSH_SETUP.md)** 🔐 Configuration SSH Windows
+- **[docs/development/TESTING.md](docs/development/TESTING.md)** 🧪 Guide de tests
+
+### Documentation de Déploiement
+
+- **[docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md)** 🚀 Guide de déploiement
+- **[docs/deployment/VERIFICATION.md](docs/deployment/VERIFICATION.md)** 🔍 Vérification post-déploiement
+
+### Archive
+
+- **[docs/archive/](docs/archive/)** 📁 Phases terminées et problèmes résolus
 
 ---
 
 ## 🚀 Démarrage rapide
 
-### Pour les nouveaux développeurs
+### Pour les développeurs
 
-1. **Lire la documentation** (dans cet ordre) :
-   - `README.md` (ce fichier)
-   - `QUICKSTART.md`
-   - `architecture.md`
+1. **Setup initial** :
+   ```bash
+   # Cloner le repo
+   git clone <repo-url>
+   cd habits
 
-2. **Identifier votre rôle** :
-   - Agent Architecte
-   - Agent Backend Developer
-   - Agent Frontend Developer (Base/Supervision/Child)
-   - Agent QA/Reviewer
+   # Installer les dépendances frontend
+   cd www/habits-manager
+   npm install
+   ```
 
-3. **Consulter votre prompt** dans `AGENTS.md`
+2. **Configuration SSH** :
+   Voir [docs/development/SSH_SETUP.md](docs/development/SSH_SETUP.md)
 
-4. **Commencer votre phase** selon le plan de mise en œuvre
+3. **Développement** :
+   Voir [docs/development/QUICKSTART.md](docs/development/QUICKSTART.md)
 
-### Pour l'utilisateur final (à venir)
+### Pour les utilisateurs
 
-_Installation et configuration détaillées seront disponibles lors de la version 1.0._
+Voir [INSTALLATION.md](INSTALLATION.md) pour l'installation complète.
 
 ---
 

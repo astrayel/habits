@@ -11,25 +11,47 @@ import type {
   Habit,
 } from '../types/models';
 
+export const API_VERSION = '2025-11-07T19:30:00Z';
+
 export class HabitsManagerAPI {
   private hass: HomeAssistant;
 
   constructor(hass: HomeAssistant) {
     this.hass = hass;
+    console.log(`%c[Habits Manager API v${API_VERSION}]`, 'color: #03a9f4; font-weight: bold', 'Initialized with WebSocket API for return_response');
   }
 
   /**
    * Call a service on the habits_manager domain
    */
   private async callService(service: string, data: any = {}): Promise<any> {
+    console.log(`[API] callService: ${DOMAIN}.${service}`, data);
     return this.hass.callService(DOMAIN, service, data);
   }
 
   /**
    * Call a service that returns a response
+   * Uses WebSocket API directly since hass.callService doesn't properly support return_response
    */
   private async callServiceWithResponse(service: string, data: any = {}): Promise<any> {
-    return this.hass.callService(DOMAIN, service, data, { return_response: true });
+    const message = {
+      type: 'call_service',
+      domain: DOMAIN,
+      service: service,
+      service_data: data,
+      return_response: true,
+    };
+    console.log(`%c[API] callServiceWithResponse: ${DOMAIN}.${service}`, 'color: #4caf50; font-weight: bold');
+    console.log('[API] WebSocket message:', JSON.stringify(message, null, 2));
+
+    try {
+      const response = await this.hass.connection.sendMessagePromise(message);
+      console.log(`%c[API] ✓ Response received for ${service}:`, 'color: #4caf50', response);
+      return response;
+    } catch (error) {
+      console.error(`%c[API] ✗ Error calling ${service}:`, 'color: #f44336; font-weight: bold', error);
+      throw error;
+    }
   }
 
   // =====================================================
@@ -329,6 +351,28 @@ export class HabitsManagerAPI {
   }
 
   /**
+   * Get tasks waiting validation for a child
+   */
+  getTasksWaitingValidation(childId: string): any[] {
+    const sensor = this.hass.states[`sensor.habits_${childId}_tasks_waiting_validation_list`];
+    if (!sensor || !sensor.attributes.instances) {
+      return [];
+    }
+    return sensor.attributes.instances;
+  }
+
+  /**
+   * Get pending reward claims for a child
+   */
+  getPendingClaims(childId: string): any[] {
+    const sensor = this.hass.states[`sensor.habits_${childId}_pending_claims`];
+    if (!sensor || !sensor.attributes.claims) {
+      return [];
+    }
+    return sensor.attributes.claims;
+  }
+
+  /**
    * Get all cosmetics from sensor
    * Note: This assumes there's a sensor exposing cosmetics, or we fetch from a config
    * For now, returns empty array (cosmetics would need to be loaded from backend)
@@ -365,8 +409,10 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_children service with return_response...');
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_CHILDREN, {});
-      console.log(`[API] ✓ list_children responded with ${response.children?.length || 0} children`);
-      return response.children || [];
+      console.log('[API] Full response:', response);
+      const children = response.response?.children || response.children || [];
+      console.log(`[API] ✓ list_children responded with ${children.length} children`);
+      return children;
     } catch (err) {
       console.error('[API] ✗ Error calling list_children service:', err);
       throw err;
@@ -384,8 +430,9 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_tasks service with return_response, filters:', filters);
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_TASKS, filters || {});
-      console.log(`[API] ✓ list_tasks responded with ${response.tasks?.length || 0} tasks`);
-      return response.tasks || [];
+      const tasks = response.response?.tasks || response.tasks || [];
+      console.log(`[API] ✓ list_tasks responded with ${tasks.length} tasks`);
+      return tasks;
     } catch (err) {
       console.error('[API] ✗ Error calling list_tasks service:', err);
       throw err;
@@ -402,8 +449,9 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_habits service with return_response, filters:', filters);
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_HABITS, filters || {});
-      console.log(`[API] ✓ list_habits responded with ${response.habits?.length || 0} habits`);
-      return response.habits || [];
+      const habits = response.response?.habits || response.habits || [];
+      console.log(`[API] ✓ list_habits responded with ${habits.length} habits`);
+      return habits;
     } catch (err) {
       console.error('[API] ✗ Error calling list_habits service:', err);
       throw err;
@@ -420,8 +468,9 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_rewards service with return_response, filters:', filters);
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_REWARDS, filters || {});
-      console.log(`[API] ✓ list_rewards responded with ${response.rewards?.length || 0} rewards`);
-      return response.rewards || [];
+      const rewards = response.response?.rewards || response.rewards || [];
+      console.log(`[API] ✓ list_rewards responded with ${rewards.length} rewards`);
+      return rewards;
     } catch (err) {
       console.error('[API] ✗ Error calling list_rewards service:', err);
       throw err;
@@ -439,8 +488,9 @@ export class HabitsManagerAPI {
     console.log('[API] Calling list_cosmetics service with return_response, filters:', filters);
     try {
       const response = await this.callServiceWithResponse(SERVICES.LIST_COSMETICS, filters || {});
-      console.log(`[API] ✓ list_cosmetics responded with ${response.cosmetics?.length || 0} cosmetics`);
-      return response.cosmetics || [];
+      const cosmetics = response.response?.cosmetics || response.cosmetics || [];
+      console.log(`[API] ✓ list_cosmetics responded with ${cosmetics.length} cosmetics`);
+      return cosmetics;
     } catch (err) {
       console.error('[API] ✗ Error calling list_cosmetics service:', err);
       throw err;

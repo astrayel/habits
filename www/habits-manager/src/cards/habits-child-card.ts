@@ -6,11 +6,11 @@
 import { LitElement, html, css, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { HomeAssistant, CardConfig } from '../types/home-assistant';
-import { HabitsManagerStore, createStore } from '../services/store';
+import { ChildApiClient } from '../services/child-api-client';
 import { baseStyles } from '../styles/base-styles';
 import { getLevelColor, getStreakColor } from '../styles/theme';
 import { CARD_TYPE_CHILD } from '../types/constants';
-import type { Child } from '../types/models';
+import { API_VERSION } from '../services/api-client';
 import '../components/item-card';
 import '../components/cosmetics-shop';
 import '../components/avatar-customizer';
@@ -22,14 +22,18 @@ interface HabitsChildCardConfig extends CardConfig {
 
 type ViewMode = 'overview' | 'shop' | 'customizer';
 
+const CARD_VERSION = '2025-11-07T19:30:00Z';
+
 @customElement('habits-child-card')
 export class HabitsChildCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config?: HabitsChildCardConfig;
-  @state() private _store?: HabitsManagerStore;
-  @state() private _child?: Child | null;
+  @state() private _api?: ChildApiClient;
+  @state() private _child?: any | null;
+  @state() private _tasks: any[] = [];
   @state() private _unsubscribe?: () => void;
   @state() private _viewMode: ViewMode = 'overview';
+  @state() private _loading = true;
 
   static styles = [
     baseStyles,
@@ -80,6 +84,12 @@ export class HabitsChildCard extends LitElement {
       throw new Error('child_id is required');
     }
     this._config = config;
+    console.log(`%c╔═══════════════════════════════════════════════════════╗`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c║  👶 Habits Child Card                                ║`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c║  Version: ${CARD_VERSION}                ║`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c║  API Version: ${API_VERSION}         ║`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c║  Child ID: ${config.child_id.padEnd(39, ' ')}║`, 'color: #4caf50; font-weight: bold');
+    console.log(`%c╚═══════════════════════════════════════════════════════╝`, 'color: #4caf50; font-weight: bold');
   }
 
   public getCardSize(): number {
@@ -89,19 +99,25 @@ export class HabitsChildCard extends LitElement {
   protected updated(changedProps: PropertyValues): void {
     super.updated(changedProps);
 
-    if (changedProps.has('hass') && this.hass) {
-      if (!this._store) {
-        console.log('[Child Card] Initializing store with hass:', !!this.hass);
-        this._store = createStore(this.hass);
-        this._unsubscribe = this._store.subscribe(() => {
-          console.log('[Child Card] Store state changed, requesting update');
-          this._loadChild();
-          this.requestUpdate();
+    if (changedProps.has('hass') && this.hass && this._config) {
+      if (!this._api) {
+        console.log('[Child Card] Initializing lightweight API for child:', this._config.child_id);
+        this._api = new ChildApiClient(this.hass, this._config.child_id);
+
+        // Subscribe to HA events for real-time updates
+        this._api.subscribeToUpdates(() => {
+          console.log('[Child Card] Received update, refreshing data');
+          this._loadData();
+        }).then((unsub) => {
+          this._unsubscribe = unsub;
         });
-        // Force immediate update to show loading state
-        this.requestUpdate();
+
+        // Load initial data only once
+        this._loadData();
+      } else {
+        // Update the API's hass reference when hass changes
+        this._api.updateHass(this.hass);
       }
-      this._loadChild();
     }
   }
 
@@ -110,14 +126,22 @@ export class HabitsChildCard extends LitElement {
     if (this._unsubscribe) {
       this._unsubscribe();
     }
-    if (this._store) {
-      this._store.destroy();
-    }
   }
 
-  private _loadChild(): void {
-    if (!this._store || !this._config) return;
-    this._child = this._store.getChild(this._config.child_id);
+  private _loadData(): void {
+    if (!this._api) return;
+
+    console.log('[Child Card] Loading child data from sensors...');
+    this._child = this._api.getChild();
+    this._tasks = this._api.getTasksWaitingValidation();
+    this._loading = false;
+
+    console.log('[Child Card] Data loaded:', {
+      child: this._child?.name,
+      tasks: this._tasks.length,
+    });
+
+    // No need for requestUpdate() - @state() properties trigger renders automatically
   }
 
   protected render() {
@@ -125,37 +149,11 @@ export class HabitsChildCard extends LitElement {
       return html``;
     }
 
-    // Check store loading state
-    if (!this._store) {
+    if (this._loading || !this._api) {
       return html`
         <ha-card>
           <div class="card">
-            <div class="loading">Initialisation du store...</div>
-          </div>
-        </ha-card>
-      `;
-    }
-
-    const state = this._store.getState();
-
-    if (state.loading) {
-      return html`
-        <ha-card>
-          <div class="card">
-            <div class="loading">Chargement des données...</div>
-          </div>
-        </ha-card>
-      `;
-    }
-
-    if (state.error) {
-      return html`
-        <ha-card>
-          <div class="card">
-            <div class="error-banner">
-              <span>Erreur: ${state.error}</span>
-              <button class="btn btn-text" @click="${() => this._store?.refresh()}">Réessayer</button>
-            </div>
+            <div class="loading">Chargement...</div>
           </div>
         </ha-card>
       `;
@@ -227,8 +225,8 @@ export class HabitsChildCard extends LitElement {
   }
 
   private _renderOverviewView() {
-    const taskCounts = this._store?.getTaskCounts(this._child!.id) || { pending: 0, waiting: 0 };
-    const habitStats = this._store?.getHabitStats(this._child!.id) || { count: 0, longest_streak: 0 };
+    const taskCounts = this._api?.getTaskCounts() || { pending: 0, waiting: 0 };
+    const habitStats = this._api?.getHabitStats() || { count: 0, longest_streak: 0 };
 
     return html`
       <!-- Stats Grid -->
@@ -249,30 +247,20 @@ export class HabitsChildCard extends LitElement {
   }
 
   private _renderShopView() {
-    if (!this._store || !this._child) return html``;
-
-    const allCosmetics = this._store.getCosmetics();
-
+    // TODO: Implement shop view with lightweight API
     return html`
-      <hm-cosmetics-shop
-        .child="${this._child}"
-        .allCosmetics="${allCosmetics}"
-        @purchase-cosmetic="${this._handlePurchaseCosmetic}"
-      ></hm-cosmetics-shop>
+      <div class="empty-state">
+        <p>Boutique cosmétiques - En cours de développement</p>
+      </div>
     `;
   }
 
   private _renderCustomizerView() {
-    if (!this._store || !this._child) return html``;
-
-    const ownedCosmetics = this._store.getOwnedCosmetics(this._child.id);
-
+    // TODO: Implement customizer view with lightweight API
     return html`
-      <hm-avatar-customizer
-        .child="${this._child}"
-        .ownedCosmetics="${ownedCosmetics}"
-        @avatar-updated="${this._handleAvatarUpdated}"
-      ></hm-avatar-customizer>
+      <div class="empty-state">
+        <p>Personnalisation avatar - En cours de développement</p>
+      </div>
     `;
   }
 
@@ -363,23 +351,56 @@ export class HabitsChildCard extends LitElement {
   private _renderTasksSection(taskCounts: { pending: number; waiting: number }) {
     return html`
       <div class="section">
-        <h2 class="section-title">Mes Tâches</h2>
-        ${taskCounts.pending > 0
+        <h2 class="section-title">
+          Mes Tâches
+          ${taskCounts.pending > 0 ? html`<span class="badge badge-primary">${taskCounts.pending} à faire</span>` : ''}
+          ${taskCounts.waiting > 0 ? html`<span class="badge badge-warning">${taskCounts.waiting} en attente</span>` : ''}
+        </h2>
+
+        ${taskCounts.pending === 0 && taskCounts.waiting === 0
           ? html`
-              <hm-item-card>
-                <div>
-                  <p><strong>✨ ${taskCounts.pending} tâche(s) à faire aujourd'hui</strong></p>
-                  <p style="font-size: 12px; color: var(--secondary-text-color); margin-top: 8px;">
-                    Demande à tes parents de te montrer la liste complète sur leur écran de gestion.
-                  </p>
-                </div>
-              </hm-item-card>
-            `
-          : html`
               <div class="empty-state">
                 <div style="font-size: 48px;">✅</div>
                 <p><strong>Aucune tâche en attente</strong></p>
                 <p style="font-size: 12px; margin-top: 8px;">Bravo! Tu as tout terminé!</p>
+              </div>
+            `
+          : html`
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                ${this._tasks.length > 0
+                  ? html`
+                      <p style="font-size: 13px; color: var(--secondary-text-color); margin-bottom: 8px;">
+                        <strong>En attente de validation (${this._tasks.length})</strong>
+                      </p>
+                      ${this._tasks.map(
+                        (task) => html`
+                          <hm-item-card .icon=${'⏳'} .iconColor=${'var(--warning-color, #ff9800)'}>
+                            <div style="flex: 1;">
+                              <h4 style="margin: 0; font-size: 15px;">${task.task_title}</h4>
+                              <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--secondary-text-color);">
+                                Complétée • En attente de validation par un parent
+                              </p>
+                              <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--success-color);">
+                                +${task.rewards.points} pts, +${task.rewards.coins} 💰, +${task.rewards.experience} XP
+                              </p>
+                            </div>
+                          </hm-item-card>
+                        `
+                      )}
+                    `
+                  : ''}
+                ${taskCounts.pending > 0
+                  ? html`
+                      <hm-item-card>
+                        <div>
+                          <p><strong>✨ ${taskCounts.pending} tâche(s) à compléter</strong></p>
+                          <p style="font-size: 12px; color: var(--secondary-text-color); margin-top: 8px;">
+                            Complète tes tâches pour gagner des récompenses !
+                          </p>
+                        </div>
+                      </hm-item-card>
+                    `
+                  : ''}
               </div>
             `}
       </div>

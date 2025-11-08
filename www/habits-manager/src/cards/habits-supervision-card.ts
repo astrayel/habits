@@ -9,6 +9,7 @@ import { HomeAssistant, CardConfig } from '../types/home-assistant';
 import { HabitsManagerStore, createStore } from '../services/store';
 import { baseStyles } from '../styles/base-styles';
 import { CARD_TYPE_SUPERVISION } from '../types/constants';
+import { API_VERSION } from '../services/api-client';
 import type { Child } from '../types/models';
 
 // Import shared components
@@ -20,6 +21,8 @@ import '../components/form-checkbox';
 interface HabitsSupervisionCardConfig extends CardConfig {
   title?: string;
 }
+
+const CARD_VERSION = '2025-11-07T19:30:00Z';
 
 @customElement('habits-supervision-card')
 export class HabitsSupervisionCard extends LitElement {
@@ -47,6 +50,11 @@ export class HabitsSupervisionCard extends LitElement {
       throw new Error('Invalid configuration');
     }
     this._config = config;
+    console.log(`%c╔═══════════════════════════════════════════════════════╗`, 'color: #ff9800; font-weight: bold');
+    console.log(`%c║  👨‍👩‍👧‍👦 Habits Supervision Card                         ║`, 'color: #ff9800; font-weight: bold');
+    console.log(`%c║  Version: ${CARD_VERSION}                ║`, 'color: #ff9800; font-weight: bold');
+    console.log(`%c║  API Version: ${API_VERSION}         ║`, 'color: #ff9800; font-weight: bold');
+    console.log(`%c╚═══════════════════════════════════════════════════════╝`, 'color: #ff9800; font-weight: bold');
   }
 
   public getCardSize(): number {
@@ -220,25 +228,72 @@ export class HabitsSupervisionCard extends LitElement {
    * Render tasks awaiting validation section
    */
   private _renderTasksSection() {
+    // Collect all tasks waiting validation from all children
+    const allTasks: any[] = [];
+    this._children.forEach((child) => {
+      const tasks = this._store?.getTasksWaitingValidation(child.id) || [];
+      tasks.forEach((task) => {
+        allTasks.push({
+          ...task,
+          child_id: child.id,
+          child_name: child.name,
+        });
+      });
+    });
+
     return html`
       <div class="section">
-        <h2 class="section-title">Tâches en attente de validation</h2>
+        <h2 class="section-title">Tâches en attente de validation (${allTasks.length})</h2>
 
-        <div style="padding: 16px; background: var(--secondary-background-color, #fafafa); border-radius: 8px; border-left: 4px solid var(--warning-color, #ff9800);">
-          <p style="margin: 0; font-size: 14px;">
-            <strong>⚠️ Limitation backend:</strong> Le backend ne fournit pas encore la liste des task instances via les sensors.
+        ${allTasks.length === 0
+          ? html`
+              <div style="padding: 16px; text-align: center; color: var(--secondary-text-color);">
+                <p>✨ Aucune tâche en attente de validation</p>
+              </div>
+            `
+          : html`
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                ${allTasks.map((task) => this._renderTaskValidationItem(task))}
+              </div>
+            `}
+      </div>
+    `;
+  }
+
+  /**
+   * Render a single task validation item
+   */
+  private _renderTaskValidationItem(task: any) {
+    const completedDate = task.completed_at ? new Date(task.completed_at).toLocaleString('fr-FR') : 'Date inconnue';
+
+    return html`
+      <hm-item-card .icon=${'✓'} .iconColor=${'var(--success-color)'}>
+        <div style="flex: 1;">
+          <h4 style="margin: 0; font-size: 15px;">${task.task_title}</h4>
+          <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--secondary-text-color);">
+            Par: <strong>${task.child_name}</strong> • Complétée le ${completedDate}
           </p>
-          <p style="margin: 8px 0 0 0; font-size: 13px; color: var(--secondary-text-color);">
-            Les méthodes <code>validateTask()</code> et <code>refuseTask()</code> sont déjà implémentées et fonctionnelles.
-            Pour l'instant, seuls les <strong>counts</strong> sont disponibles et affichés dans la vue d'ensemble ci-dessus.
-          </p>
-          <p style="margin: 8px 0 0 0; font-size: 13px; color: var(--secondary-text-color);">
-            <strong>À faire:</strong> Ajouter un service backend pour exposer les task instances avec status "completed_waiting" via un sensor.
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--secondary-text-color);">
+            Récompense: +${task.rewards.points} pts, +${task.rewards.coins} 💰, +${task.rewards.experience} XP
           </p>
         </div>
-
-        ${this._renderTaskValidationExample()}
-      </div>
+        <div slot="actions" style="display: flex; gap: 8px;">
+          <button
+            class="button button-success"
+            style="padding: 6px 12px; font-size: 13px;"
+            @click=${() => this._handleValidateTask(task.instance_id, task.child_id)}
+          >
+            ✓ Valider
+          </button>
+          <button
+            class="button button-danger"
+            style="padding: 6px 12px; font-size: 13px;"
+            @click=${() => this._handleRefuseTask(task.instance_id, task.child_id)}
+          >
+            ✗ Refuser
+          </button>
+        </div>
+      </hm-item-card>
     `;
   }
 
@@ -287,24 +342,65 @@ export class HabitsSupervisionCard extends LitElement {
    * Render reward claims section
    */
   private _renderClaimsSection() {
+    // Collect all pending claims from all children
+    const allClaims: any[] = [];
+    this._children.forEach((child) => {
+      const claims = this._store?.getPendingClaims(child.id) || [];
+      claims.forEach((claim) => {
+        allClaims.push({
+          ...claim,
+          child_id: child.id,
+          child_name: child.name,
+        });
+      });
+    });
+
     return html`
       <div class="section">
-        <h2 class="section-title">Réclamations de récompenses</h2>
+        <h2 class="section-title">Réclamations de récompenses (${allClaims.length})</h2>
 
-        <div style="padding: 16px; background: var(--secondary-background-color, #fafafa); border-radius: 8px; border-left: 4px solid var(--warning-color, #ff9800);">
-          <p style="margin: 0; font-size: 14px;">
-            <strong>⚠️ Limitation backend:</strong> Le backend ne fournit pas encore la liste des reward claims via les sensors.
+        ${allClaims.length === 0
+          ? html`
+              <div style="padding: 16px; text-align: center; color: var(--secondary-text-color);">
+                <p>✨ Aucune réclamation en attente</p>
+              </div>
+            `
+          : html`
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                ${allClaims.map((claim) => this._renderClaimApprovalItem(claim))}
+              </div>
+            `}
+      </div>
+    `;
+  }
+
+  /**
+   * Render a single claim approval item
+   */
+  private _renderClaimApprovalItem(claim: any) {
+    const claimedDate = claim.claimed_at ? new Date(claim.claimed_at).toLocaleString('fr-FR') : 'Date inconnue';
+
+    return html`
+      <hm-item-card .icon=${'🎁'} .iconColor=${'var(--primary-color)'}>
+        <div style="flex: 1;">
+          <h4 style="margin: 0; font-size: 15px;">${claim.reward_title}</h4>
+          <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--secondary-text-color);">
+            Réclamée par: <strong>${claim.child_name}</strong> • Le ${claimedDate}
           </p>
-          <p style="margin: 8px 0 0 0; font-size: 13px; color: var(--secondary-text-color);">
-            La méthode <code>approveClaim()</code> est déjà implémentée et fonctionnelle.
-          </p>
-          <p style="margin: 8px 0 0 0; font-size: 13px; color: var(--secondary-text-color);">
-            <strong>À faire:</strong> Ajouter un service backend pour exposer les reward claims avec status "pending" via un sensor.
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--secondary-text-color);">
+            Coût: ${claim.cost_points} pts, ${claim.cost_coins} 💰
           </p>
         </div>
-
-        ${this._renderClaimApprovalExample()}
-      </div>
+        <div slot="actions" style="display: flex; gap: 8px;">
+          <button
+            class="button button-success"
+            style="padding: 6px 12px; font-size: 13px;"
+            @click=${() => this._handleApproveClaim(claim.claim_id, claim.child_id)}
+          >
+            ✓ Approuver
+          </button>
+        </div>
+      </hm-item-card>
     `;
   }
 
@@ -466,6 +562,24 @@ export class HabitsSupervisionCard extends LitElement {
     this._refuseNote = '';
     this._applyPenalty = false;
     this._showRefuseDialog = true;
+  }
+
+  private _handleValidateTask(instanceId: string, childId: string): void {
+    this._selectedInstanceId = instanceId;
+    this._validationNote = '';
+    this._showValidateDialog = true;
+  }
+
+  private _handleRefuseTask(instanceId: string, childId: string): void {
+    this._selectedInstanceId = instanceId;
+    this._refuseNote = '';
+    this._applyPenalty = false;
+    this._showRefuseDialog = true;
+  }
+
+  private _handleApproveClaim(claimId: string, childId: string): void {
+    this._selectedClaimId = claimId;
+    this._showApproveClaimDialog = true;
   }
 
   private _handleApproveClaimDemo(claimId: string): void {

@@ -1,17 +1,20 @@
 # 🚀 Démarrage Rapide - Développement
 
-Guide rapide pour commencer à développer sur Windows avec Home Assistant en SSH.
+Guide rapide pour commencer à développer Habits Manager sur Windows avec Home Assistant en SSH.
 
 ## ⚡ Setup Initial (Une seule fois)
 
-### 1. Tester SSH
+### 1. Configuration SSH
 
+Voir [SSH_SETUP.md](./SSH_SETUP.md) pour la configuration SSH complète.
+
+Test rapide:
 ```powershell
 ssh root@homeassistant "echo 'OK'"
 ```
 
 ✅ Si ça affiche "OK", passez à l'étape 2
-❌ Si erreur, configurez SSH d'abord (voir README-DEV.md)
+❌ Si erreur, configurez SSH d'abord
 
 ### 2. Installer les dépendances frontend
 
@@ -99,18 +102,14 @@ git push
 
 ## 🐛 Problèmes Fréquents
 
-**"ssh: Could not resolve hostname"**
-→ Utilisez l'IP : `.\dev-sync.ps1 -Host "192.168.1.XXX"`
+### Le script demande le mot de passe à chaque fois
+→ Configurez l'authentification par clé SSH (voir [SSH_SETUP.md](./SSH_SETUP.md))
 
-**"Permission denied"**
-→ Configurez l'authentification SSH (voir README-DEV.md)
+### Les changements frontend ne s'affichent pas
+→ Videz le cache du navigateur (Ctrl+Shift+R) ou désactivez le cache dans DevTools
 
-**Les changements ne s'affichent pas**
-→ Rechargez avec Ctrl+F5 (force reload)
+### Erreur "Module not found" dans le frontend
+→ Relancez `npm install` dans www/habits-manager/
 
-**npm not found**
-→ Installez Node.js : https://nodejs.org/
-
-## 📖 Documentation Complète
-
-Pour plus de détails, consultez **README-DEV.md**
+### Home Assistant ne redémarre pas
+→ Vérifiez les logs : `ssh root@homeassistant "ha core logs"`
