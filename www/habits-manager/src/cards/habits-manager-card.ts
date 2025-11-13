@@ -39,7 +39,7 @@ interface HabitsManagerCardConfig extends CardConfig {
   title?: string;
 }
 
-type TabType = 'children' | 'tasks' | 'habits' | 'rewards' | 'cosmetics';
+type TabType = 'children' | 'tasks' | 'habits' | 'rewards' | 'cosmetics' | 'validation';
 type DialogMode = 'create' | 'edit';
 
 const CARD_VERSION = '2025-11-07T19:30:00Z';
@@ -141,6 +141,7 @@ export class HabitsManagerCard extends LitElement {
       { key: 'habits', label: 'Habitudes', icon: '🔄' },
       { key: 'rewards', label: 'Récompenses', icon: '🎁' },
       { key: 'cosmetics', label: 'Cosmétiques', icon: '👕' },
+      { key: 'validation', label: 'Validation', icon: '✔️' },
     ];
 
     return html`
@@ -181,6 +182,8 @@ export class HabitsManagerCard extends LitElement {
         return this._renderRewardsSection();
       case 'cosmetics':
         return this._renderCosmeticsSection();
+      case 'validation':
+        return this._renderValidationSection();
       default:
         return html``;
     }
@@ -1602,6 +1605,289 @@ export class HabitsManagerCard extends LitElement {
       this._selectedItem = undefined;
     } catch (error) {
       this._error = error instanceof Error ? error.message : 'Erreur lors de la sauvegarde';
+    } finally {
+      this._loading = false;
+    }
+  }
+
+  // =====================================================
+  // Validation Section
+  // =====================================================
+
+  private _renderValidationSection() {
+    if (!this._store) return html`<div class="loading">Initialisation du store...</div>`;
+
+    const state = this._store.getState();
+
+    if (state.loading) {
+      return html`<div class="loading">Chargement des données...</div>`;
+    }
+
+    if (state.error) {
+      return html`
+        <div class="section">
+          <div class="error-banner">
+            <span>Erreur: ${state.error}</span>
+            <button class="btn btn-text" @click="${() => this._store?.refresh()}">Réessayer</button>
+          </div>
+        </div>
+      `;
+    }
+
+    const children = state.children;
+
+    // Collect all tasks waiting validation across all children
+    const allTasksWaiting: Array<{ task: any; childName: string; childId: string }> = [];
+    children.forEach((child) => {
+      const tasksWaiting = this._store?.getTasksWaitingValidation(child.id) || [];
+      tasksWaiting.forEach((task) => {
+        allTasksWaiting.push({
+          task,
+          childName: child.name,
+          childId: child.id,
+        });
+      });
+    });
+
+    // Collect all pending claims across all children
+    const allPendingClaims: Array<{ claim: any; childName: string; childId: string }> = [];
+    children.forEach((child) => {
+      const pendingClaims = this._store?.getPendingClaims(child.id) || [];
+      pendingClaims.forEach((claim) => {
+        allPendingClaims.push({
+          claim,
+          childName: child.name,
+          childId: child.id,
+        });
+      });
+    });
+
+    const totalPending = allTasksWaiting.length + allPendingClaims.length;
+
+    return html`
+      <div class="section">
+        <div class="section-header">
+          <h2 class="section-title">
+            File de validation
+            ${totalPending > 0 ? html`<span class="badge badge-warning">${totalPending}</span>` : ''}
+          </h2>
+        </div>
+
+        <p style="margin-bottom: 16px; color: var(--secondary-text-color);">
+          Validez les tâches complétées et approuvez les réclamations de récompenses.
+        </p>
+
+        ${totalPending === 0
+          ? html`
+              <div class="empty-message">
+                <p>Aucune validation en attente</p>
+                <p style="font-size: 14px; margin-top: 8px;">
+                  Les tâches complétées et réclamations de récompenses apparaîtront ici.
+                </p>
+              </div>
+            `
+          : html`
+              <div class="validation-queue">
+                ${allTasksWaiting.length > 0
+                  ? html`
+                      <div class="validation-subsection">
+                        <h3 class="validation-subtitle">
+                          ✅ Tâches en attente de validation (${allTasksWaiting.length})
+                        </h3>
+                        <div class="validation-list">
+                          ${allTasksWaiting.map((item) => this._renderTaskValidationCard(item))}
+                        </div>
+                      </div>
+                    `
+                  : ''}
+                ${allPendingClaims.length > 0
+                  ? html`
+                      <div class="validation-subsection">
+                        <h3 class="validation-subtitle">
+                          🎁 Réclamations en attente d'approbation (${allPendingClaims.length})
+                        </h3>
+                        <div class="validation-list">
+                          ${allPendingClaims.map((item) => this._renderClaimValidationCard(item))}
+                        </div>
+                      </div>
+                    `
+                  : ''}
+              </div>
+            `}
+      </div>
+    `;
+  }
+
+  private _renderTaskValidationCard(item: { task: any; childName: string; childId: string }) {
+    const { task, childName } = item;
+    const completedAt = task.completed_at ? new Date(task.completed_at) : null;
+    const taskInfo = this._store?.getTask(task.task_id);
+
+    return html`
+      <div class="validation-card">
+        <div class="validation-card-header">
+          <div class="validation-card-info">
+            <span class="validation-child-name">${childName}</span>
+            <span class="validation-task-name">${taskInfo?.title || 'Tâche inconnue'}</span>
+          </div>
+          <div class="validation-card-meta">
+            ${completedAt
+              ? html`
+                  <span class="validation-timestamp">
+                    ${completedAt.toLocaleDateString()} ${completedAt.toLocaleTimeString()}
+                  </span>
+                `
+              : ''}
+          </div>
+        </div>
+
+        ${taskInfo?.description
+          ? html`<p class="validation-card-description">${taskInfo.description}</p>`
+          : ''}
+
+        <div class="validation-card-rewards">
+          ${taskInfo?.rewards?.points
+            ? html`<span class="badge">⭐ ${taskInfo.rewards.points} pts</span>`
+            : ''}
+          ${taskInfo?.rewards?.coins
+            ? html`<span class="badge">🪙 ${taskInfo.rewards.coins} pièces</span>`
+            : ''}
+          ${taskInfo?.rewards?.experience
+            ? html`<span class="badge">✨ ${taskInfo.rewards.experience} XP</span>`
+            : ''}
+        </div>
+
+        <div class="validation-card-actions">
+          <button
+            class="btn btn-success"
+            @click="${() => this._handleValidateTask(task.id)}"
+            ?disabled="${this._loading}"
+          >
+            ✅ Valider
+          </button>
+          <button
+            class="btn btn-danger"
+            @click="${() => this._handleRefuseTask(task.id, taskInfo)}"
+            ?disabled="${this._loading}"
+          >
+            ❌ Refuser
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderClaimValidationCard(item: { claim: any; childName: string; childId: string }) {
+    const { claim, childName } = item;
+    const claimedAt = claim.claimed_at ? new Date(claim.claimed_at) : null;
+    const rewardInfo = this._store?.getReward(claim.reward_id);
+
+    return html`
+      <div class="validation-card validation-card-claim">
+        <div class="validation-card-header">
+          <div class="validation-card-info">
+            <span class="validation-child-name">${childName}</span>
+            <span class="validation-task-name">🎁 ${rewardInfo?.title || 'Récompense inconnue'}</span>
+          </div>
+          <div class="validation-card-meta">
+            ${claimedAt
+              ? html`
+                  <span class="validation-timestamp">
+                    ${claimedAt.toLocaleDateString()} ${claimedAt.toLocaleTimeString()}
+                  </span>
+                `
+              : ''}
+          </div>
+        </div>
+
+        ${rewardInfo?.description
+          ? html`<p class="validation-card-description">${rewardInfo.description}</p>`
+          : ''}
+
+        <div class="validation-card-rewards">
+          ${rewardInfo?.cost_points
+            ? html`<span class="badge">⭐ ${rewardInfo.cost_points} pts</span>`
+            : ''}
+          ${rewardInfo?.cost_coins
+            ? html`<span class="badge">🪙 ${rewardInfo.cost_coins} pièces</span>`
+            : ''}
+          <span class="badge badge-info">${this._formatRewardType(rewardInfo?.type || 'other')}</span>
+        </div>
+
+        <div class="validation-card-actions">
+          <button
+            class="btn btn-success"
+            @click="${() => this._handleApproveClaim(claim.id)}"
+            ?disabled="${this._loading}"
+          >
+            ✅ Approuver
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private async _handleValidateTask(instanceId: string): Promise<void> {
+    if (!this._store) return;
+
+    try {
+      this._loading = true;
+      this._error = '';
+      await this._store.validateTask(instanceId);
+      console.log(`[Manager Card] Task ${instanceId} validated successfully`);
+    } catch (error) {
+      this._error = error instanceof Error ? error.message : 'Erreur lors de la validation';
+      console.error('[Manager Card] Failed to validate task:', error);
+    } finally {
+      this._loading = false;
+    }
+  }
+
+  private async _handleRefuseTask(instanceId: string, taskInfo?: any): Promise<void> {
+    if (!this._store) return;
+
+    // Ask for confirmation and whether to apply penalty
+    const shouldRefuse = confirm(
+      `Refuser cette tâche ?\n\n${taskInfo?.title || 'Tâche'}\n\nChoisissez:\n- OK: Refuser AVEC pénalités\n- Annuler: Ne pas refuser`
+    );
+
+    if (!shouldRefuse) return;
+
+    const applyPenalty = confirm(
+      'Appliquer les pénalités ?\n\n' +
+        `Points perdus: ${taskInfo?.penalties?.points || 0}\n` +
+        `Pièces perdues: ${taskInfo?.penalties?.coins || 0}\n\n` +
+        'Cliquez OK pour appliquer les pénalités, Annuler pour refuser sans pénalité.'
+    );
+
+    try {
+      this._loading = true;
+      this._error = '';
+      await this._store.refuseTask(instanceId, undefined, applyPenalty);
+      console.log(
+        `[Manager Card] Task ${instanceId} refused ${applyPenalty ? 'with' : 'without'} penalty`
+      );
+    } catch (error) {
+      this._error = error instanceof Error ? error.message : 'Erreur lors du refus';
+      console.error('[Manager Card] Failed to refuse task:', error);
+    } finally {
+      this._loading = false;
+    }
+  }
+
+  private async _handleApproveClaim(claimId: string): Promise<void> {
+    if (!this._store) return;
+
+    if (!confirm('Approuver cette réclamation de récompense ?')) return;
+
+    try {
+      this._loading = true;
+      this._error = '';
+      await this._store.approveClaim(claimId);
+      console.log(`[Manager Card] Claim ${claimId} approved successfully`);
+    } catch (error) {
+      this._error = error instanceof Error ? error.message : 'Erreur lors de l\'approbation';
+      console.error('[Manager Card] Failed to approve claim:', error);
     } finally {
       this._loading = false;
     }

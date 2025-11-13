@@ -508,4 +508,144 @@ export const baseStyles = css`
   .hidden {
     display: none !important;
   }
+
+  /* Validation Section Styles */
+  .validation-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .validation-subsection {
+    margin-bottom: 16px;
+  }
+
+  .validation-subtitle {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--primary-text-color, #212121);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+  }
+
+  .validation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .validation-card {
+    padding: 16px;
+    background: var(--secondary-background-color, #fafafa);
+    border-radius: 8px;
+    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+    transition: all 0.2s ease;
+  }
+
+  .validation-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color, #03a9f4);
+  }
+
+  .validation-card-claim {
+    border-left: 4px solid var(--warning-color, #ff9800);
+  }
+
+  .validation-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+
+  .validation-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .validation-card-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .validation-child-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--primary-color, #03a9f4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .validation-task-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--primary-text-color, #212121);
+    word-break: break-word;
+  }
+
+  .validation-timestamp {
+    font-size: 12px;
+    color: var(--secondary-text-color, #727272);
+    white-space: nowrap;
+  }
+
+  .validation-card-description {
+    font-size: 14px;
+    color: var(--secondary-text-color, #727272);
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  .validation-card-rewards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .validation-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .validation-card-actions .btn {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  @media (max-width: 600px) {
+    .validation-card-header {
+      flex-direction: column;
+    }
+
+    .validation-card-meta {
+      align-items: flex-start;
+    }
+
+    .validation-card-actions {
+      flex-direction: column;
+    }
+
+    .validation-card-actions .btn {
+      width: 100%;
+    }
+  }
+
+  .badge-info {
+    background: var(--info-color, #2196f3);
+    color: white;
+  }
+
+  .section-title .badge {
+    margin-left: 8px;
+    vertical-align: middle;
+  }
 `;
