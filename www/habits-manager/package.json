@@ -8,7 +8,7 @@
     "build": "rollup -c --environment NODE_ENV:production",
     "build:dev": "rollup -c --environment NODE_ENV:development",
     "dev": "rollup -c -w --environment NODE_ENV:development",
-    "serve": "live-server --port=8080 --cors --watch=dist,../../custom_components/habits_manager/www --open=false --no-browser",
+    "serve": "npx live-server --port=8080 --cors --watch=dist,../../custom_components/habits_manager/www --open=false --no-browser",
     "dev:full": "npx concurrently \"npm run dev\" \"npm run serve\"",
     "watch": "npm run dev",
     "clean": "rm -rf dist",
