@@ -2,19 +2,14 @@
   "name": "habits-manager",
   "version": "0.1.0",
   "description": "Gestionnaire de tâches et habitudes gamifié pour Home Assistant",
-  "main": "dist/habits-manager.js",
+  "main": "dist/kids-tasks-card.js",
   "type": "module",
   "scripts": {
-    "build": "rollup -c",
-    "watch": "rollup -c -w",
-    "dev": "echo 'Use: powershell -File dev-watch.ps1' && rollup -c -w",
-    "build:legacy": "rollup -c rollup.config.legacy.js --environment NODE_ENV:production",
-    "build:legacy:dev": "rollup -c rollup.config.legacy.js --environment NODE_ENV:development",
-    "watch:legacy": "rollup -c rollup.config.legacy.js -w --environment NODE_ENV:development",
-    "build:all": "npm run build && npm run build:legacy",
-    "build:all:dev": "npm run build && npm run build:legacy:dev",
-    "lint": "eslint src --ext .ts",
-    "format": "prettier --write \"src/**/*.ts\""
+    "build": "rollup -c --environment NODE_ENV:production",
+    "build:dev": "rollup -c --environment NODE_ENV:development",
+    "watch": "rollup -c -w --environment NODE_ENV:development",
+    "lint": "eslint src --ext .js",
+    "format": "prettier --write \"src/**/*.js\""
   },
   "keywords": [
     "home-assistant",

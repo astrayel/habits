@@ -1,56 +1,118 @@
-import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
-import json from '@rollup/plugin-json';
 import copy from 'rollup-plugin-copy';
 
-const production = !process.env.ROLLUP_WATCH;
+const isDevelopment = process.env.NODE_ENV === 'development';
+const production = !isDevelopment && process.env.NODE_ENV === 'production';
+const version = '2.0.0-habits-manager';
 
-const createConfig = (cardName, isLast = false) => ({
-  input: `src/cards/${cardName}.ts`,
+console.log(`🛠️  Building Kids Tasks Cards in ${production ? 'PRODUCTION' : 'DEVELOPMENT'} mode`);
+
+// Simple variable replacement without needing @rollup/plugin-replace
+const simpleReplace = (options = {}) => ({
+  name: 'simple-replace',
+  transform(code) {
+    let transformedCode = code;
+    Object.keys(options).forEach(key => {
+      const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      transformedCode = transformedCode.replace(regex, options[key]);
+    });
+    return {
+      code: transformedCode,
+      map: null
+    };
+  }
+});
+
+const config = {
+  input: 'src/cards/main.js',
   output: {
-    file: `dist/${cardName}.js`,
     format: 'es',
-    sourcemap: !production,
+    sourcemap: isDevelopment,
+    banner: isDevelopment
+      ? '/* Kids Tasks Cards - Development Build for habits-manager backend */'
+      : '/* Kids Tasks Cards - Production Build for habits-manager backend */',
   },
   plugins: [
+    // Replace environment variables
+    simpleReplace({
+      '__DEV__': isDevelopment ? 'true' : 'false',
+      '__PROD__': production ? 'true' : 'false',
+      'process.env.VERSION': `"${version}"`,
+      'process.env.NODE_ENV': `"${process.env.NODE_ENV || 'development'}"`
+    }),
+
     resolve({
       browser: true,
       preferBuiltins: false,
     }),
-    commonjs(),
-    json(),
-    typescript({
-      tsconfig: './tsconfig.json',
-      declaration: false,
-      sourceMap: !production,
-    }),
-    production && terser({
-      format: {
-        comments: false,
-      },
-      compress: {
-        drop_console: false, // Keep console.log for debugging
-      },
-    }),
-    // Copy all dist files after the last card is built
-    isLast && copy({
+  ],
+
+  watch: {
+    include: 'src/cards/**',
+    exclude: 'node_modules/**',
+    clearScreen: false
+  }
+};
+
+// Output configuration based on environment
+if (isDevelopment) {
+  // Development build - readable, with sourcemaps
+  config.output = {
+    ...config.output,
+    file: 'dist/kids-tasks-card.dev.js',
+    compact: false,
+    indent: '  '
+  };
+
+  // Copy to HA www directory in dev mode too
+  config.plugins.push(
+    copy({
       targets: [
-        { src: 'dist/*', dest: '../../custom_components/habits_manager/www' }
+        {
+          src: 'dist/kids-tasks-card.dev.js',
+          dest: '../../custom_components/habits_manager/www',
+          rename: 'kids-tasks-card.dev.js'
+        }
       ],
       hook: 'writeBundle'
     })
-  ].filter(Boolean),
-  onwarn(warning, warn) {
-    // Suppress certain warnings
-    if (warning.code === 'THIS_IS_UNDEFINED') return;
-    warn(warning);
-  },
-});
+  );
 
-export default [
-  createConfig('habits-manager-card'),
-  createConfig('habits-supervision-card'),
-  createConfig('habits-child-card', true), // Copy after last card
-];
+} else if (production) {
+  // Production build - minified, optimized
+  config.output = {
+    ...config.output,
+    file: 'dist/kids-tasks-card.js',
+    compact: true
+  };
+
+  // Add production plugins
+  config.plugins.push(
+    terser({
+      compress: {
+        drop_console: false, // Keep console for debugging habits-manager
+        drop_debugger: true,
+      },
+      format: {
+        comments: false
+      }
+    }),
+    // Copy to Home Assistant www directory
+    copy({
+      targets: [
+        { src: 'dist/kids-tasks-card.js', dest: '../../custom_components/habits_manager/www' }
+      ],
+      hook: 'writeBundle'
+    })
+  );
+} else {
+  // Default dev build
+  config.output = {
+    ...config.output,
+    file: 'dist/kids-tasks-card.dev.js',
+    compact: false,
+  };
+}
+
+export default config;

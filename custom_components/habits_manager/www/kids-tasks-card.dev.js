@@ -1,4 +1,4 @@
-/* Kids Tasks Legacy Cards - Development Build for habits-manager */
+/* Kids Tasks Cards - Development Build for habits-manager backend */
 // Kids Tasks Style Manager v2.0 - Optimized CSS System
 // Consolidated from 364+ variables to 45 essential variables based on usage analysis
 
@@ -8097,4 +8097,4 @@ logger.info(`Kids Tasks Card v${version} loaded successfully!`);
 }
 
 export { KidsTasksBaseCard, KidsTasksCard, KidsTasksChildCard, KidsTasksManagerCard, KidsTasksStyleManager$1 as KidsTasksStyleManager, KidsTasksUtils };
-//# sourceMappingURL=kids-tasks-legacy.dev.js.map
+//# sourceMappingURL=kids-tasks-card.dev.js.map
