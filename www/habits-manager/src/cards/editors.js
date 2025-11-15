@@ -1,5 +1,7 @@
 // Kids Tasks Card Editors - Configuration UI components
 
+import { ENTITY_PREFIX } from './constants.js';
+
 class KidsTasksBaseCardEditor extends HTMLElement {
   constructor() {
     super();
@@ -663,10 +665,10 @@ class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
 
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
-      if (entityId.startsWith('sensor.kidtasks_') && entityId.endsWith('_points')) {
+      if (entityId.startsWith(`sensor.${ENTITY_PREFIX}_`) && entityId.endsWith('_points')) {
         const entity = this._hass.states[entityId];
         if (entity && entity.state !== 'unavailable') {
-          const childId = entityId.replace('sensor.kidtasks_', '').replace('_points', '');
+          const childId = entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
           children.push({
             id: childId,
             name: entity.attributes.friendly_name || childId,

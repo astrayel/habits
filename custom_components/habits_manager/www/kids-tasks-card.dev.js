@@ -3892,11 +3892,11 @@ class KidsTasksCard extends KidsTasksBaseCard {
 
   shouldUpdate(oldHass, newHass) {
     if (!oldHass) return true;
-    
+
     // Quick check: compare entity counts for kids tasks
-    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith('sensor.kidtasks_'));
-    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith('sensor.kidtasks_'));
-    
+    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`));
+    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`));
+
     return oldTaskEntities.length !== newTaskEntities.length;
   }
 
@@ -4084,13 +4084,13 @@ class KidsTasksCard extends KidsTasksBaseCard {
   // Data methods (same as before)
   getChildren() {
     if (!this._hass) return [];
-    
+
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
-      if (entityId.startsWith('sensor.kidtasks_') && entityId.endsWith('_points')) {
+      if (entityId.startsWith(`sensor.${ENTITY_PREFIX}_`) && entityId.endsWith('_points')) {
         const entity = this._hass.states[entityId];
         if (entity && entity.state !== 'unavailable') {
-          const childId = entityId.replace('sensor.kidtasks_', '').replace('_points', '');
+          const childId = entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
           children.push({
             id: childId,
             name: entity.attributes.friendly_name || childId,
@@ -4103,7 +4103,7 @@ class KidsTasksCard extends KidsTasksBaseCard {
         }
       }
     });
-    
+
     return children.sort((a, b) => a.name.localeCompare(b.name));
   }
 
@@ -4127,16 +4127,16 @@ class KidsTasksCard extends KidsTasksBaseCard {
 
   getChildTasks(childId) {
     if (!this._hass) return [];
-    
+
     const taskEntities = Object.keys(this._hass.states)
-      .filter(id => id.startsWith('sensor.kidtasks_task_'))
+      .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`))
       .map(id => this._hass.states[id])
-      .filter(entity => entity.attributes && 
-                      entity.attributes.assigned_children && 
+      .filter(entity => entity.attributes &&
+                      entity.attributes.assigned_children &&
                       entity.attributes.assigned_children.includes(childId));
-    
+
     return taskEntities.map(entity => ({
-      id: entity.entity_id.replace('sensor.kidtasks_task_', ''),
+      id: entity.entity_id.replace(`sensor.${ENTITY_PREFIX}_task_`, ''),
       name: entity.attributes.friendly_name || 'Tâche',
       status: entity.state,
       completed_at: entity.attributes.completed_at,
@@ -4386,8 +4386,8 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     }
     
     // Check tasks and rewards
-    const taskEntities = Object.keys(newHass.states).filter(id => id.startsWith('sensor.kidtasks_task_'));
-    const rewardEntities = Object.keys(newHass.states).filter(id => id.startsWith('sensor.kidtasks_reward_'));
+    const taskEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
+    const rewardEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`));
     
     for (const entityId of [...taskEntities, ...rewardEntities]) {
       const oldEntity = oldHass.states[entityId];
@@ -5445,7 +5445,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
     // Get all points entities to see what we have
     const pointsEntities = Object.keys(hass.states)
-      .filter(id => id.startsWith('sensor.kidtasks_') && id.endsWith('_points'));
+      .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`) && id.endsWith('_points'));
 
     console.log('All points entities:', pointsEntities);
 
@@ -5459,7 +5459,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       });
 
       if (e.attributes.friendly_name === childIdOrName || e.attributes.friendly_name?.toLowerCase() === childIdOrName.toLowerCase()) {
-        const realId = e.attributes.child_id || entityId.replace('sensor.kidtasks_', '').replace('_points', '');
+        const realId = e.attributes.child_id || entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
         console.log('Found by friendly_name! Real ID:', realId);
         return {
           id: realId,
@@ -5473,7 +5473,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     }
 
     // Then try direct ID (for UUID cases)
-    let pointsEntityId = `sensor.kidtasks_${childIdOrName}_points`;
+    let pointsEntityId = `sensor.${ENTITY_PREFIX}_${childIdOrName}_points`;
     let entity = hass.states[pointsEntityId];
 
     if (entity) {
@@ -5501,12 +5501,12 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
     // Get all task entities
     const allTaskEntities = Object.keys(this._hass.states)
-      .filter(id => id.startsWith('sensor.kidtasks_task_'));
+      .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
 
     console.log('All task entities:', allTaskEntities);
 
     const taskEntities = Object.keys(this._hass.states)
-      .filter(id => id.startsWith('sensor.kidtasks_task_'))
+      .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`))
       .map(id => this._hass.states[id])
       .filter(entity => {
         if (!entity.attributes) return false;
@@ -5534,7 +5534,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
 
     const result = taskEntities.map(entity => ({
-      id: entity.entity_id.replace('sensor.kidtasks_task_', ''),
+      id: entity.entity_id.replace(`sensor.${ENTITY_PREFIX}_task_`, ''),
       name: entity.attributes.friendly_name || 'Tâche',
       description: entity.attributes.description,
       status: entity.state,
@@ -5552,11 +5552,11 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     if (!this._hass) return [];
 
     const rewardEntities = Object.keys(this._hass.states)
-      .filter(id => id.startsWith('sensor.kidtasks_reward_'))
+      .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`))
       .map(id => this._hass.states[id]);
 
     return rewardEntities.map(entity => ({
-      id: entity.entity_id.replace('sensor.kidtasks_reward_', ''),
+      id: entity.entity_id.replace(`sensor.${ENTITY_PREFIX}_reward_`, ''),
       name: entity.attributes.friendly_name || 'Récompense',
       description: entity.attributes.description,
       cost: entity.attributes.cost || 0,
@@ -5642,8 +5642,8 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     if (!oldHass) return true;
 
     // Check for task/reward entity changes
-    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith('sensor.kidtasks_task_'));
-    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith('sensor.kidtasks_task_'));
+    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
+    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
 
     if (oldTaskEntities.length !== newTaskEntities.length) return true;
 
@@ -5658,8 +5658,8 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     }
 
     // Check rewards
-    const oldRewardEntities = Object.keys(oldHass.states).filter(id => id.startsWith('sensor.kidtasks_reward_'));
-    const newRewardEntities = Object.keys(newHass.states).filter(id => id.startsWith('sensor.kidtasks_reward_'));
+    const oldRewardEntities = Object.keys(oldHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`));
+    const newRewardEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`));
 
     if (oldRewardEntities.length !== newRewardEntities.length) return true;
 
@@ -6198,7 +6198,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
                           `Cette action est IRRÉVERSIBLE !`;
 
     if (confirm(confirmMessage)) {
-      this.callService('kids_tasks', 'remove_child', {
+      this.callService(SERVICE_DOMAIN, 'remove_child', {
         child_id: childId,
         force_remove_entities: true
       });
@@ -6260,7 +6260,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
       const newCoins = parseInt(form.querySelector('[name="coins"]')?.value || '0');
 
       // Pour l'édition, on utilise update_child
-      const success = await this.callService('kids_tasks', 'update_child', serviceData);
+      const success = await this.callService(SERVICE_DOMAIN, 'update_child', serviceData);
 
       if (success) {
         // Ajuster les points et pièces si nécessaire
@@ -6272,7 +6272,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           const coinsDiff = newCoins - (currentChild.coins || 0);
 
           if (pointsDiff !== 0) {
-            await this.callService('kids_tasks', 'adjust_points', {
+            await this.callService(SERVICE_DOMAIN, 'adjust_points', {
               child_id: childId,
               points: pointsDiff,
               reason: 'Ajustement manuel par admin'
@@ -6280,7 +6280,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           }
 
           if (coinsDiff !== 0) {
-            await this.callService('kids_tasks', 'adjust_coins', {
+            await this.callService(SERVICE_DOMAIN, 'adjust_coins', {
               child_id: childId,
               coins: coinsDiff,
               reason: 'Ajustement manuel par admin'
@@ -6289,7 +6289,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
         }
       }
 /*    } else {
-      await this.callService('kids_tasks', 'add_child', serviceData);*/
+      await this.callService(SERVICE_DOMAIN, 'add_child', serviceData);*/
     }
 
     dialog.close();
@@ -6333,6 +6333,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
 }
 
 // Kids Tasks Card Editors - Configuration UI components
+
 
 class KidsTasksBaseCardEditor extends HTMLElement {
   constructor() {
@@ -6997,10 +6998,10 @@ class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
 
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
-      if (entityId.startsWith('sensor.kidtasks_') && entityId.endsWith('_points')) {
+      if (entityId.startsWith(`sensor.${ENTITY_PREFIX}_`) && entityId.endsWith('_points')) {
         const entity = this._hass.states[entityId];
         if (entity && entity.state !== 'unavailable') {
-          const childId = entityId.replace('sensor.kidtasks_', '').replace('_points', '');
+          const childId = entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
           children.push({
             id: childId,
             name: entity.attributes.friendly_name || childId,

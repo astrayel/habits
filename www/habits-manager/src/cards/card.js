@@ -2,6 +2,7 @@
 
 import { KidsTasksBaseCard } from './base-card.js';
 import { KidsTasksUtils } from './utils.js';
+import { ENTITY_PREFIX } from './constants.js';
 
 class KidsTasksCard extends KidsTasksBaseCard {
   constructor() {
@@ -22,11 +23,11 @@ class KidsTasksCard extends KidsTasksBaseCard {
 
   shouldUpdate(oldHass, newHass) {
     if (!oldHass) return true;
-    
+
     // Quick check: compare entity counts for kids tasks
-    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith('sensor.kidtasks_'));
-    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith('sensor.kidtasks_'));
-    
+    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`));
+    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`));
+
     return oldTaskEntities.length !== newTaskEntities.length;
   }
 
@@ -214,13 +215,13 @@ class KidsTasksCard extends KidsTasksBaseCard {
   // Data methods (same as before)
   getChildren() {
     if (!this._hass) return [];
-    
+
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
-      if (entityId.startsWith('sensor.kidtasks_') && entityId.endsWith('_points')) {
+      if (entityId.startsWith(`sensor.${ENTITY_PREFIX}_`) && entityId.endsWith('_points')) {
         const entity = this._hass.states[entityId];
         if (entity && entity.state !== 'unavailable') {
-          const childId = entityId.replace('sensor.kidtasks_', '').replace('_points', '');
+          const childId = entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
           children.push({
             id: childId,
             name: entity.attributes.friendly_name || childId,
@@ -233,7 +234,7 @@ class KidsTasksCard extends KidsTasksBaseCard {
         }
       }
     });
-    
+
     return children.sort((a, b) => a.name.localeCompare(b.name));
   }
 
@@ -257,16 +258,16 @@ class KidsTasksCard extends KidsTasksBaseCard {
 
   getChildTasks(childId) {
     if (!this._hass) return [];
-    
+
     const taskEntities = Object.keys(this._hass.states)
-      .filter(id => id.startsWith('sensor.kidtasks_task_'))
+      .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`))
       .map(id => this._hass.states[id])
-      .filter(entity => entity.attributes && 
-                      entity.attributes.assigned_children && 
+      .filter(entity => entity.attributes &&
+                      entity.attributes.assigned_children &&
                       entity.attributes.assigned_children.includes(childId));
-    
+
     return taskEntities.map(entity => ({
-      id: entity.entity_id.replace('sensor.kidtasks_task_', ''),
+      id: entity.entity_id.replace(`sensor.${ENTITY_PREFIX}_task_`, ''),
       name: entity.attributes.friendly_name || 'Tâche',
       status: entity.state,
       completed_at: entity.attributes.completed_at,

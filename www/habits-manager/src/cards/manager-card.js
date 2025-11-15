@@ -2,6 +2,7 @@
 
 import { KidsTasksBaseCard } from './base-card.js';
 import { KidsTasksUtils } from './utils.js';
+import { SERVICE_DOMAIN, ENTITY_PREFIX } from './constants.js';
 
 class KidsTasksManagerCard extends KidsTasksBaseCard {
   constructor() {
@@ -22,8 +23,8 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     if (!oldHass) return true;
 
     // Check for task/reward entity changes
-    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith('sensor.kidtasks_task_'));
-    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith('sensor.kidtasks_task_'));
+    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
+    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
 
     if (oldTaskEntities.length !== newTaskEntities.length) return true;
 
@@ -38,8 +39,8 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     }
 
     // Check rewards
-    const oldRewardEntities = Object.keys(oldHass.states).filter(id => id.startsWith('sensor.kidtasks_reward_'));
-    const newRewardEntities = Object.keys(newHass.states).filter(id => id.startsWith('sensor.kidtasks_reward_'));
+    const oldRewardEntities = Object.keys(oldHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`));
+    const newRewardEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`));
 
     if (oldRewardEntities.length !== newRewardEntities.length) return true;
 
@@ -578,7 +579,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
                           `Cette action est IRRÉVERSIBLE !`;
 
     if (confirm(confirmMessage)) {
-      this.callService('kids_tasks', 'remove_child', {
+      this.callService(SERVICE_DOMAIN, 'remove_child', {
         child_id: childId,
         force_remove_entities: true
       });
@@ -640,7 +641,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
       const newCoins = parseInt(form.querySelector('[name="coins"]')?.value || '0');
 
       // Pour l'édition, on utilise update_child
-      const success = await this.callService('kids_tasks', 'update_child', serviceData);
+      const success = await this.callService(SERVICE_DOMAIN, 'update_child', serviceData);
 
       if (success) {
         // Ajuster les points et pièces si nécessaire
@@ -652,7 +653,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           const coinsDiff = newCoins - (currentChild.coins || 0);
 
           if (pointsDiff !== 0) {
-            await this.callService('kids_tasks', 'adjust_points', {
+            await this.callService(SERVICE_DOMAIN, 'adjust_points', {
               child_id: childId,
               points: pointsDiff,
               reason: 'Ajustement manuel par admin'
@@ -660,7 +661,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           }
 
           if (coinsDiff !== 0) {
-            await this.callService('kids_tasks', 'adjust_coins', {
+            await this.callService(SERVICE_DOMAIN, 'adjust_coins', {
               child_id: childId,
               coins: coinsDiff,
               reason: 'Ajustement manuel par admin'
@@ -669,7 +670,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
         }
       }
 /*    } else {
-      await this.callService('kids_tasks', 'add_child', serviceData);*/
+      await this.callService(SERVICE_DOMAIN, 'add_child', serviceData);*/
     }
 
     dialog.close();
