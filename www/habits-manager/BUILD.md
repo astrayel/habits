@@ -30,13 +30,41 @@ npm run build:dev
 - Variables d'environnement: `__DEV__=true`, `__PROD__=false`
 - **Copie automatique** vers `custom_components/habits_manager/www/`
 
-### Watch mode (développement avec auto-rebuild)
+### Mode développement (watch + auto-rebuild)
+```bash
+npm run dev
+```
+ou
 ```bash
 npm run watch
 ```
 - Recompile automatiquement à chaque modification de fichier
 - Mode développement
 - Utile pour le développement actif
+
+### Serveur de développement local
+```bash
+npm run serve
+```
+- Lance un serveur HTTP local sur le port 8080
+- Live reload automatique quand les fichiers changent
+- CORS activé pour tester avec Home Assistant
+- Accès : `http://localhost:8080`
+
+### Environnement de développement complet (recommandé)
+```bash
+npm run dev:full
+```
+- **Compile et watch** : Rebuild automatique à chaque modification
+- **Serveur local** : Live reload sur `http://localhost:8080`
+- Les deux processus tournent en parallèle avec `concurrently`
+- Arrêter avec `Ctrl+C`
+
+### Nettoyage
+```bash
+npm run clean
+```
+- Supprime le dossier `dist/`
 
 ---
 
