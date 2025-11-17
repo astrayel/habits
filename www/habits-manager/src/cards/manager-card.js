@@ -56,7 +56,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     return false;
   }
 
-  render() {
+  async render() {
     if (!this._hass) {
       this.shadowRoot.innerHTML = '<div class="kt-loading">Chargement...</div>';
       return;
@@ -70,7 +70,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
         </div>
 
         <div class="main-content">
-          ${this.renderCurrentView()}
+          ${await this.renderCurrentView()}
         </div>
       </div>
     `;
@@ -169,23 +169,23 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderCurrentView() {
+  async renderCurrentView() {
     switch (this.currentView) {
       case 'children':
-        return this.renderChildrenView();
+        return await this.renderChildrenView();
       case 'tasks':
-        return this.renderTasksView();
+        return await this.renderTasksView();
       case 'rewards':
         return this.renderRewardsView();
       case 'cosmetics':
         return this.renderCosmeticsView();
       default:
-        return this.renderChildrenView();
+        return await this.renderChildrenView();
     }
   }
 
-  renderChildrenView() {
-    const children = this.getChildren();
+  async renderChildrenView() {
+    const children = await this.getChildren();
     return `
     <div class="children-grid">
         ${children.map(child => this.renderChild(child)).join('')}
@@ -194,9 +194,16 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
 
   }
 
-  renderTasksView() {
+  async renderTasksView() {
     const allTasks = this.getTasks();
     const tasks = this.filterTasks(allTasks, this.taskFilter);
+
+    // Handle async renderTaskItem
+    const taskItems = [];
+    for (const task of tasks) {
+      const html = await this.renderTaskItem(task);
+      taskItems.push(html);
+    }
 
     return `
       <div class="section">
@@ -211,7 +218,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
 
         ${tasks.length > 0 ? `
           <div class="task-list">
-            ${tasks.map(task => this.renderTaskItem(task)).join('')}
+            ${taskItems.join('')}
           </div>
         ` : `
           <div class="empty-state">
@@ -241,8 +248,8 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     });
   }
 
-  renderTaskItem(task) {
-    const childName = this.formatAssignedChildren(task);
+  async renderTaskItem(task) {
+    const childName = await this.formatAssignedChildren(task);
     const taskIcon = this.getCategoryIcon(task);
 
     return `
@@ -340,37 +347,37 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
   }
 
 
-  handleAction(action, id, event) {
+  async handleAction(action, id, event) {
     console.log(`Action=${action}`);
     switch (action) {
       case 'switch-view':
         this.currentView = id;
-        this.render();
+        await this.render();
         break;
       case 'filter-tasks':
         this.taskFilter = event.target.dataset.filter;
-        this.render();
+        await this.render();
         break;
       case 'add-task':
-        this.handleAddTask();
+        await this.handleAddTask();
         break;
       case 'edit-task':
-        this.handleEditTask(id);
+        await this.handleEditTask(id);
         break;
       case 'add-reward':
-        this.handleAddReward();
+        await this.handleAddReward();
         break;
       case 'edit-reward':
-        this.handleEditReward(id);
+        await this.handleEditReward(id);
         break;
       case 'edit-child':
-        this.showChildForm(id);
+        await this.showChildForm(id);
         break;
       case 'show-child-history':
-        this.showChildHistory(id);
+        await this.showChildHistory(id);
         break;
       case 'remove-child':
-        this.handleRemoveChild(id);
+        await this.handleRemoveChild(id);
         break;
       default:
         if (__DEV__) {
@@ -400,8 +407,8 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     // TODO: Implement reward edit dialog/service call
   }
 
-  showChildForm(editChildId = null) {
-    const children = this.getChildren();
+  async showChildForm(editChildId = null) {
+    const children = await this.getChildren();
     const child = editChildId ? children.find(c => c.child_id === editChildId || c.id === editChildId) : null;
     const isEdit = !!child;
     const persons = this.getPersonEntities();
@@ -566,8 +573,9 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
 
   // Note: showChildHistory is now handled by base-card.js
 
-  handleRemoveChild(childId) {
-    const child = this.getChildren().find(c => c.child_id === childId || c.id === childId);
+  async handleRemoveChild(childId) {
+    const children = await this.getChildren();
+    const child = children.find(c => c.child_id === childId || c.id === childId);
     const childName = child ? child.name : 'cet enfant';
 
     const confirmMessage = `Êtes-vous sûr de vouloir supprimer ${childName} ?\n\n` +
@@ -645,7 +653,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
 
       if (success) {
         // Ajuster les points et pièces si nécessaire
-        const children = this.getChildren();
+        const children = await this.getChildren();
         const currentChild = children.find(c => (c.child_id || c.id) === childId);
 
         if (currentChild) {

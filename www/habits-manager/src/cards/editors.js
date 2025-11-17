@@ -14,7 +14,7 @@ class KidsTasksBaseCardEditor extends HTMLElement {
   setConfig(config) {
     this._config = { ...config };
     if (this._rendered) {
-      this._render();
+      this._render().catch(console.error);
     } else {
       this._pendingConfig = true;
     }
@@ -23,7 +23,7 @@ class KidsTasksBaseCardEditor extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._rendered) {
-      this._render();
+      this._render().catch(console.error);
       this._rendered = true;
     } else if (this._pendingConfig) {
       this._syncInputValues();
@@ -31,10 +31,10 @@ class KidsTasksBaseCardEditor extends HTMLElement {
     }
   }
 
-  _render() {
+  async _render() {
     this.shadowRoot.innerHTML = `
       <div class="card-config">
-        ${this._renderSpecificOptions()}
+        ${await this._renderSpecificOptions()}
       </div>
       <style>
         .card-config {
@@ -553,8 +553,8 @@ class KidsTasksManagerEditor extends KidsTasksBaseCardEditor {
 }
 
 class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
-  _renderSpecificOptions() {
-    const children = this._getChildren();
+  async _renderSpecificOptions() {
+    const children = await this._getChildren();
     
     return `
       <div class="section-title">Configuration de l'enfant</div>
@@ -660,15 +660,42 @@ class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
     }
   }
 
-  _getChildren() {
+  async _getChildren() {
     if (!this._hass) return [];
+    
+    try {
+      // Utiliser le service habits_manager.list_children avec return_response: true
+      const response = await this._hass.callService(
+        'habits_manager',
+        'list_children',
+        {},
+        true  // return_response
+      );
 
+      if (response && response.children) {
+        // Adapter les enfants habits_manager vers le format attendu par l'éditeur
+        return response.children.map(child => ({
+          id: child.id || child.child_id,
+          child_id: child.child_id || child.id,
+          name: child.name,
+          points: child.points || 0,
+          coins: child.coins || 0,
+          level: child.level || 1,
+          avatar: child.avatar || child.emoji || '👤',
+          ...child
+        }));
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des enfants via API:', error);
+    }
+
+    // Fallback: lire depuis les sensors si le service échoue
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
       if (entityId.startsWith(`sensor.${ENTITY_PREFIX}_`) && entityId.endsWith('_points')) {
         const entity = this._hass.states[entityId];
         if (entity && entity.state !== 'unavailable') {
-          const childId = entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
+          const childId = entity.attributes.child_id || entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
           children.push({
             id: childId,
             name: entity.attributes.friendly_name || childId,

@@ -957,7 +957,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
             child_id: this.config.child_id,
             date: today
           },
-          { return_response: true }
+          true  // return_response
         ).catch(() => null);
 
         if (instancesResponse?.instances) {
@@ -1017,7 +1017,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
         'habits_manager',
         'list_habits',
         { assigned_to: child.child_id },
-        { return_response: true }
+        true  // return_response
       );
 
       const habits = response?.habits || [];
@@ -1027,7 +1027,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
         'habits_manager',
         'get_habit_streaks',
         { child_id: child.child_id },
-        { return_response: true }
+        true  // return_response
       ).catch(() => ({ streaks: [] }));
 
       const streaks = streaksResponse?.streaks || [];
@@ -1134,7 +1134,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
         'habits_manager',
         'list_cosmetics',
         { active_only: true },
-        { return_response: true }
+        true  // return_response
       );
 
       const cosmetics = response?.cosmetics || [];

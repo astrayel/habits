@@ -45,9 +45,9 @@ class KidsTasksBaseCard extends HTMLElement {
       this._initialized = true;
       this.shadowRoot.addEventListener('click', this.handleClick.bind(this));
       this.initTouchInteractions();
-      this.smartRender();
+      this.smartRender().catch(err => console.error('Render error:', err)); // Handle async error
     } else if (hass && this.shouldUpdate(oldHass, hass)) {
-      this.smartRender();
+      this.smartRender().catch(err => console.error('Render error:', err)); // Handle async error
       if (this._initialized) {
         this.initTouchInteractions();
       }
@@ -55,7 +55,7 @@ class KidsTasksBaseCard extends HTMLElement {
   }
 
   // Smart rendering system with debouncing and state diffing
-  smartRender(force = false) {
+  async smartRender(force = false) {
     // Prevent render spam
     if (this._isRendering && !force) {
       this._pendingRender = true;
@@ -67,12 +67,12 @@ class KidsTasksBaseCard extends HTMLElement {
       clearTimeout(this._renderDebounceTimer);
     }
 
-    this._renderDebounceTimer = setTimeout(() => {
-      this._performRender(force);
+    this._renderDebounceTimer = setTimeout(async () => {
+      await this._performRender(force);
     }, force ? 0 : 16); // 16ms debounce (~60fps)
   }
 
-  _performRender(force = false) {
+  async _performRender(force = false) {
     if (this._isRendering) return;
 
     const startTime = performance.now();
@@ -85,7 +85,7 @@ class KidsTasksBaseCard extends HTMLElement {
       }
 
       // Perform the actual render
-      this.render();
+      await this.render();
       
       // Update render state tracking
       this._updateRenderState();
@@ -153,7 +153,7 @@ class KidsTasksBaseCard extends HTMLElement {
     }
   }
 
-  handleClick(event) {
+  async handleClick(event) {
     const target = event.target.closest('[data-action]');
     if (!target) {
       this._hideAllDeleteConfirmations();
@@ -187,9 +187,9 @@ class KidsTasksBaseCard extends HTMLElement {
 
     // Handle filter actions specially
     if (action === 'filter-rewards' || action === 'filter-children' || action === 'filter-tasks') {
-      this.handleAction(action, target.dataset.filter, event);
+      await this.handleAction(action, target.dataset.filter, event);
     } else {
-      this.handleAction(action, id, event);
+      await this.handleAction(action, id, event);
     }
   }
 
@@ -1639,9 +1639,27 @@ showModal(content, title = '') {
   }
 
   // Common data access methods (to be overridden)
-  getChildren() {
+  async getChildren() {
     if (!this._hass) return [];
 
+    try {
+      // Utiliser le service habits_manager.list_children avec return_response: true
+      const response = await this._hass.callService(
+        SERVICE_DOMAIN,
+        'list_children',
+        {},
+        true  // return_response
+      );
+
+      if (response && response.children) {
+        // Adapter les enfants habits_manager vers le format kids_tasks
+        return response.children.map(child => DataAdapter.adaptChild(child));
+      }
+    } catch (error) {
+      logger.error('Erreur lors de la récupération des enfants via API:', error);
+    }
+
+    // Fallback: lire depuis les sensors si le service échoue
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
       // Nouveau préfixe: sensor.habits_manager_
@@ -1683,7 +1701,7 @@ showModal(content, title = '') {
         SERVICE_DOMAIN,
         'list_tasks',
         {},
-        { return_response: true }
+        true  // return_response
       );
 
       if (response && response.tasks) {
@@ -1780,7 +1798,7 @@ showModal(content, title = '') {
         SERVICE_DOMAIN,
         'list_habits',
         {},
-        { return_response: true }
+        true  // return_response
       );
 
       if (response && response.habits) {
@@ -1804,7 +1822,7 @@ showModal(content, title = '') {
         SERVICE_DOMAIN,
         'list_cosmetics',
         {},
-        { return_response: true }
+        true  // return_response
       );
 
       if (response && response.cosmetics) {
@@ -1977,17 +1995,17 @@ showModal(content, title = '') {
     return icons[item.category] || '📋';
   }
 
-  formatAssignedChildren(task) {
-    const childrenNames = this.getAssignedChildrenNames(task);
+  async formatAssignedChildren(task) {
+    const childrenNames = await this.getAssignedChildrenNames(task);
     if (childrenNames.length === 0) return 'Non assignée';
     if (childrenNames.length === 1) return childrenNames[0];
     return childrenNames.join(', ');
   }
 
-  getAssignedChildrenNames(task) {
+  async getAssignedChildrenNames(task) {
     if (!this._hass || !task.assigned_child_ids) return [];
 
-    const children = this.getChildren();
+    const children = await this.getChildren();
     const assignedIds = task.assigned_child_ids;
 
     return assignedIds.map(assignedChildId => {
@@ -2015,7 +2033,7 @@ showModal(content, title = '') {
     if (!this._hass) return [];
 
     // Récupérer les données de l'enfant
-    const children = this.getChildren();
+    const children = await this.getChildren();
     const child = children.find(c => c.child_id === childId || c.id === childId);
 
     if (!child) {
@@ -2034,7 +2052,7 @@ showModal(content, title = '') {
           child_id: childId,
           limit: 20
         },
-        { return_response: true }
+        true  // return_response
       );
 
       if (response && response.history) {
@@ -2227,7 +2245,8 @@ showModal(content, title = '') {
 
 
   async showChildHistory(childId) {
-    const child = this.getChildren().find(c => c.child_id === childId || c.id === childId);
+    const children = await this.getChildren();
+    const child = children.find(c => c.child_id === childId || c.id === childId);
     if (!child) return;
 
     const content = await this.renderChildHistoryContent(child);
