@@ -665,12 +665,13 @@ class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
     
     try {
       // Utiliser le service habits_manager.list_children avec return_response: true
-      const response = await this._hass.callService(
-        'habits_manager',
-        'list_children',
-        {},
-        true  // return_response
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_children',
+        service_data: {},
+        return_response: true
+      });
 
       if (response && response.children) {
         // Adapter les enfants habits_manager vers le format attendu par l'éditeur

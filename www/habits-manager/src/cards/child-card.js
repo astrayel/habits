@@ -950,15 +950,16 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       try {
         // Get the task instance for today
         const today = new Date().toISOString().split('T')[0];
-        const instancesResponse = await this._hass.callService(
-          'habits_manager',
-          'get_task_instances',
-          {
+        const instancesResponse = await this._hass.callWS({
+          type: 'call_service',
+          domain: 'habits_manager',
+          service: 'get_task_instances',
+          service_data: {
             child_id: this.config.child_id,
             date: today
           },
-          true  // return_response
-        ).catch(() => null);
+          return_response: true
+        }).catch(() => null);
 
         if (instancesResponse?.instances) {
           const instance = instancesResponse.instances.find(i => i.task_id === taskId && i.date === today);
@@ -1013,22 +1014,24 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   async loadHabitsContent(child) {
     try {
-      const response = await this._hass.callService(
-        'habits_manager',
-        'list_habits',
-        { assigned_to: child.child_id },
-        true  // return_response
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_habits',
+        service_data: { assigned_to: child.child_id },
+        return_response: true
+      });
 
       const habits = response?.habits || [];
 
       // Get habit streaks for this child
-      const streaksResponse = await this._hass.callService(
-        'habits_manager',
-        'get_habit_streaks',
-        { child_id: child.child_id },
-        true  // return_response
-      ).catch(() => ({ streaks: [] }));
+      const streaksResponse = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'get_habit_streaks',
+        service_data: { child_id: child.child_id },
+        return_response: true
+      }).catch(() => ({ streaks: [] }));
 
       const streaks = streaksResponse?.streaks || [];
 
@@ -1130,12 +1133,13 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   async loadCosmeticsContent(child) {
     try {
-      const response = await this._hass.callService(
-        'habits_manager',
-        'list_cosmetics',
-        { active_only: true },
-        true  // return_response
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_cosmetics',
+        service_data: { active_only: true },
+        return_response: true
+      });
 
       const cosmetics = response?.cosmetics || [];
 

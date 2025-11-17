@@ -1644,12 +1644,13 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le service habits_manager.list_children avec return_response: true
-      const response = await this._hass.callService(
-        SERVICE_DOMAIN,
-        'list_children',
-        {},
-        true  // return_response
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'list_children',
+        service_data: {},
+        return_response: true
+      });
 
       if (response && response.children) {
         // Adapter les enfants habits_manager vers le format kids_tasks
@@ -1697,12 +1698,13 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_tasks avec return_response: true
-      const response = await this._hass.callService(
-        SERVICE_DOMAIN,
-        'list_tasks',
-        {},
-        true  // return_response
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'list_tasks',
+        service_data: {},
+        return_response: true
+      });
 
       if (response && response.tasks) {
         // Adapter les tâches habits_manager vers le format kids_tasks
@@ -1794,12 +1796,13 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_habits avec return_response: true
-      const response = await this._hass.callService(
-        SERVICE_DOMAIN,
-        'list_habits',
-        {},
-        true  // return_response
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'list_habits',
+        service_data: {},
+        return_response: true
+      });
 
       if (response && response.habits) {
         // Adapter les habitudes
@@ -1818,12 +1821,13 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_cosmetics avec return_response: true
-      const response = await this._hass.callService(
-        SERVICE_DOMAIN,
-        'list_cosmetics',
-        {},
-        true  // return_response
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'list_cosmetics',
+        service_data: {},
+        return_response: true
+      });
 
       if (response && response.cosmetics) {
         // Adapter les cosmétiques vers le format récompense pour compatibilité
@@ -2045,15 +2049,16 @@ showModal(content, title = '') {
     let historyData = [];
     try {
       // Utiliser le nouveau domaine de service
-      const response = await this._hass.callService(
-        SERVICE_DOMAIN,
-        'get_child_history',
-        {
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'get_child_history',
+        service_data: {
           child_id: childId,
           limit: 20
         },
-        true  // return_response
-      );
+        return_response: true
+      });
 
       if (response && response.history) {
         historyData = response.history;

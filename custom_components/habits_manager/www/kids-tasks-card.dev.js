@@ -1680,9 +1680,9 @@ class KidsTasksBaseCard extends HTMLElement {
       this._initialized = true;
       this.shadowRoot.addEventListener('click', this.handleClick.bind(this));
       this.initTouchInteractions();
-      this.smartRender();
+      this.smartRender().catch(err => console.error('Render error:', err)); // Handle async error
     } else if (hass && this.shouldUpdate(oldHass, hass)) {
-      this.smartRender();
+      this.smartRender().catch(err => console.error('Render error:', err)); // Handle async error
       if (this._initialized) {
         this.initTouchInteractions();
       }
@@ -1690,7 +1690,7 @@ class KidsTasksBaseCard extends HTMLElement {
   }
 
   // Smart rendering system with debouncing and state diffing
-  smartRender(force = false) {
+  async smartRender(force = false) {
     // Prevent render spam
     if (this._isRendering && !force) {
       this._pendingRender = true;
@@ -1702,12 +1702,12 @@ class KidsTasksBaseCard extends HTMLElement {
       clearTimeout(this._renderDebounceTimer);
     }
 
-    this._renderDebounceTimer = setTimeout(() => {
-      this._performRender(force);
+    this._renderDebounceTimer = setTimeout(async () => {
+      await this._performRender(force);
     }, force ? 0 : 16); // 16ms debounce (~60fps)
   }
 
-  _performRender(force = false) {
+  async _performRender(force = false) {
     if (this._isRendering) return;
 
     const startTime = performance.now();
@@ -1720,7 +1720,7 @@ class KidsTasksBaseCard extends HTMLElement {
       }
 
       // Perform the actual render
-      this.render();
+      await this.render();
       
       // Update render state tracking
       this._updateRenderState();
@@ -1788,7 +1788,7 @@ class KidsTasksBaseCard extends HTMLElement {
     }
   }
 
-  handleClick(event) {
+  async handleClick(event) {
     const target = event.target.closest('[data-action]');
     if (!target) {
       this._hideAllDeleteConfirmations();
@@ -1822,9 +1822,9 @@ class KidsTasksBaseCard extends HTMLElement {
 
     // Handle filter actions specially
     if (action === 'filter-rewards' || action === 'filter-children' || action === 'filter-tasks') {
-      this.handleAction(action, target.dataset.filter, event);
+      await this.handleAction(action, target.dataset.filter, event);
     } else {
-      this.handleAction(action, id, event);
+      await this.handleAction(action, id, event);
     }
   }
 
@@ -3274,9 +3274,28 @@ showModal(content, title = '') {
   }
 
   // Common data access methods (to be overridden)
-  getChildren() {
+  async getChildren() {
     if (!this._hass) return [];
 
+    try {
+      // Utiliser le service habits_manager.list_children avec return_response: true
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'list_children',
+        service_data: {},
+        return_response: true
+      });
+
+      if (response && response.children) {
+        // Adapter les enfants habits_manager vers le format kids_tasks
+        return response.children.map(child => DataAdapter.adaptChild(child));
+      }
+    } catch (error) {
+      logger.error('Erreur lors de la récupération des enfants via API:', error);
+    }
+
+    // Fallback: lire depuis les sensors si le service échoue
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
       // Nouveau préfixe: sensor.habits_manager_
@@ -3314,12 +3333,13 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_tasks avec return_response: true
-      const response = await this._hass.callService(
-        SERVICE_DOMAIN,
-        'list_tasks',
-        {},
-        { return_response: true }
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'list_tasks',
+        service_data: {},
+        return_response: true
+      });
 
       if (response && response.tasks) {
         // Adapter les tâches habits_manager vers le format kids_tasks
@@ -3411,12 +3431,13 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_habits avec return_response: true
-      const response = await this._hass.callService(
-        SERVICE_DOMAIN,
-        'list_habits',
-        {},
-        { return_response: true }
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'list_habits',
+        service_data: {},
+        return_response: true
+      });
 
       if (response && response.habits) {
         // Adapter les habitudes
@@ -3435,12 +3456,13 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_cosmetics avec return_response: true
-      const response = await this._hass.callService(
-        SERVICE_DOMAIN,
-        'list_cosmetics',
-        {},
-        { return_response: true }
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'list_cosmetics',
+        service_data: {},
+        return_response: true
+      });
 
       if (response && response.cosmetics) {
         // Adapter les cosmétiques vers le format récompense pour compatibilité
@@ -3612,17 +3634,17 @@ showModal(content, title = '') {
     return icons[item.category] || '📋';
   }
 
-  formatAssignedChildren(task) {
-    const childrenNames = this.getAssignedChildrenNames(task);
+  async formatAssignedChildren(task) {
+    const childrenNames = await this.getAssignedChildrenNames(task);
     if (childrenNames.length === 0) return 'Non assignée';
     if (childrenNames.length === 1) return childrenNames[0];
     return childrenNames.join(', ');
   }
 
-  getAssignedChildrenNames(task) {
+  async getAssignedChildrenNames(task) {
     if (!this._hass || !task.assigned_child_ids) return [];
 
-    const children = this.getChildren();
+    const children = await this.getChildren();
     const assignedIds = task.assigned_child_ids;
 
     return assignedIds.map(assignedChildId => {
@@ -3650,7 +3672,7 @@ showModal(content, title = '') {
     if (!this._hass) return [];
 
     // Récupérer les données de l'enfant
-    const children = this.getChildren();
+    const children = await this.getChildren();
     const child = children.find(c => c.child_id === childId || c.id === childId);
 
     if (!child) {
@@ -3662,15 +3684,16 @@ showModal(content, title = '') {
     let historyData = [];
     try {
       // Utiliser le nouveau domaine de service
-      const response = await this._hass.callService(
-        SERVICE_DOMAIN,
-        'get_child_history',
-        {
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: SERVICE_DOMAIN,
+        service: 'get_child_history',
+        service_data: {
           child_id: childId,
           limit: 20
         },
-        { return_response: true }
-      );
+        return_response: true
+      });
 
       if (response && response.history) {
         historyData = response.history;
@@ -3862,7 +3885,8 @@ showModal(content, title = '') {
 
 
   async showChildHistory(childId) {
-    const child = this.getChildren().find(c => c.child_id === childId || c.id === childId);
+    const children = await this.getChildren();
+    const child = children.find(c => c.child_id === childId || c.id === childId);
     if (!child) return;
 
     const content = await this.renderChildHistoryContent(child);
@@ -5137,15 +5161,16 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       try {
         // Get the task instance for today
         const today = new Date().toISOString().split('T')[0];
-        const instancesResponse = await this._hass.callService(
-          'habits_manager',
-          'get_task_instances',
-          {
+        const instancesResponse = await this._hass.callWS({
+          type: 'call_service',
+          domain: 'habits_manager',
+          service: 'get_task_instances',
+          service_data: {
             child_id: this.config.child_id,
             date: today
           },
-          { return_response: true }
-        ).catch(() => null);
+          return_response: true
+        }).catch(() => null);
 
         if (instancesResponse?.instances) {
           const instance = instancesResponse.instances.find(i => i.task_id === taskId && i.date === today);
@@ -5200,22 +5225,24 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   async loadHabitsContent(child) {
     try {
-      const response = await this._hass.callService(
-        'habits_manager',
-        'list_habits',
-        { assigned_to: child.child_id },
-        { return_response: true }
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_habits',
+        service_data: { assigned_to: child.child_id },
+        return_response: true
+      });
 
       const habits = response?.habits || [];
 
       // Get habit streaks for this child
-      const streaksResponse = await this._hass.callService(
-        'habits_manager',
-        'get_habit_streaks',
-        { child_id: child.child_id },
-        { return_response: true }
-      ).catch(() => ({ streaks: [] }));
+      const streaksResponse = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'get_habit_streaks',
+        service_data: { child_id: child.child_id },
+        return_response: true
+      }).catch(() => ({ streaks: [] }));
 
       const streaks = streaksResponse?.streaks || [];
 
@@ -5317,12 +5344,13 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   async loadCosmeticsContent(child) {
     try {
-      const response = await this._hass.callService(
-        'habits_manager',
-        'list_cosmetics',
-        { active_only: true },
-        { return_response: true }
-      );
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_cosmetics',
+        service_data: { active_only: true },
+        return_response: true
+      });
 
       const cosmetics = response?.cosmetics || [];
 
@@ -5675,7 +5703,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     return false;
   }
 
-  render() {
+  async render() {
     if (!this._hass) {
       this.shadowRoot.innerHTML = '<div class="kt-loading">Chargement...</div>';
       return;
@@ -5689,7 +5717,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
         </div>
 
         <div class="main-content">
-          ${this.renderCurrentView()}
+          ${await this.renderCurrentView()}
         </div>
       </div>
     `;
@@ -5788,23 +5816,23 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderCurrentView() {
+  async renderCurrentView() {
     switch (this.currentView) {
       case 'children':
-        return this.renderChildrenView();
+        return await this.renderChildrenView();
       case 'tasks':
-        return this.renderTasksView();
+        return await this.renderTasksView();
       case 'rewards':
         return this.renderRewardsView();
       case 'cosmetics':
         return this.renderCosmeticsView();
       default:
-        return this.renderChildrenView();
+        return await this.renderChildrenView();
     }
   }
 
-  renderChildrenView() {
-    const children = this.getChildren();
+  async renderChildrenView() {
+    const children = await this.getChildren();
     return `
     <div class="children-grid">
         ${children.map(child => this.renderChild(child)).join('')}
@@ -5813,9 +5841,16 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
 
   }
 
-  renderTasksView() {
+  async renderTasksView() {
     const allTasks = this.getTasks();
     const tasks = this.filterTasks(allTasks, this.taskFilter);
+
+    // Handle async renderTaskItem
+    const taskItems = [];
+    for (const task of tasks) {
+      const html = await this.renderTaskItem(task);
+      taskItems.push(html);
+    }
 
     return `
       <div class="section">
@@ -5830,7 +5865,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
 
         ${tasks.length > 0 ? `
           <div class="task-list">
-            ${tasks.map(task => this.renderTaskItem(task)).join('')}
+            ${taskItems.join('')}
           </div>
         ` : `
           <div class="empty-state">
@@ -5860,8 +5895,8 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     });
   }
 
-  renderTaskItem(task) {
-    const childName = this.formatAssignedChildren(task);
+  async renderTaskItem(task) {
+    const childName = await this.formatAssignedChildren(task);
     const taskIcon = this.getCategoryIcon(task);
 
     return `
@@ -5959,37 +5994,37 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
   }
 
 
-  handleAction(action, id, event) {
+  async handleAction(action, id, event) {
     console.log(`Action=${action}`);
     switch (action) {
       case 'switch-view':
         this.currentView = id;
-        this.render();
+        await this.render();
         break;
       case 'filter-tasks':
         this.taskFilter = event.target.dataset.filter;
-        this.render();
+        await this.render();
         break;
       case 'add-task':
-        this.handleAddTask();
+        await this.handleAddTask();
         break;
       case 'edit-task':
-        this.handleEditTask(id);
+        await this.handleEditTask(id);
         break;
       case 'add-reward':
-        this.handleAddReward();
+        await this.handleAddReward();
         break;
       case 'edit-reward':
-        this.handleEditReward(id);
+        await this.handleEditReward(id);
         break;
       case 'edit-child':
-        this.showChildForm(id);
+        await this.showChildForm(id);
         break;
       case 'show-child-history':
-        this.showChildHistory(id);
+        await this.showChildHistory(id);
         break;
       case 'remove-child':
-        this.handleRemoveChild(id);
+        await this.handleRemoveChild(id);
         break;
       default:
         {
@@ -6019,8 +6054,8 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     // TODO: Implement reward edit dialog/service call
   }
 
-  showChildForm(editChildId = null) {
-    const children = this.getChildren();
+  async showChildForm(editChildId = null) {
+    const children = await this.getChildren();
     const child = editChildId ? children.find(c => c.child_id === editChildId || c.id === editChildId) : null;
     const isEdit = !!child;
     const persons = this.getPersonEntities();
@@ -6185,8 +6220,9 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
 
   // Note: showChildHistory is now handled by base-card.js
 
-  handleRemoveChild(childId) {
-    const child = this.getChildren().find(c => c.child_id === childId || c.id === childId);
+  async handleRemoveChild(childId) {
+    const children = await this.getChildren();
+    const child = children.find(c => c.child_id === childId || c.id === childId);
     const childName = child ? child.name : 'cet enfant';
 
     const confirmMessage = `Êtes-vous sûr de vouloir supprimer ${childName} ?\n\n` +
@@ -6264,7 +6300,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
 
       if (success) {
         // Ajuster les points et pièces si nécessaire
-        const children = this.getChildren();
+        const children = await this.getChildren();
         const currentChild = children.find(c => (c.child_id || c.id) === childId);
 
         if (currentChild) {
@@ -6347,7 +6383,7 @@ class KidsTasksBaseCardEditor extends HTMLElement {
   setConfig(config) {
     this._config = { ...config };
     if (this._rendered) {
-      this._render();
+      this._render().catch(console.error);
     } else {
       this._pendingConfig = true;
     }
@@ -6356,7 +6392,7 @@ class KidsTasksBaseCardEditor extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._rendered) {
-      this._render();
+      this._render().catch(console.error);
       this._rendered = true;
     } else if (this._pendingConfig) {
       this._syncInputValues();
@@ -6364,10 +6400,10 @@ class KidsTasksBaseCardEditor extends HTMLElement {
     }
   }
 
-  _render() {
+  async _render() {
     this.shadowRoot.innerHTML = `
       <div class="card-config">
-        ${this._renderSpecificOptions()}
+        ${await this._renderSpecificOptions()}
       </div>
       <style>
         .card-config {
@@ -6886,8 +6922,8 @@ class KidsTasksManagerEditor extends KidsTasksBaseCardEditor {
 }
 
 class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
-  _renderSpecificOptions() {
-    const children = this._getChildren();
+  async _renderSpecificOptions() {
+    const children = await this._getChildren();
     
     return `
       <div class="section-title">Configuration de l'enfant</div>
@@ -6993,15 +7029,43 @@ class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
     }
   }
 
-  _getChildren() {
+  async _getChildren() {
     if (!this._hass) return [];
+    
+    try {
+      // Utiliser le service habits_manager.list_children avec return_response: true
+      const response = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_children',
+        service_data: {},
+        return_response: true
+      });
 
+      if (response && response.children) {
+        // Adapter les enfants habits_manager vers le format attendu par l'éditeur
+        return response.children.map(child => ({
+          id: child.id || child.child_id,
+          child_id: child.child_id || child.id,
+          name: child.name,
+          points: child.points || 0,
+          coins: child.coins || 0,
+          level: child.level || 1,
+          avatar: child.avatar || child.emoji || '👤',
+          ...child
+        }));
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des enfants via API:', error);
+    }
+
+    // Fallback: lire depuis les sensors si le service échoue
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
       if (entityId.startsWith(`sensor.${ENTITY_PREFIX}_`) && entityId.endsWith('_points')) {
         const entity = this._hass.states[entityId];
         if (entity && entity.state !== 'unavailable') {
-          const childId = entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
+          const childId = entity.attributes.child_id || entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
           children.push({
             id: childId,
             name: entity.attributes.friendly_name || childId,
