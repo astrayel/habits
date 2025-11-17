@@ -950,7 +950,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       try {
         // Get the task instance for today
         const today = new Date().toISOString().split('T')[0];
-        const instancesResponse = await this._hass.callWS({
+        const instancesResult = await this._hass.callWS({
           type: 'call_service',
           domain: 'habits_manager',
           service: 'get_task_instances',
@@ -961,8 +961,8 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
           return_response: true
         }).catch(() => null);
 
-        if (instancesResponse?.instances) {
-          const instance = instancesResponse.instances.find(i => i.task_id === taskId && i.date === today);
+        if (instancesResult?.response?.instances) {
+          const instance = instancesResult.response.instances.find(i => i.task_id === taskId && i.date === today);
 
           if (instance) {
             await this._hass.callService('habits_manager', 'mark_task_completed', {
@@ -1014,7 +1014,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   async loadHabitsContent(child) {
     try {
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: 'habits_manager',
         service: 'list_habits',
@@ -1022,18 +1022,18 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
         return_response: true
       });
 
-      const habits = response?.habits || [];
+      const habits = result?.response?.habits || [];
 
       // Get habit streaks for this child
-      const streaksResponse = await this._hass.callWS({
+      const streaksResult = await this._hass.callWS({
         type: 'call_service',
         domain: 'habits_manager',
         service: 'get_habit_streaks',
         service_data: { child_id: child.child_id },
         return_response: true
-      }).catch(() => ({ streaks: [] }));
+      }).catch(() => ({ response: { streaks: [] } }));
 
-      const streaks = streaksResponse?.streaks || [];
+      const streaks = streaksResult?.response?.streaks || [];
 
       const habitsHtml = habits.length > 0 ? `
         <div class="habits-section">
@@ -1133,7 +1133,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   async loadCosmeticsContent(child) {
     try {
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: 'habits_manager',
         service: 'list_cosmetics',
@@ -1141,7 +1141,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
         return_response: true
       });
 
-      const cosmetics = response?.cosmetics || [];
+      const cosmetics = result?.response?.cosmetics || [];
 
       // Group by category
       const categories = {

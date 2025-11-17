@@ -1644,7 +1644,7 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le service habits_manager.list_children avec return_response: true
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'list_children',
@@ -1652,9 +1652,9 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.children) {
+      if (result && result.response && result.response.children) {
         // Adapter les enfants habits_manager vers le format kids_tasks
-        return response.children.map(child => DataAdapter.adaptChild(child));
+        return result.response.children.map(child => DataAdapter.adaptChild(child));
       }
     } catch (error) {
       logger.error('Erreur lors de la récupération des enfants via API:', error);
@@ -1698,7 +1698,7 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_tasks avec return_response: true
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'list_tasks',
@@ -1706,9 +1706,9 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.tasks) {
+      if (result && result.response && result.response.tasks) {
         // Adapter les tâches habits_manager vers le format kids_tasks
-        return response.tasks.map(task => DataAdapter.adaptTask(task, []));
+        return result.response.tasks.map(task => DataAdapter.adaptTask(task, []));
       }
     } catch (error) {
       logger.error('Erreur lors de la récupération des tâches:', error);
@@ -1796,7 +1796,7 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_habits avec return_response: true
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'list_habits',
@@ -1804,9 +1804,9 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.habits) {
+      if (result && result.response && result.response.habits) {
         // Adapter les habitudes
-        return response.habits.map(habit => DataAdapter.adaptHabit(habit, []));
+        return result.response.habits.map(habit => DataAdapter.adaptHabit(habit, []));
       }
     } catch (error) {
       logger.error('Erreur lors de la récupération des habitudes:', error);
@@ -1821,7 +1821,7 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_cosmetics avec return_response: true
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'list_cosmetics',
@@ -1829,9 +1829,9 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.cosmetics) {
+      if (result && result.response && result.response.cosmetics) {
         // Adapter les cosmétiques vers le format récompense pour compatibilité
-        return response.cosmetics.map(cosmetic => DataAdapter.adaptCosmetic(cosmetic));
+        return result.response.cosmetics.map(cosmetic => DataAdapter.adaptCosmetic(cosmetic));
       }
     } catch (error) {
       logger.error('Erreur lors de la récupération des cosmétiques:', error);
@@ -2049,7 +2049,7 @@ showModal(content, title = '') {
     let historyData = [];
     try {
       // Utiliser le nouveau domaine de service
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'get_child_history',
@@ -2060,8 +2060,8 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.history) {
-        historyData = response.history;
+      if (result && result.response && result.response.history) {
+        historyData = result.response.history;
       } else {
         // Fallback to sensor data si pas de réponse
         const historyEntityId = `sensor.${ENTITY_PREFIX}_${child.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_points_history`;

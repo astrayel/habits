@@ -3279,7 +3279,7 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le service habits_manager.list_children avec return_response: true
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'list_children',
@@ -3287,9 +3287,9 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.children) {
+      if (result && result.response && result.response.children) {
         // Adapter les enfants habits_manager vers le format kids_tasks
-        return response.children.map(child => DataAdapter.adaptChild(child));
+        return result.response.children.map(child => DataAdapter.adaptChild(child));
       }
     } catch (error) {
       logger.error('Erreur lors de la récupération des enfants via API:', error);
@@ -3333,7 +3333,7 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_tasks avec return_response: true
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'list_tasks',
@@ -3341,9 +3341,9 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.tasks) {
+      if (result && result.response && result.response.tasks) {
         // Adapter les tâches habits_manager vers le format kids_tasks
-        return response.tasks.map(task => DataAdapter.adaptTask(task, []));
+        return result.response.tasks.map(task => DataAdapter.adaptTask(task, []));
       }
     } catch (error) {
       logger.error('Erreur lors de la récupération des tâches:', error);
@@ -3431,7 +3431,7 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_habits avec return_response: true
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'list_habits',
@@ -3439,9 +3439,9 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.habits) {
+      if (result && result.response && result.response.habits) {
         // Adapter les habitudes
-        return response.habits.map(habit => DataAdapter.adaptHabit(habit, []));
+        return result.response.habits.map(habit => DataAdapter.adaptHabit(habit, []));
       }
     } catch (error) {
       logger.error('Erreur lors de la récupération des habitudes:', error);
@@ -3456,7 +3456,7 @@ showModal(content, title = '') {
 
     try {
       // Utiliser le nouveau service habits_manager.list_cosmetics avec return_response: true
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'list_cosmetics',
@@ -3464,9 +3464,9 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.cosmetics) {
+      if (result && result.response && result.response.cosmetics) {
         // Adapter les cosmétiques vers le format récompense pour compatibilité
-        return response.cosmetics.map(cosmetic => DataAdapter.adaptCosmetic(cosmetic));
+        return result.response.cosmetics.map(cosmetic => DataAdapter.adaptCosmetic(cosmetic));
       }
     } catch (error) {
       logger.error('Erreur lors de la récupération des cosmétiques:', error);
@@ -3684,7 +3684,7 @@ showModal(content, title = '') {
     let historyData = [];
     try {
       // Utiliser le nouveau domaine de service
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: SERVICE_DOMAIN,
         service: 'get_child_history',
@@ -3695,8 +3695,8 @@ showModal(content, title = '') {
         return_response: true
       });
 
-      if (response && response.history) {
-        historyData = response.history;
+      if (result && result.response && result.response.history) {
+        historyData = result.response.history;
       } else {
         // Fallback to sensor data si pas de réponse
         const historyEntityId = `sensor.${ENTITY_PREFIX}_${child.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_points_history`;
@@ -5161,7 +5161,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       try {
         // Get the task instance for today
         const today = new Date().toISOString().split('T')[0];
-        const instancesResponse = await this._hass.callWS({
+        const instancesResult = await this._hass.callWS({
           type: 'call_service',
           domain: 'habits_manager',
           service: 'get_task_instances',
@@ -5172,8 +5172,8 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
           return_response: true
         }).catch(() => null);
 
-        if (instancesResponse?.instances) {
-          const instance = instancesResponse.instances.find(i => i.task_id === taskId && i.date === today);
+        if (instancesResult?.response?.instances) {
+          const instance = instancesResult.response.instances.find(i => i.task_id === taskId && i.date === today);
 
           if (instance) {
             await this._hass.callService('habits_manager', 'mark_task_completed', {
@@ -5225,7 +5225,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   async loadHabitsContent(child) {
     try {
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: 'habits_manager',
         service: 'list_habits',
@@ -5233,18 +5233,18 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
         return_response: true
       });
 
-      const habits = response?.habits || [];
+      const habits = result?.response?.habits || [];
 
       // Get habit streaks for this child
-      const streaksResponse = await this._hass.callWS({
+      const streaksResult = await this._hass.callWS({
         type: 'call_service',
         domain: 'habits_manager',
         service: 'get_habit_streaks',
         service_data: { child_id: child.child_id },
         return_response: true
-      }).catch(() => ({ streaks: [] }));
+      }).catch(() => ({ response: { streaks: [] } }));
 
-      const streaks = streaksResponse?.streaks || [];
+      const streaks = streaksResult?.response?.streaks || [];
 
       const habitsHtml = habits.length > 0 ? `
         <div class="habits-section">
@@ -5344,7 +5344,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   async loadCosmeticsContent(child) {
     try {
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: 'habits_manager',
         service: 'list_cosmetics',
@@ -5352,7 +5352,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
         return_response: true
       });
 
-      const cosmetics = response?.cosmetics || [];
+      const cosmetics = result?.response?.cosmetics || [];
 
       // Group by category
       const categories = {
@@ -7034,7 +7034,7 @@ class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
     
     try {
       // Utiliser le service habits_manager.list_children avec return_response: true
-      const response = await this._hass.callWS({
+      const result = await this._hass.callWS({
         type: 'call_service',
         domain: 'habits_manager',
         service: 'list_children',
@@ -7042,9 +7042,9 @@ class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
         return_response: true
       });
 
-      if (response && response.children) {
+      if (result && result.response && result.response.children) {
         // Adapter les enfants habits_manager vers le format attendu par l'éditeur
-        return response.children.map(child => ({
+        return result.response.children.map(child => ({
           id: child.id || child.child_id,
           child_id: child.child_id || child.id,
           name: child.name,
