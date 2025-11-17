@@ -560,10 +560,10 @@ class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
       <div class="section-title">Configuration de l'enfant</div>
       <div class="option">
         <label>Sélectionner un enfant</label>
-        <select id="child_select" required>
+        <select class="child-select" id="child_select" required>
           <option value="">Sélectionner un enfant...</option>
             ${children.map(child => `
-              <option value="${child.child_id}" ${this._config.child_id === child.chil_id ? 'selected' : ''}>
+              <option value="${child.child_id}" ${this._config.child_id === child.child_id ? 'selected' : ''}>
                 ${child.name}
               </option>
             `).join('')}
