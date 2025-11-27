@@ -16,6 +16,17 @@ class KidsTasksBaseCard extends HTMLElement {
     // Make performanceMonitor accessible to child classes
     this.performanceMonitor = performanceMonitor;
 
+    // API caching layer (Phase 2 optimization)
+    this._apiCache = new Map();
+    this._cacheTTL = 5000; // 5 seconds cache TTL
+    
+    // Cache statistics (Phase 3)
+    this._cacheStats = {
+      hits: 0,
+      misses: 0,
+      invalidations: 0
+    };
+
     // Performance and render optimization
     this._lastRenderState = null;
     this._renderDebounceTimer = null;
@@ -154,7 +165,17 @@ class KidsTasksBaseCard extends HTMLElement {
   }
 
   async handleClick(event) {
-    const target = event.target.closest('[data-action]');
+    // Check composed path for shadow DOM elements like ha-button
+    let target = null;
+    const path = event.composedPath ? event.composedPath() : [event.target];
+    
+    for (const element of path) {
+      if (element.nodeType === Node.ELEMENT_NODE && element.hasAttribute && element.hasAttribute('data-action')) {
+        target = element;
+        break;
+      }
+    }
+    
     if (!target) {
       this._hideAllDeleteConfirmations();
       return;
@@ -613,9 +634,9 @@ class KidsTasksBaseCard extends HTMLElement {
     return child.avatar || defaultEmoji;
   }
 
-  // Child data methods
-  getChildStats(child) {
-    const tasks = this.getChildTasks(child.id);
+  // Child data methods (Phase 2: Made async for API calls)
+  async getChildStats(child) {
+    const tasks = await this.getChildTasks(child.id);
     const today = new Date().toDateString();
 
     const completedToday = tasks.filter(t =>
@@ -632,9 +653,15 @@ class KidsTasksBaseCard extends HTMLElement {
     };
   }
 
-  getChildTasks(childId) {
+  // NOTE: getChildTasks() is now implemented in child-card.js using API
+  // This base implementation is kept for compatibility but should not be used
+  // Subclasses should override this method with their own API-based implementation
+  async getChildTasks(childId) {
     if (!this._hass) return [];
 
+    // This is a fallback implementation - prefer API-based methods in subclasses
+    console.warn('Using base getChildTasks() - subclass should override with API call');
+    
     const taskEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`))
       .map(id => this._hass.states[id])
@@ -1625,6 +1652,118 @@ showModal(content, title = '') {
     `;
   }
 
+  // API Cache helpers (Phase 2 optimization)
+  _getCachedData(cacheKey) {
+    const cached = this._apiCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this._cacheTTL) {
+      this._cacheStats.hits++;
+      return cached.data;
+    }
+    this._cacheStats.misses++;
+    return null;
+  }
+
+  _setCachedData(cacheKey, data) {
+    this._apiCache.set(cacheKey, {
+      data,
+      timestamp: Date.now()
+    });
+  }
+
+  _clearCache(pattern = null) {
+    if (pattern) {
+      // Clear specific cache entries matching pattern
+      for (const key of this._apiCache.keys()) {
+        if (key.includes(pattern)) {
+          this._apiCache.delete(key);
+          this._cacheStats.invalidations++;
+        }
+      }
+    } else {
+      // Clear all cache
+      const size = this._apiCache.size;
+      this._apiCache.clear();
+      this._cacheStats.invalidations += size;
+    }
+  }
+
+  // Get cache statistics (Phase 3 - for debugging)
+  getCacheStats() {
+    const hitRate = this._cacheStats.hits + this._cacheStats.misses > 0
+      ? (this._cacheStats.hits / (this._cacheStats.hits + this._cacheStats.misses) * 100).toFixed(1)
+      : 0;
+    
+    return {
+      ...this._cacheStats,
+      size: this._apiCache.size,
+      hitRate: `${hitRate}%`,
+      entries: Array.from(this._apiCache.keys())
+    };
+  }
+
+  // Retry logic for API calls (Phase 3)
+  async _retryAPICall(apiCallFn, maxRetries = 2, baseDelay = 1000) {
+    let lastError;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await apiCallFn();
+      } catch (error) {
+        lastError = error;
+        
+        if (attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s...
+          const delay = baseDelay * Math.pow(2, attempt);
+          logger.warn(`API call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`, error);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    // All retries failed
+    throw lastError;
+  }
+
+  // Service call wrapper with cache invalidation (Phase 3)
+  async callServiceWithInvalidation(domain, service, data) {
+    try {
+      const result = await this._hass.callService(domain, service, data);
+      
+      // Invalidate cache based on service type
+      this._invalidateCacheForService(service, data);
+      
+      return result;
+    } catch (error) {
+      logger.error('Service call failed:', service, error);
+      throw error;
+    }
+  }
+
+  _invalidateCacheForService(service, data) {
+    // Determine which caches to clear based on service
+    const childMutations = ['create_child', 'update_child', 'delete_child'];
+    const taskMutations = ['create_task', 'update_task', 'delete_task', 'mark_task_completed', 'validate_task', 'refuse_task'];
+    const rewardMutations = ['create_reward', 'update_reward', 'delete_reward', 'claim_reward', 'approve_claim'];
+    
+    if (childMutations.includes(service)) {
+      this._clearCache('children');
+    }
+    
+    if (taskMutations.includes(service)) {
+      this._clearCache('tasks');
+    }
+    
+    if (rewardMutations.includes(service)) {
+      this._clearCache('rewards');
+    }
+    
+    // Some services affect multiple caches
+    if (service === 'delete_child') {
+      // Child deletion affects everything
+      this._clearCache();
+    }
+  }
+
   // Abstract methods to be implemented by subclasses
   shouldUpdate(oldHass, newHass) {
     throw new Error('shouldUpdate must be implemented by subclass');
@@ -1642,22 +1781,33 @@ showModal(content, title = '') {
   async getChildren() {
     if (!this._hass) return [];
 
+    // Check cache first (Phase 2 optimization)
+    const cacheKey = 'children';
+    const cached = this._getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
-      // Utiliser le service habits_manager.list_children avec return_response: true
-      const result = await this._hass.callWS({
-        type: 'call_service',
-        domain: SERVICE_DOMAIN,
-        service: 'list_children',
-        service_data: {},
-        return_response: true
+      // Retry API call with exponential backoff (Phase 3)
+      const result = await this._retryAPICall(async () => {
+        return await this._hass.callWS({
+          type: 'call_service',
+          domain: SERVICE_DOMAIN,
+          service: 'list_children',
+          service_data: {},
+          return_response: true
+        });
       });
 
       if (result && result.response && result.response.children) {
         // Adapter les enfants habits_manager vers le format kids_tasks
-        return result.response.children.map(child => DataAdapter.adaptChild(child));
+        const children = result.response.children.map(child => DataAdapter.adaptChild(child));
+        this._setCachedData(cacheKey, children);
+        return children;
       }
     } catch (error) {
-      logger.error('Erreur lors de la récupération des enfants via API:', error);
+      logger.error('Erreur lors de la récupération des enfants via API (all retries failed):', error);
     }
 
     // Fallback: lire depuis les sensors si le service échoue
@@ -1696,22 +1846,33 @@ showModal(content, title = '') {
   async getTasks() {
     if (!this._hass) return [];
 
+    // Check cache first (Phase 2 optimization)
+    const cacheKey = 'tasks';
+    const cached = this._getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
-      // Utiliser le nouveau service habits_manager.list_tasks avec return_response: true
-      const result = await this._hass.callWS({
-        type: 'call_service',
-        domain: SERVICE_DOMAIN,
-        service: 'list_tasks',
-        service_data: {},
-        return_response: true
+      // Retry API call with exponential backoff (Phase 3)
+      const result = await this._retryAPICall(async () => {
+        return await this._hass.callWS({
+          type: 'call_service',
+          domain: SERVICE_DOMAIN,
+          service: 'list_tasks',
+          service_data: {},
+          return_response: true
+        });
       });
 
       if (result && result.response && result.response.tasks) {
         // Adapter les tâches habits_manager vers le format kids_tasks
-        return result.response.tasks.map(task => DataAdapter.adaptTask(task, []));
+        const tasks = result.response.tasks.map(task => DataAdapter.adaptTask(task, []));
+        this._setCachedData(cacheKey, tasks);
+        return tasks;
       }
     } catch (error) {
-      logger.error('Erreur lors de la récupération des tâches:', error);
+      logger.error('Erreur lors de la récupération des tâches (all retries failed):', error);
     }
 
     // Fallback: lire depuis les sensors si le service échoue
@@ -1737,9 +1898,38 @@ showModal(content, title = '') {
     }));
   }
 
-  getRewards() {
+  async getRewards() {
     if (!this._hass) return [];
 
+    // Check cache first (Phase 2 optimization)
+    const cacheKey = 'rewards';
+    const cached = this._getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      // Retry API call with exponential backoff (Phase 3)
+      const result = await this._retryAPICall(async () => {
+        return await this._hass.callWS({
+          type: 'call_service',
+          domain: SERVICE_DOMAIN,
+          service: 'list_rewards',
+          service_data: {},
+          return_response: true
+        });
+      });
+
+      if (result && result.response && result.response.rewards) {
+        const rewards = result.response.rewards.map(reward => DataAdapter.adaptReward(reward));
+        this._setCachedData(cacheKey, rewards);
+        return rewards;
+      }
+    } catch (error) {
+      logger.error('Erreur lors de la récupération des récompenses via API (all retries failed):', error);
+    }
+
+    // Fallback to sensor scanning
     const rewardEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`))
       .map(id => this._hass.states[id]);
@@ -1755,6 +1945,40 @@ showModal(content, title = '') {
       icon: entity.attributes.icon,
       ...entity.attributes
     }));
+  }
+
+  async getCosmetics() {
+    if (!this._hass) return [];
+
+    // Check cache first
+    const cacheKey = 'cosmetics';
+    const cached = this._getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      // Retry API call with exponential backoff
+      const result = await this._retryAPICall(async () => {
+        return await this._hass.callWS({
+          type: 'call_service',
+          domain: SERVICE_DOMAIN,
+          service: 'list_cosmetics',
+          service_data: { active_only: false },
+          return_response: true
+        });
+      });
+
+      if (result && result.response && result.response.cosmetics) {
+        const cosmetics = result.response.cosmetics;
+        this._setCachedData(cacheKey, cosmetics);
+        return cosmetics;
+      }
+    } catch (error) {
+      logger.error('Erreur lors de la récupération des cosmétiques via API (all retries failed):', error);
+    }
+
+    return [];
   }
 
   // Nouvelle méthode pour récupérer les instances de tâches depuis les sensors

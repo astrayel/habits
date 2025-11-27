@@ -1489,6 +1489,9 @@ if (typeof window !== 'undefined') {
 const SERVICE_DOMAIN = 'habits_manager';
 const ENTITY_PREFIX = 'habits_manager';
 
+// Development mode flag (Phase 2)
+const DEV_MODE = typeof process !== 'undefined' && process.env && "development" === 'development';
+
 class DataAdapter {
   static adaptChild(habitsChild) {
     return {
@@ -1651,6 +1654,17 @@ class KidsTasksBaseCard extends HTMLElement {
     // Make performanceMonitor accessible to child classes
     this.performanceMonitor = performanceMonitor$1;
 
+    // API caching layer (Phase 2 optimization)
+    this._apiCache = new Map();
+    this._cacheTTL = 5000; // 5 seconds cache TTL
+    
+    // Cache statistics (Phase 3)
+    this._cacheStats = {
+      hits: 0,
+      misses: 0,
+      invalidations: 0
+    };
+
     // Performance and render optimization
     this._lastRenderState = null;
     this._renderDebounceTimer = null;
@@ -1789,7 +1803,17 @@ class KidsTasksBaseCard extends HTMLElement {
   }
 
   async handleClick(event) {
-    const target = event.target.closest('[data-action]');
+    // Check composed path for shadow DOM elements like ha-button
+    let target = null;
+    const path = event.composedPath ? event.composedPath() : [event.target];
+    
+    for (const element of path) {
+      if (element.nodeType === Node.ELEMENT_NODE && element.hasAttribute && element.hasAttribute('data-action')) {
+        target = element;
+        break;
+      }
+    }
+    
     if (!target) {
       this._hideAllDeleteConfirmations();
       return;
@@ -2248,9 +2272,9 @@ class KidsTasksBaseCard extends HTMLElement {
     return child.avatar || defaultEmoji;
   }
 
-  // Child data methods
-  getChildStats(child) {
-    const tasks = this.getChildTasks(child.id);
+  // Child data methods (Phase 2: Made async for API calls)
+  async getChildStats(child) {
+    const tasks = await this.getChildTasks(child.id);
     const today = new Date().toDateString();
 
     const completedToday = tasks.filter(t =>
@@ -2267,9 +2291,15 @@ class KidsTasksBaseCard extends HTMLElement {
     };
   }
 
-  getChildTasks(childId) {
+  // NOTE: getChildTasks() is now implemented in child-card.js using API
+  // This base implementation is kept for compatibility but should not be used
+  // Subclasses should override this method with their own API-based implementation
+  async getChildTasks(childId) {
     if (!this._hass) return [];
 
+    // This is a fallback implementation - prefer API-based methods in subclasses
+    console.warn('Using base getChildTasks() - subclass should override with API call');
+    
     const taskEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`))
       .map(id => this._hass.states[id])
@@ -3260,6 +3290,118 @@ showModal(content, title = '') {
     `;
   }
 
+  // API Cache helpers (Phase 2 optimization)
+  _getCachedData(cacheKey) {
+    const cached = this._apiCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this._cacheTTL) {
+      this._cacheStats.hits++;
+      return cached.data;
+    }
+    this._cacheStats.misses++;
+    return null;
+  }
+
+  _setCachedData(cacheKey, data) {
+    this._apiCache.set(cacheKey, {
+      data,
+      timestamp: Date.now()
+    });
+  }
+
+  _clearCache(pattern = null) {
+    if (pattern) {
+      // Clear specific cache entries matching pattern
+      for (const key of this._apiCache.keys()) {
+        if (key.includes(pattern)) {
+          this._apiCache.delete(key);
+          this._cacheStats.invalidations++;
+        }
+      }
+    } else {
+      // Clear all cache
+      const size = this._apiCache.size;
+      this._apiCache.clear();
+      this._cacheStats.invalidations += size;
+    }
+  }
+
+  // Get cache statistics (Phase 3 - for debugging)
+  getCacheStats() {
+    const hitRate = this._cacheStats.hits + this._cacheStats.misses > 0
+      ? (this._cacheStats.hits / (this._cacheStats.hits + this._cacheStats.misses) * 100).toFixed(1)
+      : 0;
+    
+    return {
+      ...this._cacheStats,
+      size: this._apiCache.size,
+      hitRate: `${hitRate}%`,
+      entries: Array.from(this._apiCache.keys())
+    };
+  }
+
+  // Retry logic for API calls (Phase 3)
+  async _retryAPICall(apiCallFn, maxRetries = 2, baseDelay = 1000) {
+    let lastError;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await apiCallFn();
+      } catch (error) {
+        lastError = error;
+        
+        if (attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s...
+          const delay = baseDelay * Math.pow(2, attempt);
+          logger.warn(`API call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`, error);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+    
+    // All retries failed
+    throw lastError;
+  }
+
+  // Service call wrapper with cache invalidation (Phase 3)
+  async callServiceWithInvalidation(domain, service, data) {
+    try {
+      const result = await this._hass.callService(domain, service, data);
+      
+      // Invalidate cache based on service type
+      this._invalidateCacheForService(service, data);
+      
+      return result;
+    } catch (error) {
+      logger.error('Service call failed:', service, error);
+      throw error;
+    }
+  }
+
+  _invalidateCacheForService(service, data) {
+    // Determine which caches to clear based on service
+    const childMutations = ['create_child', 'update_child', 'delete_child'];
+    const taskMutations = ['create_task', 'update_task', 'delete_task', 'mark_task_completed', 'validate_task', 'refuse_task'];
+    const rewardMutations = ['create_reward', 'update_reward', 'delete_reward', 'claim_reward', 'approve_claim'];
+    
+    if (childMutations.includes(service)) {
+      this._clearCache('children');
+    }
+    
+    if (taskMutations.includes(service)) {
+      this._clearCache('tasks');
+    }
+    
+    if (rewardMutations.includes(service)) {
+      this._clearCache('rewards');
+    }
+    
+    // Some services affect multiple caches
+    if (service === 'delete_child') {
+      // Child deletion affects everything
+      this._clearCache();
+    }
+  }
+
   // Abstract methods to be implemented by subclasses
   shouldUpdate(oldHass, newHass) {
     throw new Error('shouldUpdate must be implemented by subclass');
@@ -3277,22 +3419,33 @@ showModal(content, title = '') {
   async getChildren() {
     if (!this._hass) return [];
 
+    // Check cache first (Phase 2 optimization)
+    const cacheKey = 'children';
+    const cached = this._getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
-      // Utiliser le service habits_manager.list_children avec return_response: true
-      const result = await this._hass.callWS({
-        type: 'call_service',
-        domain: SERVICE_DOMAIN,
-        service: 'list_children',
-        service_data: {},
-        return_response: true
+      // Retry API call with exponential backoff (Phase 3)
+      const result = await this._retryAPICall(async () => {
+        return await this._hass.callWS({
+          type: 'call_service',
+          domain: SERVICE_DOMAIN,
+          service: 'list_children',
+          service_data: {},
+          return_response: true
+        });
       });
 
       if (result && result.response && result.response.children) {
         // Adapter les enfants habits_manager vers le format kids_tasks
-        return result.response.children.map(child => DataAdapter.adaptChild(child));
+        const children = result.response.children.map(child => DataAdapter.adaptChild(child));
+        this._setCachedData(cacheKey, children);
+        return children;
       }
     } catch (error) {
-      logger.error('Erreur lors de la récupération des enfants via API:', error);
+      logger.error('Erreur lors de la récupération des enfants via API (all retries failed):', error);
     }
 
     // Fallback: lire depuis les sensors si le service échoue
@@ -3331,22 +3484,33 @@ showModal(content, title = '') {
   async getTasks() {
     if (!this._hass) return [];
 
+    // Check cache first (Phase 2 optimization)
+    const cacheKey = 'tasks';
+    const cached = this._getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
-      // Utiliser le nouveau service habits_manager.list_tasks avec return_response: true
-      const result = await this._hass.callWS({
-        type: 'call_service',
-        domain: SERVICE_DOMAIN,
-        service: 'list_tasks',
-        service_data: {},
-        return_response: true
+      // Retry API call with exponential backoff (Phase 3)
+      const result = await this._retryAPICall(async () => {
+        return await this._hass.callWS({
+          type: 'call_service',
+          domain: SERVICE_DOMAIN,
+          service: 'list_tasks',
+          service_data: {},
+          return_response: true
+        });
       });
 
       if (result && result.response && result.response.tasks) {
         // Adapter les tâches habits_manager vers le format kids_tasks
-        return result.response.tasks.map(task => DataAdapter.adaptTask(task, []));
+        const tasks = result.response.tasks.map(task => DataAdapter.adaptTask(task, []));
+        this._setCachedData(cacheKey, tasks);
+        return tasks;
       }
     } catch (error) {
-      logger.error('Erreur lors de la récupération des tâches:', error);
+      logger.error('Erreur lors de la récupération des tâches (all retries failed):', error);
     }
 
     // Fallback: lire depuis les sensors si le service échoue
@@ -3372,9 +3536,38 @@ showModal(content, title = '') {
     }));
   }
 
-  getRewards() {
+  async getRewards() {
     if (!this._hass) return [];
 
+    // Check cache first (Phase 2 optimization)
+    const cacheKey = 'rewards';
+    const cached = this._getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      // Retry API call with exponential backoff (Phase 3)
+      const result = await this._retryAPICall(async () => {
+        return await this._hass.callWS({
+          type: 'call_service',
+          domain: SERVICE_DOMAIN,
+          service: 'list_rewards',
+          service_data: {},
+          return_response: true
+        });
+      });
+
+      if (result && result.response && result.response.rewards) {
+        const rewards = result.response.rewards.map(reward => DataAdapter.adaptReward(reward));
+        this._setCachedData(cacheKey, rewards);
+        return rewards;
+      }
+    } catch (error) {
+      logger.error('Erreur lors de la récupération des récompenses via API (all retries failed):', error);
+    }
+
+    // Fallback to sensor scanning
     const rewardEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`))
       .map(id => this._hass.states[id]);
@@ -3390,6 +3583,40 @@ showModal(content, title = '') {
       icon: entity.attributes.icon,
       ...entity.attributes
     }));
+  }
+
+  async getCosmetics() {
+    if (!this._hass) return [];
+
+    // Check cache first
+    const cacheKey = 'cosmetics';
+    const cached = this._getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      // Retry API call with exponential backoff
+      const result = await this._retryAPICall(async () => {
+        return await this._hass.callWS({
+          type: 'call_service',
+          domain: SERVICE_DOMAIN,
+          service: 'list_cosmetics',
+          service_data: { active_only: false },
+          return_response: true
+        });
+      });
+
+      if (result && result.response && result.response.cosmetics) {
+        const cosmetics = result.response.cosmetics;
+        this._setCachedData(cacheKey, cosmetics);
+        return cosmetics;
+      }
+    } catch (error) {
+      logger.error('Erreur lors de la récupération des cosmétiques via API (all retries failed):', error);
+    }
+
+    return [];
   }
 
   // Nouvelle méthode pour récupérer les instances de tâches depuis les sensors
@@ -3917,20 +4144,28 @@ class KidsTasksCard extends KidsTasksBaseCard {
   shouldUpdate(oldHass, newHass) {
     if (!oldHass) return true;
 
-    // Quick check: compare entity counts for kids tasks
-    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`));
-    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`));
+    // Optimized: Check only critical entity count changes (Phase 2)
+    // Avoid full state object iteration when possible
+    const oldKeys = oldHass.states ? Object.keys(oldHass.states) : [];
+    const newKeys = newHass.states ? Object.keys(newHass.states) : [];
+    
+    // Quick length check first
+    if (oldKeys.length !== newKeys.length) return true;
+    
+    // Only check habits_manager entities (more targeted)
+    const oldHabitsCount = oldKeys.filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`)).length;
+    const newHabitsCount = newKeys.filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`)).length;
 
-    return oldTaskEntities.length !== newTaskEntities.length;
+    return oldHabitsCount !== newHabitsCount;
   }
 
-  render() {
+  async render() {
     if (!this._hass) {
       this.shadowRoot.innerHTML = '<div class="kt-loading">Chargement...</div>';
       return;
     }
 
-    const children = this.getChildren();
+    const children = await this.getChildren();
 
     this.shadowRoot.innerHTML = `
       ${this.getOptimizedStyles()}
@@ -3940,7 +4175,7 @@ class KidsTasksCard extends KidsTasksBaseCard {
         </div>
 
         <div class="main-content">
-          ${this.renderCurrentView(children)}
+          ${await this.renderCurrentView(children)}
         </div>
       </div>
     `;
@@ -3983,20 +4218,20 @@ class KidsTasksCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderCurrentView(children) {
+  async renderCurrentView(children) {
     switch (this.currentView) {
       case 'dashboard':
-        return this.renderDashboard(children);
+        return await this.renderDashboard(children);
       case 'summary':
-        return this.renderSummary(children);
+        return await this.renderSummary(children);
       case 'management':
         return this.renderManagement(children);
       default:
-        return this.renderDashboard(children);
+        return await this.renderDashboard(children);
     }
   }
 
-  renderDashboard(children) {
+  async renderDashboard(children) {
     if (children.length === 0) {
       return `
         <div class="kt-empty">
@@ -4007,7 +4242,7 @@ class KidsTasksCard extends KidsTasksBaseCard {
       `;
     }
 
-    const stats = this.calculateGlobalStats(children);
+    const stats = await this.calculateGlobalStats(children);
 
     return `
       <div class="summary-stats kt-fade-in">
@@ -4024,7 +4259,7 @@ class KidsTasksCard extends KidsTasksBaseCard {
           <div class="summary-number">${stats.completedToday}</div>
         </div>
         <div class="summary-card">
-          <div class="summary-icon">⏳</div>
+          <div class="summary-icon">⌛</div>
           <div class="summary-number">${stats.pendingTasks}</div>
         </div>
       </div>
@@ -4035,8 +4270,8 @@ class KidsTasksCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderSummary(children) {
-    const stats = this.calculateGlobalStats(children);
+  async renderSummary(children) {
+    const stats = await this.calculateGlobalStats(children);
     
     return `
       <div class="summary-stats kt-fade-in">
@@ -4106,9 +4341,27 @@ class KidsTasksCard extends KidsTasksBaseCard {
   }
 
   // Data methods (same as before)
-  getChildren() {
+  async getChildren() {
     if (!this._hass) return [];
 
+    try {
+      // Use API like base-card.js
+      const result = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_children',
+        service_data: {},
+        return_response: true
+      });
+
+      if (result && result.response && result.response.children) {
+        return result.response.children.map(child => DataAdapter.adaptChild(child));
+      }
+    } catch (error) {
+      logger.error('Error fetching children from API:', error);
+    }
+
+    // Fallback to sensor scanning
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
       if (entityId.startsWith(`sensor.${ENTITY_PREFIX}_`) && entityId.endsWith('_points')) {
@@ -4131,8 +4384,8 @@ class KidsTasksCard extends KidsTasksBaseCard {
     return children.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  getChildStats(child) {
-    const tasks = this.getChildTasks(child.id);
+  async getChildStats(child) {
+    const tasks = await this.getChildTasks(child.id);
     const today = new Date().toDateString();
     
     const completedToday = tasks.filter(t => 
@@ -4149,9 +4402,27 @@ class KidsTasksCard extends KidsTasksBaseCard {
     };
   }
 
-  getChildTasks(childId) {
+  async getChildTasks(childId) {
     if (!this._hass) return [];
 
+    try {
+      // Use API
+      const result = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_tasks',
+        service_data: { assigned_to: childId },
+        return_response: true
+      });
+
+      if (result && result.response && result.response.tasks) {
+        return result.response.tasks.map(task => DataAdapter.adaptTask(task, []));
+      }
+    } catch (error) {
+      logger.error('Error fetching tasks from API:', error);
+    }
+
+    // Fallback to sensor scanning
     const taskEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`))
       .map(id => this._hass.states[id])
@@ -4168,31 +4439,55 @@ class KidsTasksCard extends KidsTasksBaseCard {
     }));
   }
 
-  calculateGlobalStats(children) {
+  async calculateGlobalStats(children) {
+    // Cache key based on child IDs and their points (Phase 3 optimization)
+    const cacheKey = 'globalStats_' + children.map(c => `${c.id}:${c.points}`).join('_');
+    const cached = this._getCachedData ? this._getCachedData(cacheKey) : null;
+    if (cached) {
+      return cached;
+    }
+
     let totalTasks = 0;
     let completedToday = 0;
     let totalPoints = 0;
     let pendingTasks = 0;
 
-    children.forEach(child => {
-      const stats = this.getChildStats(child);
+    // Use Promise.all for parallel API calls
+    const childStatsPromises = children.map(child => this.getChildStats(child));
+    const childTasksPromises = children.map(child => this.getChildTasks(child.id));
+    
+    const [allStats, allTasks] = await Promise.all([
+      Promise.all(childStatsPromises),
+      Promise.all(childTasksPromises)
+    ]);
+
+    children.forEach((child, index) => {
+      const stats = allStats[index];
+      const childTasks = allTasks[index];
+      
       totalTasks += stats.totalToday;
       completedToday += stats.completedToday;
       totalPoints += child.points || 0;
 
       // Calculer les tâches en attente de validation (completed mais pas validated)
-      const childTasks = this.getChildTasks(child.id);
       pendingTasks += childTasks.filter(task =>
         task.status === 'completed' && !task.validated
       ).length;
     });
 
-    return {
+    const result = {
       totalTasks,
       completedToday,
       totalPoints,
       pendingTasks
     };
+
+    // Cache the result (shorter TTL since stats change frequently)
+    if (this._setCachedData) {
+      this._setCachedData(cacheKey, result);
+    }
+
+    return result;
   }
 
   static getConfigElement() {
@@ -4247,14 +4542,14 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   // Smart refresh that only updates when data actually changes
   _setupSmartRefresh() {
-    const smartRefresh = () => {
+    const smartRefresh = async () => {
       if (!this._hass || !this._initialized || !this._isVisible) {
         this._scheduleNextRefresh();
         return;
       }
 
       // Check if data has actually changed
-      const currentDataHash = this._getDataHash();
+      const currentDataHash = await this._getDataHash();
       if (currentDataHash === this._lastDataHash) {
         this._scheduleNextRefresh();
         return;
@@ -4286,12 +4581,12 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
   }
 
   // Generate hash of relevant data to detect changes
-  _getDataHash() {
+  async _getDataHash() {
     if (!this._hass || !this.config?.child_id) return null;
     
-    const child = this.getChild();
-    const tasks = this.getChildTasks(this.config.child_id);
-    const rewards = this.getChildRewards(this.config.child_id);
+    const child = await this.getChild();
+    const tasks = await this.getChildTasks(this.config.child_id);
+    const rewards = await this.getChildRewards(this.config.child_id);
     
     // Create simple hash of key data points
     const dataString = JSON.stringify({
@@ -4397,36 +4692,43 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     }
   }
 
-  shouldUpdate(oldHass, newHass) {
+  async shouldUpdate(oldHass, newHass) {
     if (!oldHass) return true;
     
-    // Check if child data changed
+    // Optimized: Check specific fields instead of JSON.stringify (Phase 2)
     const childId = this.config.child_id;
-    const oldChild = this.getChildFromHass(oldHass, childId);
-    const newChild = this.getChildFromHass(newHass, childId);
     
-    if (JSON.stringify(oldChild) !== JSON.stringify(newChild)) {
-      return true;
+    // Quick check: entity state for child's points sensor
+    const childPointsEntity = `sensor.${ENTITY_PREFIX}_${childId}_points`;
+    const oldEntity = oldHass.states[childPointsEntity];
+    const newEntity = newHass.states[childPointsEntity];
+    
+    if (!oldEntity && !newEntity) {
+      // Child not found in sensors, check via API (cache will help)
+      const oldChild = await this.getChildFromHass(oldHass, childId);
+      const newChild = await this.getChildFromHass(newHass, childId);
+      
+      // Compare critical fields only
+      if (!oldChild || !newChild) return true;
+      return oldChild.points !== newChild.points || 
+             oldChild.coins !== newChild.coins ||
+             oldChild.level !== newChild.level;
     }
     
-    // Check tasks and rewards
-    const taskEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
-    const rewardEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`));
+    // Compare sensor states (faster than full JSON)
+    if (!oldEntity || !newEntity) return true;
+    if (oldEntity.state !== newEntity.state) return true;
     
-    for (const entityId of [...taskEntities, ...rewardEntities]) {
-      const oldEntity = oldHass.states[entityId];
-      const newEntity = newHass.states[entityId];
-      if (!oldEntity || !newEntity || 
-          oldEntity.state !== newEntity.state || 
-          JSON.stringify(oldEntity.attributes) !== JSON.stringify(newEntity.attributes)) {
-        return true;
-      }
-    }
+    // Check critical attributes only
+    const oldAttrs = oldEntity.attributes || {};
+    const newAttrs = newEntity.attributes || {};
     
-    return false;
+    return oldAttrs.coins !== newAttrs.coins ||
+           oldAttrs.level !== newAttrs.level ||
+           oldAttrs.experience !== newAttrs.experience;
   }
 
-  render() {
+  async render() {
     if (!this._hass || !this.config) {
       this.shadowRoot.innerHTML = `
         ${this.getCommonStyles()}
@@ -4435,7 +4737,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       return;
     }
 
-    const child = this.getChild();
+    const child = await this.getChild();
     if (!child) {
       this.shadowRoot.innerHTML = `
         ${this.getCommonStyles()}
@@ -4447,13 +4749,17 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     }
 
     try {
+      // Render async components
+      const header = await this.renderHeader(child);
+      const tabContent = await this.renderTabContent(child);
+      
       this.shadowRoot.innerHTML = `
         ${this.getCommonStyles()}
         ${this.getChildSpecificStyles()}
         <div class="child-card-container">
-          ${this.renderChild(child)}
+          ${header}
           ${this.renderTabs()}
-          ${this.renderTabContent(child)}
+          ${tabContent}
         </div>
       `;
     } catch (error) {
@@ -4911,10 +5217,10 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderHeader(child) {
+  async renderHeader(child) {
     if (!this.config.show_avatar) return '';
 
-    const stats = this.getChildStats(child);
+    const stats = await this.getChildStats(child);
     
     return `
       <div class="child-header">
@@ -4975,25 +5281,25 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderTabContent(child) {
+  async renderTabContent(child) {
     switch (this.currentTab) {
       case 'tasks':
-        return this.renderTasksTab(child);
+        return await this.renderTasksTab(child);
       case 'habits':
         return this.renderHabitsTab(child);
       case 'rewards':
-        return this.renderRewardsTab(child);
+        return await this.renderRewardsTab(child);
       case 'cosmetics':
         return this.renderCosmeticsTab(child);
       case 'history':
         return this.renderHistoryTab(child);
       default:
-        return this.renderTasksTab(child);
+        return await this.renderTasksTab(child);
     }
   }
 
-  renderTasksTab(child) {
-    const tasks = this.getChildTasks(child.child_id);
+  async renderTasksTab(child) {
+    const tasks = await this.getChildTasks(child.child_id);
     const filteredTasks = this.filterTasks(tasks, this.tasksFilter, 'child');
 
     // Debug
@@ -5062,9 +5368,10 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderRewardsTab(child) {
-    const rewards = this.getRewards().filter(r => (r.min_level || 1) <= (child.level || 1));
-    const affordableRewards = rewards.filter(r => 
+  async renderRewardsTab(child) {
+    const rewards = await this.getRewards();
+    const levelAppropriateRewards = rewards.filter(r => (r.min_level || 1) <= (child.level || 1));
+    const affordableRewards = levelAppropriateRewards.filter(r => 
       (r.cost <= child.points) && (r.coin_cost <= child.coins)
     );
 
@@ -5462,25 +5769,50 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
   }
 
   // Data access methods
-  getChild() {
+  async getChild() {
     const childId = this.config.child_id;
-    return this.getChildFromHass(this._hass, childId);
+    return await this.getChildFromHass(this._hass, childId);
   }
 
-  getChildFromHass(hass, childIdOrName) {
-    console.log('=== getChildFromHass DEBUG ===');
-    console.log('Looking for child:', childIdOrName);
+  async getChildFromHass(hass, childIdOrName) {
+    if (DEV_MODE) console.log('=== getChildFromHass DEBUG ===');
+    if (DEV_MODE) console.log('Looking for child:', childIdOrName);
 
-    // Get all points entities to see what we have
+    // Use API-based getChildren method
+    try {
+      const children = await this.getChildren();
+      if (DEV_MODE) console.log('Children from API:', children);
+
+      if (children && children.length > 0) {
+        // Search by ID or name
+        const child = children.find(c => 
+          c.child_id === childIdOrName || 
+          c.id === childIdOrName ||
+          c.name === childIdOrName ||
+          c.name?.toLowerCase() === childIdOrName.toLowerCase()
+        );
+
+        if (child) {
+          if (DEV_MODE) console.log('Found child:', child);
+          if (DEV_MODE) console.log('===============================');
+          return child;
+        }
+      }
+    } catch (error) {
+      logger.error('Error fetching children from API:', error);
+    }
+
+    // Fallback to entity scanning
+    if (DEV_MODE) console.log('Falling back to entity scanning');
     const pointsEntities = Object.keys(hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`) && id.endsWith('_points'));
 
-    console.log('All points entities:', pointsEntities);
+    if (DEV_MODE) console.log('All points entities:', pointsEntities);
 
     // First, search by friendly_name (most common case)
     for (const entityId of pointsEntities) {
       const e = hass.states[entityId];
-      console.log(`Entity ${entityId}:`, {
+      if (DEV_MODE) console.log(`Entity ${entityId}:`, {
         friendly_name: e.attributes.friendly_name,
         state: e.state,
         attributes: e.attributes
@@ -5488,7 +5820,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
       if (e.attributes.friendly_name === childIdOrName || e.attributes.friendly_name?.toLowerCase() === childIdOrName.toLowerCase()) {
         const realId = e.attributes.child_id || entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
-        console.log('Found by friendly_name! Real ID:', realId);
+        if (DEV_MODE) console.log('Found by friendly_name! Real ID:', realId);
         return {
           id: realId,
           name: e.attributes.friendly_name || realId,
@@ -5505,7 +5837,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     let entity = hass.states[pointsEntityId];
 
     if (entity) {
-      console.log('Found by direct ID:', childIdOrName);
+      if (DEV_MODE) console.log('Found by direct ID:', childIdOrName);
       return {
         id: childIdOrName,
         name: entity.attributes.friendly_name || childIdOrName,
@@ -5516,22 +5848,51 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       };
     }
 
-    console.log('Child not found!');
-    console.log('===============================');
+    if (DEV_MODE) console.log('Child not found!');
+    if (DEV_MODE) console.log('===============================');
     return null;
   }
 
-  getChildTasks(childId) {
+  async getChildTasks(childId) {
     if (!this._hass) return [];
 
-    console.log('=== getChildTasks DEBUG ===');
-    console.log('Input childId:', childId);
+    if (DEV_MODE) console.log('=== getChildTasks DEBUG ===');
+    if (DEV_MODE) console.log('Input childId:', childId);
 
-    // Get all task entities
+    // Try API first
+    try {
+      const result = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_tasks',
+        service_data: { assigned_to: childId },
+        return_response: true
+      });
+
+      if (result && result.response && result.response.tasks) {
+        if (DEV_MODE) console.log('Tasks from API:', result.response.tasks);
+        if (DEV_MODE) console.log('==========================');
+        return result.response.tasks.map(task => {
+          const adapted = DataAdapter.adaptTask(task, []);
+          // Ensure compatibility with existing code
+          return {
+            ...adapted,
+            id: adapted.id || task.id,
+            name: adapted.name || task.title,
+            status: adapted.status || 'todo'
+          };
+        });
+      }
+    } catch (error) {
+      logger.error('Error fetching tasks from API:', error);
+    }
+
+    // Fallback to sensor scanning
+    if (DEV_MODE) console.log('Falling back to entity scanning');
     const allTaskEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
 
-    console.log('All task entities:', allTaskEntities);
+    if (DEV_MODE) console.log('All task entities:', allTaskEntities);
 
     const taskEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`))
@@ -5544,7 +5905,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
                                 (entity.attributes.assigned_children ? entity.attributes.assigned_children :
                                 (entity.attributes.assigned_child_id ? [entity.attributes.assigned_child_id] : []));
 
-        console.log(`Task ${entity.entity_id}:`, {
+        if (DEV_MODE) console.log(`Task ${entity.entity_id}:`, {
           assigned_child_ids: entity.attributes.assigned_child_ids,
           assigned_children: entity.attributes.assigned_children,
           assigned_child_id: entity.attributes.assigned_child_id,
@@ -5553,12 +5914,12 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
         });
 
         const result = Array.isArray(assignedChildIds) ? assignedChildIds.includes(childId) : assignedChildIds === childId;
-        console.log('Match result:', result);
+        if (DEV_MODE) console.log('Match result:', result);
         return result;
       });
 
-    console.log('Filtered entities:', taskEntities.length);
-    console.log('==========================');
+    if (DEV_MODE) console.log('Filtered entities:', taskEntities.length);
+    if (DEV_MODE) console.log('==========================');
 
 
     const result = taskEntities.map(entity => ({
@@ -5572,13 +5933,31 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       ...entity.attributes
     }));
 
-    console.log('Final mapped tasks:', result);
+    if (DEV_MODE) console.log('Final mapped tasks:', result);
     return result;
   }
 
-  getRewards() {
+  async getRewards() {
     if (!this._hass) return [];
 
+    // Try API first
+    try {
+      const result = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_rewards',
+        service_data: {},
+        return_response: true
+      });
+
+      if (result && result.response && result.response.rewards) {
+        return result.response.rewards.map(reward => DataAdapter.adaptReward(reward));
+      }
+    } catch (error) {
+      logger.error('Error fetching rewards from API:', error);
+    }
+
+    // Fallback to sensor scanning
     const rewardEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`))
       .map(id => this._hass.states[id]);
@@ -5596,16 +5975,16 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     }));
   }
 
-  getChildRewards(childId) {
-    const child = this.getChildFromHass(this._hass, childId);
+  async getChildRewards(childId) {
+    const child = await this.getChildFromHass(this._hass, childId);
     if (!child) return [];
 
-    const allRewards = this.getRewards();
+    const allRewards = await this.getRewards();
     return allRewards.filter(reward => (reward.min_level || 1) <= (child.level || 1));
   }
 
-  getChildStats(child) {
-    const tasks = this.getChildTasks(child.child_id);
+  async getChildStats(child) {
+    const tasks = await this.getChildTasks(child.child_id);
     const completedToday = tasks.filter(t => 
       (t.status === 'completed' || t.status === 'validated') && 
       this.isToday(t.completed_at)
@@ -5745,6 +6124,11 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           color: var(--primary-text-color);
         }
 
+        ha-button.add-btn {
+          --mdc-theme-primary: var(--kt-primary);
+          --mdc-theme-on-primary: white;
+        }
+
 
         .task-item.inactive {
           opacity: 0.6;
@@ -5823,9 +6207,9 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
       case 'tasks':
         return await this.renderTasksView();
       case 'rewards':
-        return this.renderRewardsView();
+        return await this.renderRewardsView();
       case 'cosmetics':
-        return this.renderCosmeticsView();
+        return await this.renderCosmeticsView();
       default:
         return await this.renderChildrenView();
     }
@@ -5834,15 +6218,28 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
   async renderChildrenView() {
     const children = await this.getChildren();
     return `
-    <div class="children-grid">
-        ${children.map(child => this.renderChild(child)).join('')}
-    </div>
+      <div class="section">
+        <h2>
+          Gestion des enfants
+          <ha-button class="add-btn" data-action="add-child" raised>Ajouter</ha-button>
+        </h2>
+        ${children.length > 0 ? `
+          <div class="children-grid">
+            ${children.map(child => this.renderChild(child)).join('')}
+          </div>
+        ` : `
+          <div class="empty-state">
+            <div class="empty-state-icon">👶</div>
+            <p>Aucun enfant configuré</p>
+            <ha-button class="add-btn" data-action="add-child" raised>Créer votre premier enfant</ha-button>
+          </div>
+        `}
+      </div>
     `;
-
   }
 
   async renderTasksView() {
-    const allTasks = this.getTasks();
+    const allTasks = await this.getTasks();
     const tasks = this.filterTasks(allTasks, this.taskFilter);
 
     // Handle async renderTaskItem
@@ -5856,7 +6253,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
       <div class="section">
         <h2>
           Gestion des tâches
-          <ha-button class="add-btn" data-action="add-task">Ajouter</ha-button>
+          <ha-button class="add-btn" data-action="add-task" raised>Ajouter</ha-button>
         </h2>
 
         <div class="filters">
@@ -5871,7 +6268,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           <div class="empty-state">
             <div class="empty-state-icon">📝</div>
             <p>Aucune tâche ${this.getFilterLabel(this.taskFilter)}</p>
-            ${this.taskFilter === 'active' ? '<ha-button class="add-btn" data-action="add-task">Créer votre première tâche</ha-button>' : ''}
+            ${this.taskFilter === 'active' ? '<ha-button class="add-btn" data-action="add-task" raised>Créer votre première tâche</ha-button>' : ''}
           </div>
         `}
       </div>
@@ -5920,14 +6317,14 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderRewardsView() {
-    const rewards = this.getRewards();
+  async renderRewardsView() {
+    const rewards = await this.getRewards();
 
     return `
       <div class="section">
         <h2>
           Gestion des récompenses
-          <ha-button class="add-btn" data-action="add-reward">Ajouter</ha-button>
+          <ha-button class="add-btn" data-action="add-reward" raised>Ajouter</ha-button>
         </h2>
         ${rewards.length > 0 ? `
           <div class="reward-list">
@@ -5937,7 +6334,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           <div class="empty-state">
             <div class="empty-state-icon">🎁</div>
             <p>Aucune récompense créée</p>
-            <ha-button class="add-btn" data-action="add-reward">Créer votre première récompense</ha-button>
+            <ha-button class="add-btn" data-action="add-reward" raised>Créer votre première récompense</ha-button>
           </div>
         `}
       </div>
@@ -5964,30 +6361,62 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderCosmeticsView() {
-    const allRewards = this.getRewards();
-    const cosmeticsRewards = allRewards.filter(r =>
-      r.cosmetic_data || r.reward_type === 'cosmetic' || r.category === 'cosmetic'
-    );
-
-    if (cosmeticsRewards.length === 0) {
-      return `
-        <div class="section">
-          <h2>🎨 Cosmétiques</h2>
-          <div class="empty-state">
-            <div class="empty-state-icon">🎨</div>
-            <p>Aucun cosmétique disponible</p>
-            <p style="font-size: 0.9em; opacity: 0.8;">Créez des récompenses de type cosmétique pour les voir apparaître ici.</p>
-          </div>
-        </div>
-      `;
-    }
+  async renderCosmeticsView() {
+    // Charger les cosmétiques depuis le backend
+    const cosmetics = await this.getCosmetics();
 
     return `
       <div class="section">
-        <h2>🎨 Cosmétiques</h2>
-        <div class="reward-list">
-          ${cosmeticsRewards.map(cosmetic => this.renderRewardItem(cosmetic)).join('')}
+        <h2>
+          🎨 Cosmétiques
+          <ha-button class="add-btn" data-action="add-cosmetic" raised>Ajouter</ha-button>
+        </h2>
+        ${cosmetics.length > 0 ? `
+          <div class="reward-list">
+            ${cosmetics.map(cosmetic => this.renderCosmeticItem(cosmetic)).join('')}
+          </div>
+        ` : `
+          <div class="empty-state">
+            <div class="empty-state-icon">🎨</div>
+            <p>Aucun cosmétique disponible</p>
+            <ha-button class="add-btn" data-action="add-cosmetic" raised>Créer votre premier cosmétique</ha-button>
+          </div>
+        `}
+      </div>
+    `;
+  }
+
+  renderCosmeticItem(cosmetic) {
+    const rarityLabels = {
+      common: 'Commun',
+      rare: 'Rare',
+      epic: 'Épique',
+      legendary: 'Légendaire'
+    };
+
+    const categoryIcons = {
+      clothes: '👕',
+      accessory: '🎭',
+      pet: '🐾',
+      theme: '🎨',
+      badge: '🏆',
+      animation: '✨'
+    };
+
+    const icon = categoryIcons[cosmetic.category] || '🎁';
+
+    return `
+      <div class="reward-item kt-swipeable-item"
+           data-action="edit-cosmetic" data-id="${cosmetic.id}">
+        <div class="item-icon">${icon}</div>
+        <div class="reward-main">
+          <div class="reward-name">${cosmetic.name}</div>
+          <div class="reward-meta">
+            <span>🪙 ${cosmetic.cost_coins} pièces</span>
+            <span>✨ ${rarityLabels[cosmetic.rarity] || 'Commun'}</span>
+            ${cosmetic.unlock_requirements?.level ? `<span>🎯 Niveau ${cosmetic.unlock_requirements.level}+</span>` : ''}
+          </div>
+          ${cosmetic.description ? `<div style="margin-top: 4px; font-size: 0.9em;">${cosmetic.description}</div>` : ''}
         </div>
       </div>
     `;
@@ -6005,6 +6434,12 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
         this.taskFilter = event.target.dataset.filter;
         await this.render();
         break;
+      case 'add-child':
+        await this.showChildForm();
+        break;
+      case 'edit-child':
+        await this.showChildForm(id);
+        break;
       case 'add-task':
         await this.handleAddTask();
         break;
@@ -6017,8 +6452,11 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
       case 'edit-reward':
         await this.handleEditReward(id);
         break;
-      case 'edit-child':
-        await this.showChildForm(id);
+      case 'add-cosmetic':
+        await this.handleAddCosmetic();
+        break;
+      case 'edit-cosmetic':
+        await this.handleEditCosmetic(id);
         break;
       case 'show-child-history':
         await this.showChildHistory(id);
@@ -6033,25 +6471,654 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     }
   }
 
-  // CRUD operations - placeholder implementations
+  // CRUD operations
   async handleAddTask() {
-    console.info('Add task requested');
-    // TODO: Implement task creation dialog/service call
+    await this.showTaskForm();
   }
 
   async handleEditTask(taskId) {
-    console.info('Edit task:', taskId);
-    // TODO: Implement task edit dialog/service call
+    await this.showTaskForm(taskId);
+  }
+
+  async showTaskForm(editTaskId = null) {
+    const tasks = await this.getTasks();
+    const children = await this.getChildren();
+    const task = editTaskId ? tasks.find(t => t.id === editTaskId) : null;
+    const isEdit = !!task;
+
+    const categories = [
+      { value: 'homework', label: '📚 Devoirs' },
+      { value: 'chores', label: '🧹 Tâches ménagères' },
+      { value: 'hygiene', label: '🪥 Hygiène' },
+      { value: 'health', label: '💪 Santé' },
+      { value: 'learning', label: '🎓 Apprentissage' },
+      { value: 'creativity', label: '🎨 Créativité' },
+      { value: 'social', label: '👥 Social' },
+      { value: 'bonus', label: '⭐ Bonus' },
+      { value: 'other', label: '📋 Autre' }
+    ];
+
+    const frequencies = [
+      { value: 'daily', label: 'Quotidienne' },
+      { value: 'weekly', label: 'Hebdomadaire' },
+      { value: 'monthly', label: 'Mensuelle' },
+      { value: 'once', label: 'Une fois' }
+    ];
+
+    const weekDays = [
+      { value: 'monday', label: 'Lun' },
+      { value: 'tuesday', label: 'Mar' },
+      { value: 'wednesday', label: 'Mer' },
+      { value: 'thursday', label: 'Jeu' },
+      { value: 'friday', label: 'Ven' },
+      { value: 'saturday', label: 'Sam' },
+      { value: 'sunday', label: 'Dim' }
+    ];
+
+    const content = `
+      <form>
+        ${isEdit ? `<input type="hidden" name="task_id" value="${task.id}">` : ''}
+
+        <ha-textfield
+          label="Nom de la tâche *"
+          name="title"
+          required
+          value="${isEdit ? task.title || task.name : ''}"
+          placeholder="Ex: Ranger sa chambre">
+        </ha-textfield>
+
+        <ha-textarea
+          label="Description"
+          name="description"
+          value="${isEdit ? task.description || '' : ''}"
+          placeholder="Détails de la tâche..."
+          rows="3">
+        </ha-textarea>
+
+        <ha-select
+          label="Catégorie *"
+          name="category"
+          required
+          value="${isEdit ? task.category : 'chores'}">
+          ${categories.map(cat => `
+            <ha-list-item value="${cat.value}">${cat.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <ha-select
+          label="Fréquence *"
+          name="frequency"
+          required
+          value="${isEdit ? task.frequency : 'daily'}">
+          ${frequencies.map(freq => `
+            <ha-list-item value="${freq.value}">${freq.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <div class="selection-row">
+          <div class="children-column">
+            <div class="children-section">
+              <label class="form-label">Enfants assignés *</label>
+              <div class="children-grid">
+                ${children.map(child => {
+                  const childId = child.child_id || child.id;
+                  const assignedIds = task ? (task.assigned_to || task.assigned_child_ids || task.assigned_children || []) : [];
+                  const isAssigned = Array.isArray(assignedIds) ? assignedIds.includes(childId) : assignedIds === childId;
+                  return `
+                    <ha-formfield label="${child.name}">
+                      <ha-checkbox
+                        name="assigned_children"
+                        value="${childId}"
+                        ${isEdit && isAssigned ? 'checked' : ''}>
+                      </ha-checkbox>
+                    </ha-formfield>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="days-column">
+            <div class="weekly-days-section" id="weekly-days" style="display: ${isEdit && task.frequency === 'weekly' ? 'block' : 'none'};">
+              <label class="form-label">Jours de la semaine</label>
+              <div class="days-grid">
+                ${weekDays.map(day => `
+                  <ha-formfield label="${day.label}">
+                    <ha-checkbox
+                      name="weekly_days"
+                      value="${day.value}"
+                      ${isEdit && (task.weekly_days || []).includes(day.value) ? 'checked' : ''}>
+                    </ha-checkbox>
+                  </ha-formfield>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <ha-textfield
+            label="Difficulté (1=Facile, 3=Difficile)"
+            name="difficulty"
+            type="number"
+            value="${isEdit ? task.difficulty || 1 : 1}"
+            min="1"
+            max="3">
+          </ha-textfield>
+
+          <ha-select
+            label="Type de tâche"
+            name="task_type"
+            required
+            value="${isEdit ? task.task_type || 'mandatory' : 'mandatory'}">
+            <ha-list-item value="mandatory">Obligatoire</ha-list-item>
+            <ha-list-item value="bonus">Bonus</ha-list-item>
+          </ha-select>
+        </div>
+
+        <ha-formfield label="Tâche active">
+          <ha-checkbox
+            name="is_active"
+            ${isEdit ? (task.is_active !== false && task.active !== false ? 'checked' : '') : 'checked'}>
+          </ha-checkbox>
+        </ha-formfield>
+
+        <div class="dialog-actions">
+          <ha-button type="button" class="btn btn-secondary btn-cancel">
+            Annuler
+          </ha-button>
+          <ha-button type="button" class="btn btn-primary btn-submit">
+            ${isEdit ? 'Modifier' : 'Créer'}
+          </ha-button>
+        </div>
+      </form>
+    `;
+
+    const dialog = this.showModal(content, isEdit ? 'Modifier la tâche' : 'Ajouter une tâche');
+
+    // Wire up buttons and set checkbox states
+    setTimeout(() => {
+      const btnCancel = dialog.querySelector('.btn-cancel');
+      const btnSubmit = dialog.querySelector('.btn-submit');
+      
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => dialog.close());
+      }
+      
+      if (btnSubmit) {
+        btnSubmit.addEventListener('click', () => this.submitTaskForm(isEdit));
+      }
+      
+      // Manually set checkbox states for editing and add change listeners
+      if (isEdit && task) {
+        const assignedIds = task.assigned_to || task.assigned_child_ids || task.assigned_children || [];
+        const assignedArray = Array.isArray(assignedIds) ? assignedIds : [assignedIds];
+        
+        dialog.querySelectorAll('ha-checkbox[name="assigned_children"]').forEach(checkbox => {
+          const childId = checkbox.value;
+          const shouldBeChecked = assignedArray.includes(childId);
+          checkbox.checked = shouldBeChecked;
+          
+          // Listen for changes
+          checkbox.addEventListener('change', (e) => {
+            console.log('Checkbox changed:', childId, 'checked:', e.target.checked);
+          });
+        });
+      } else {
+        // Add listeners for creation too
+        dialog.querySelectorAll('ha-checkbox[name="assigned_children"]').forEach(checkbox => {
+          checkbox.addEventListener('change', (e) => {
+            console.log('Checkbox changed:', checkbox.value, 'checked:', e.target.checked);
+          });
+        });
+      }
+    }, 100);
+
+    // Show/hide weekly days based on frequency
+    setTimeout(() => {
+      const frequencySelect = dialog.querySelector('ha-select[name="frequency"]');
+      const weeklyDaysSection = dialog.querySelector('#weekly-days');
+
+      if (frequencySelect && weeklyDaysSection) {
+        const updateWeeklyDays = (freq) => {
+          weeklyDaysSection.style.display = freq === 'weekly' ? 'block' : 'none';
+        };
+
+        frequencySelect.addEventListener('selected', (e) => {
+          updateWeeklyDays(e.detail.value || e.target.value);
+        });
+
+        frequencySelect.addEventListener('change', (e) => {
+          updateWeeklyDays(e.target.value);
+        });
+      }
+    }, 100);
+  }
+
+  async submitTaskForm(isEdit = false) {
+    const dialog = document.querySelector('ha-dialog');
+    if (!dialog) return;
+
+    const form = dialog.querySelector('form');
+    if (!form) return;
+
+    // Get form values
+    const title = form.querySelector('[name="title"]').value;
+    const description = form.querySelector('[name="description"]')?.value || '';
+    form.querySelector('[name="category"]').value;
+    const frequency = form.querySelector('[name="frequency"]').value;
+    const difficulty = parseInt(form.querySelector('[name="difficulty"]').value) || 1;
+    const task_type = form.querySelector('[name="task_type"]').value;
+    const is_active = form.querySelector('[name="is_active"]').checked;
+
+    // Get assigned children - ha-checkbox doesn't work with :checked selector
+    const allCheckboxes = form.querySelectorAll('ha-checkbox[name="assigned_children"]');
+    console.log('Reading checkbox states on submit:');
+    const assignedChildren = Array.from(allCheckboxes)
+      .filter(cb => {
+        console.log('  -', cb.value, 'checked:', cb.checked);
+        return cb.checked;
+      })
+      .map(cb => cb.value);
+    console.log('Final assigned children:', assignedChildren);
+
+    if (assignedChildren.length === 0) {
+      alert('Veuillez sélectionner au moins un enfant');
+      return;
+    }
+
+    // Get weekly days if applicable
+    frequency === 'weekly'
+      ? Array.from(form.querySelectorAll('[name="weekly_days"]:checked')).map(cb => cb.value)
+      : null;
+
+    const serviceData = {
+      title,
+      description,
+      assigned_to: assignedChildren[0], // Backend expects single child ID for now
+      difficulty,
+      task_type
+    };
+
+    // Add optional fields only if editing
+    if (isEdit) {
+      serviceData.is_active = is_active;
+    }
+
+    try {
+      if (isEdit) {
+        const taskId = form.querySelector('[name="task_id"]').value;
+        serviceData.task_id = taskId;
+        await this.callService(SERVICE_DOMAIN, 'update_task', serviceData);
+      } else {
+        await this.callService(SERVICE_DOMAIN, 'create_task', serviceData);
+      }
+    } catch (error) {
+      console.error('Error calling service:', error);
+      alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+      return;
+    }
+
+    dialog.close();
   }
 
   async handleAddReward() {
-    console.info('Add reward requested');
-    // TODO: Implement reward creation dialog/service call
+    await this.showRewardForm();
   }
 
   async handleEditReward(rewardId) {
-    console.info('Edit reward:', rewardId);
-    // TODO: Implement reward edit dialog/service call
+    await this.showRewardForm(rewardId);
+  }
+
+  async showRewardForm(editRewardId = null) {
+    const rewards = await this.getRewards();
+    const reward = editRewardId ? rewards.find(r => r.id === editRewardId) : null;
+    const isEdit = !!reward;
+
+    const categories = [
+      { value: 'toy', label: '🧸 Jouet' },
+      { value: 'activity', label: '🎮 Activité' },
+      { value: 'treat', label: '🍭 Friandise' },
+      { value: 'privilege', label: '⭐ Privilège' },
+      { value: 'outing', label: '🎟️ Sortie' },
+      { value: 'screen_time', label: "📺 Temps d'écran" },
+      { value: 'cosmetic', label: '🎨 Cosmétique' },
+      { value: 'other', label: '🎁 Autre' }
+    ];
+
+    const content = `
+      <form>
+        ${isEdit ? `<input type="hidden" name="reward_id" value="${reward.id}">` : ''}
+
+        <ha-textfield
+          label="Nom de la récompense *"
+          name="name"
+          required
+          value="${isEdit ? reward.name : ''}"
+          placeholder="Ex: 30 min de jeu vidéo">
+        </ha-textfield>
+
+        <ha-textarea
+          label="Description"
+          name="description"
+          value="${isEdit ? reward.description || '' : ''}"
+          placeholder="Détails de la récompense..."
+          rows="3">
+        </ha-textarea>
+
+        <ha-select
+          label="Catégorie *"
+          name="category"
+          required
+          value="${isEdit ? reward.category : 'other'}">
+          ${categories.map(cat => `
+            <ha-list-item value="${cat.value}">${cat.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <div class="form-row">
+          <ha-textfield
+            label="Coût en points 🎫"
+            name="cost"
+            type="number"
+            value="${isEdit ? reward.cost || 0 : 100}"
+            min="0"
+            max="10000">
+          </ha-textfield>
+
+          <ha-textfield
+            label="Coût en pièces 🪙"
+            name="coin_cost"
+            type="number"
+            value="${isEdit ? reward.coin_cost || 0 : 0}"
+            min="0"
+            max="10000">
+          </ha-textfield>
+        </div>
+
+        <ha-textfield
+          label="Niveau minimum requis"
+          name="min_level"
+          type="number"
+          value="${isEdit ? reward.min_level || 1 : 1}"
+          min="1"
+          max="99">
+        </ha-textfield>
+
+        <ha-textfield
+          label="Quantité disponible (laisser vide pour illimité)"
+          name="remaining_quantity"
+          type="number"
+          value="${isEdit && reward.remaining_quantity !== null ? reward.remaining_quantity : ''}"
+          min="0"
+          placeholder="Illimité">
+        </ha-textfield>
+
+        <ha-formfield label="Récompense active">
+          <ha-checkbox
+            name="active"
+            ${isEdit ? (reward.active !== false ? 'checked' : '') : 'checked'}>
+          </ha-checkbox>
+        </ha-formfield>
+
+        <div class="dialog-actions">
+          <ha-button type="button" class="btn btn-secondary btn-cancel">
+            Annuler
+          </ha-button>
+          <ha-button type="button" class="btn btn-primary btn-submit">
+            ${isEdit ? 'Modifier' : 'Créer'}
+          </ha-button>
+        </div>
+      </form>
+    `;
+
+    const dialog = this.showModal(content, isEdit ? 'Modifier la récompense' : 'Ajouter une récompense');
+
+    // Wire up buttons
+    setTimeout(() => {
+      const btnCancel = dialog.querySelector('.btn-cancel');
+      const btnSubmit = dialog.querySelector('.btn-submit');
+      
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => dialog.close());
+      }
+      
+      if (btnSubmit) {
+        btnSubmit.addEventListener('click', () => this.submitRewardForm(isEdit));
+      }
+    }, 100);
+  }
+
+  async submitRewardForm(isEdit = false) {
+    const dialog = document.querySelector('ha-dialog');
+    if (!dialog) return;
+
+    const form = dialog.querySelector('form');
+    if (!form) return;
+
+    // Get form values
+    const title = form.querySelector('[name="name"]').value;
+    const description = form.querySelector('[name="description"]')?.value || '';
+    const cost_points = parseInt(form.querySelector('[name="cost"]').value) || 0;
+    const stock_value = form.querySelector('[name="remaining_quantity"]').value;
+    const stock = stock_value ? parseInt(stock_value) : null;
+
+    const serviceData = {
+      title,
+      description,
+      cost_points
+    };
+
+    if (stock !== null) {
+      serviceData.stock = stock;
+    }
+
+    try {
+      if (isEdit) {
+        const rewardId = form.querySelector('[name="reward_id"]').value;
+        serviceData.reward_id = rewardId;
+        await this.callService(SERVICE_DOMAIN, 'update_reward', serviceData);
+      } else {
+        await this.callService(SERVICE_DOMAIN, 'create_reward', serviceData);
+      }
+    } catch (error) {
+      console.error('Error calling service:', error);
+      alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+      return;
+    }
+
+    dialog.close();
+  }
+
+  async handleAddCosmetic() {
+    await this.showCosmeticForm();
+  }
+
+  async handleEditCosmetic(cosmeticId) {
+    await this.showCosmeticForm(cosmeticId);
+  }
+
+  async showCosmeticForm(editCosmeticId = null) {
+    const cosmetics = await this.getCosmetics();
+    const cosmetic = editCosmeticId ? cosmetics.find(c => c.id === editCosmeticId) : null;
+    const isEdit = !!cosmetic;
+
+    const categories = [
+      { value: 'clothes', label: '👕 Vêtements' },
+      { value: 'accessory', label: '🎭 Accessoires' },
+      { value: 'pet', label: '🐾 Animaux' },
+      { value: 'theme', label: '🎨 Thèmes' },
+      { value: 'badge', label: '🏆 Badges' },
+      { value: 'animation', label: '✨ Animations' }
+    ];
+
+    const rarities = [
+      { value: 'common', label: 'Commun' },
+      { value: 'rare', label: 'Rare' },
+      { value: 'epic', label: 'Épique' },
+      { value: 'legendary', label: 'Légendaire' }
+    ];
+
+    const content = `
+      <form>
+        ${isEdit ? `<input type="hidden" name="cosmetic_id" value="${cosmetic.id}">` : ''}
+
+        <ha-textfield
+          label="Nom du cosmétique *"
+          name="name"
+          required
+          value="${isEdit ? cosmetic.name : ''}"
+          placeholder="Ex: T-shirt pirate">
+        </ha-textfield>
+
+        <ha-textarea
+          label="Description"
+          name="description"
+          value="${isEdit ? cosmetic.description || '' : ''}"
+          placeholder="Description du cosmétique..."
+          rows="3">
+        </ha-textarea>
+
+        <ha-select
+          label="Catégorie *"
+          name="category"
+          required
+          value="${isEdit ? cosmetic.category : 'clothes'}">
+          ${categories.map(cat => `
+            <ha-list-item value="${cat.value}">${cat.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <ha-textfield
+          label="Sous-catégorie"
+          name="subcategory"
+          value="${isEdit ? cosmetic.subcategory || '' : ''}"
+          placeholder="Ex: shirt, hat, dog...">
+        </ha-textfield>
+
+        <ha-select
+          label="Rareté *"
+          name="rarity"
+          required
+          value="${isEdit ? cosmetic.rarity : 'common'}">
+          ${rarities.map(r => `
+            <ha-list-item value="${r.value}">${r.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <ha-textfield
+          label="Coût en pièces 🪙"
+          name="cost_coins"
+          type="number"
+          value="${isEdit ? cosmetic.cost_coins || 50 : 50}"
+          min="0"
+          max="10000">
+        </ha-textfield>
+
+        <ha-textfield
+          label="URL de l'image (512x512px)"
+          name="preview_image"
+          value="${isEdit ? cosmetic.preview_image || '' : ''}"
+          placeholder="/local/cosmetics/item.png">
+        </ha-textfield>
+
+        <ha-textfield
+          label="Niveau minimum requis"
+          name="level"
+          type="number"
+          value="${isEdit && cosmetic.unlock_requirements?.level ? cosmetic.unlock_requirements.level : ''}"
+          min="1"
+          max="99"
+          placeholder="Aucun niveau requis">
+        </ha-textfield>
+
+        <ha-formfield label="Cosmétique actif">
+          <ha-checkbox
+            name="active"
+            ${isEdit ? (cosmetic.active !== false ? 'checked' : '') : 'checked'}>
+          </ha-checkbox>
+        </ha-formfield>
+
+        <div class="dialog-actions">
+          <ha-button type="button" class="btn btn-secondary btn-cancel">
+            Annuler
+          </ha-button>
+          <ha-button type="button" class="btn btn-primary btn-submit">
+            ${isEdit ? 'Modifier' : 'Créer'}
+          </ha-button>
+        </div>
+      </form>
+    `;
+
+    const dialog = this.showModal(content, isEdit ? 'Modifier le cosmétique' : 'Ajouter un cosmétique');
+
+    // Wire up buttons
+    setTimeout(() => {
+      const btnCancel = dialog.querySelector('.btn-cancel');
+      const btnSubmit = dialog.querySelector('.btn-submit');
+      
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => dialog.close());
+      }
+      
+      if (btnSubmit) {
+        btnSubmit.addEventListener('click', () => this.submitCosmeticForm(isEdit));
+      }
+    }, 100);
+  }
+
+  async submitCosmeticForm(isEdit = false) {
+    const dialog = document.querySelector('ha-dialog');
+    if (!dialog) return;
+
+    const form = dialog.querySelector('form');
+    if (!form) return;
+
+    // Get form values
+    const name = form.querySelector('[name="name"]').value;
+    const description = form.querySelector('[name="description"]')?.value || '';
+    const category = form.querySelector('[name="category"]').value;
+    const subcategory = form.querySelector('[name="subcategory"]')?.value || '';
+    const rarity = form.querySelector('[name="rarity"]').value;
+    const cost_coins = parseInt(form.querySelector('[name="cost_coins"]').value) || 50;
+    const preview_image = form.querySelector('[name="preview_image"]')?.value || '';
+    const level_value = form.querySelector('[name="level"]').value;
+    const level = level_value ? parseInt(level_value) : null;
+    const active = form.querySelector('[name="active"]').checked;
+
+    const serviceData = {
+      name,
+      description,
+      category,
+      subcategory,
+      rarity,
+      cost_coins,
+      active
+    };
+
+    if (preview_image) {
+      serviceData.preview_image = preview_image;
+    }
+
+    if (level) {
+      serviceData.unlock_requirements = { level };
+    }
+
+    try {
+      if (isEdit) {
+        const cosmeticId = form.querySelector('[name="cosmetic_id"]').value;
+        serviceData.cosmetic_id = cosmeticId;
+        await this.callService(SERVICE_DOMAIN, 'update_cosmetic', serviceData);
+      } else {
+        await this.callService(SERVICE_DOMAIN, 'create_cosmetic', serviceData);
+      }
+    } catch (error) {
+      console.error('Error calling service:', error);
+      alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+      return;
+    }
+
+    dialog.close();
   }
 
   async showChildForm(editChildId = null) {
@@ -6161,10 +7228,10 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
         `}
 
         <div class="dialog-actions">
-          <ha-button type="button" class="btn btn-secondary" onclick="this.closest('ha-dialog').close()">
+          <ha-button type="button" class="btn btn-secondary btn-cancel">
             Annuler
           </ha-button>
-          <ha-button type="button" class="btn btn-primary" onclick="this.closest('ha-dialog')._cardInstance.submitChildForm(${isEdit})">
+          <ha-button type="button" class="btn btn-primary btn-submit">
             ${isEdit ? 'Modifier' : 'Créer'}
           </ha-button>
         </div>
@@ -6172,6 +7239,20 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     `;
 
     const dialog = this.showModal(content, isEdit ? 'Modifier l\'enfant' : 'Ajouter un enfant');
+
+    // Wire up buttons
+    setTimeout(() => {
+      const btnCancel = dialog.querySelector('.btn-cancel');
+      const btnSubmit = dialog.querySelector('.btn-submit');
+      
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => dialog.close());
+      }
+      
+      if (btnSubmit) {
+        btnSubmit.addEventListener('click', () => this.submitChildForm(isEdit));
+      }
+    }, 100);
 
     // Configuration des interactions avatar
     setTimeout(() => {
@@ -6244,12 +7325,12 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
   async callService(domain, service, serviceData = {}) {
     try {
       await this._hass.callService(domain, service, serviceData);
-      this.showNotification(`Action "${service}" exécutée avec succès`, 'success');
-      setTimeout(() => { this.render(); }, 1000);
+      this._clearCache();
+      await this.smartRender(true);
       return true;
     } catch (error) {
-      this.showNotification(`Erreur: ${error.message}`, 'error');
-      return false;
+      console.error(`Error calling service ${service}:`, error);
+      throw error;
     }
   }
 
@@ -6929,10 +8010,10 @@ class KidsTasksChildCardEditor extends KidsTasksBaseCardEditor {
       <div class="section-title">Configuration de l'enfant</div>
       <div class="option">
         <label>Sélectionner un enfant</label>
-        <select id="child_select" required>
+        <select class="child-select" id="child_select" required>
           <option value="">Sélectionner un enfant...</option>
             ${children.map(child => `
-              <option value="${child.child_id}" ${this._config.child_id === child.chil_id ? 'selected' : ''}>
+              <option value="${child.child_id}" ${this._config.child_id === child.child_id ? 'selected' : ''}>
                 ${child.name}
               </option>
             `).join('')}

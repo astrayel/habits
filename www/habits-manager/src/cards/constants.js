@@ -33,3 +33,6 @@ export const TASK_STATUS_MAPPING = {
   'refused': 'todo',
   'failed': 'cancelled',
 };
+
+// Development mode flag (Phase 2)
+export const DEV_MODE = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development';

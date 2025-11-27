@@ -3,6 +3,8 @@
 import { KidsTasksBaseCard } from './base-card.js';
 import { KidsTasksUtils } from './utils.js';
 import { ENTITY_PREFIX } from './constants.js';
+import { DataAdapter } from './data-adapter.js';
+import logger from './logger.js';
 
 class KidsTasksCard extends KidsTasksBaseCard {
   constructor() {
@@ -24,20 +26,28 @@ class KidsTasksCard extends KidsTasksBaseCard {
   shouldUpdate(oldHass, newHass) {
     if (!oldHass) return true;
 
-    // Quick check: compare entity counts for kids tasks
-    const oldTaskEntities = Object.keys(oldHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`));
-    const newTaskEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`));
+    // Optimized: Check only critical entity count changes (Phase 2)
+    // Avoid full state object iteration when possible
+    const oldKeys = oldHass.states ? Object.keys(oldHass.states) : [];
+    const newKeys = newHass.states ? Object.keys(newHass.states) : [];
+    
+    // Quick length check first
+    if (oldKeys.length !== newKeys.length) return true;
+    
+    // Only check habits_manager entities (more targeted)
+    const oldHabitsCount = oldKeys.filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`)).length;
+    const newHabitsCount = newKeys.filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`)).length;
 
-    return oldTaskEntities.length !== newTaskEntities.length;
+    return oldHabitsCount !== newHabitsCount;
   }
 
-  render() {
+  async render() {
     if (!this._hass) {
       this.shadowRoot.innerHTML = '<div class="kt-loading">Chargement...</div>';
       return;
     }
 
-    const children = this.getChildren();
+    const children = await this.getChildren();
 
     this.shadowRoot.innerHTML = `
       ${this.getOptimizedStyles()}
@@ -47,7 +57,7 @@ class KidsTasksCard extends KidsTasksBaseCard {
         </div>
 
         <div class="main-content">
-          ${this.renderCurrentView(children)}
+          ${await this.renderCurrentView(children)}
         </div>
       </div>
     `;
@@ -90,20 +100,20 @@ class KidsTasksCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderCurrentView(children) {
+  async renderCurrentView(children) {
     switch (this.currentView) {
       case 'dashboard':
-        return this.renderDashboard(children);
+        return await this.renderDashboard(children);
       case 'summary':
-        return this.renderSummary(children);
+        return await this.renderSummary(children);
       case 'management':
         return this.renderManagement(children);
       default:
-        return this.renderDashboard(children);
+        return await this.renderDashboard(children);
     }
   }
 
-  renderDashboard(children) {
+  async renderDashboard(children) {
     if (children.length === 0) {
       return `
         <div class="kt-empty">
@@ -114,7 +124,7 @@ class KidsTasksCard extends KidsTasksBaseCard {
       `;
     }
 
-    const stats = this.calculateGlobalStats(children);
+    const stats = await this.calculateGlobalStats(children);
 
     return `
       <div class="summary-stats kt-fade-in">
@@ -131,7 +141,7 @@ class KidsTasksCard extends KidsTasksBaseCard {
           <div class="summary-number">${stats.completedToday}</div>
         </div>
         <div class="summary-card">
-          <div class="summary-icon">⏳</div>
+          <div class="summary-icon">⌛</div>
           <div class="summary-number">${stats.pendingTasks}</div>
         </div>
       </div>
@@ -142,8 +152,8 @@ class KidsTasksCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderSummary(children) {
-    const stats = this.calculateGlobalStats(children);
+  async renderSummary(children) {
+    const stats = await this.calculateGlobalStats(children);
     
     return `
       <div class="summary-stats kt-fade-in">
@@ -213,9 +223,27 @@ class KidsTasksCard extends KidsTasksBaseCard {
   }
 
   // Data methods (same as before)
-  getChildren() {
+  async getChildren() {
     if (!this._hass) return [];
 
+    try {
+      // Use API like base-card.js
+      const result = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_children',
+        service_data: {},
+        return_response: true
+      });
+
+      if (result && result.response && result.response.children) {
+        return result.response.children.map(child => DataAdapter.adaptChild(child));
+      }
+    } catch (error) {
+      logger.error('Error fetching children from API:', error);
+    }
+
+    // Fallback to sensor scanning
     const children = [];
     Object.keys(this._hass.states).forEach(entityId => {
       if (entityId.startsWith(`sensor.${ENTITY_PREFIX}_`) && entityId.endsWith('_points')) {
@@ -238,8 +266,8 @@ class KidsTasksCard extends KidsTasksBaseCard {
     return children.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  getChildStats(child) {
-    const tasks = this.getChildTasks(child.id);
+  async getChildStats(child) {
+    const tasks = await this.getChildTasks(child.id);
     const today = new Date().toDateString();
     
     const completedToday = tasks.filter(t => 
@@ -256,9 +284,27 @@ class KidsTasksCard extends KidsTasksBaseCard {
     };
   }
 
-  getChildTasks(childId) {
+  async getChildTasks(childId) {
     if (!this._hass) return [];
 
+    try {
+      // Use API
+      const result = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_tasks',
+        service_data: { assigned_to: childId },
+        return_response: true
+      });
+
+      if (result && result.response && result.response.tasks) {
+        return result.response.tasks.map(task => DataAdapter.adaptTask(task, []));
+      }
+    } catch (error) {
+      logger.error('Error fetching tasks from API:', error);
+    }
+
+    // Fallback to sensor scanning
     const taskEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`))
       .map(id => this._hass.states[id])
@@ -275,31 +321,55 @@ class KidsTasksCard extends KidsTasksBaseCard {
     }));
   }
 
-  calculateGlobalStats(children) {
+  async calculateGlobalStats(children) {
+    // Cache key based on child IDs and their points (Phase 3 optimization)
+    const cacheKey = 'globalStats_' + children.map(c => `${c.id}:${c.points}`).join('_');
+    const cached = this._getCachedData ? this._getCachedData(cacheKey) : null;
+    if (cached) {
+      return cached;
+    }
+
     let totalTasks = 0;
     let completedToday = 0;
     let totalPoints = 0;
     let pendingTasks = 0;
 
-    children.forEach(child => {
-      const stats = this.getChildStats(child);
+    // Use Promise.all for parallel API calls
+    const childStatsPromises = children.map(child => this.getChildStats(child));
+    const childTasksPromises = children.map(child => this.getChildTasks(child.id));
+    
+    const [allStats, allTasks] = await Promise.all([
+      Promise.all(childStatsPromises),
+      Promise.all(childTasksPromises)
+    ]);
+
+    children.forEach((child, index) => {
+      const stats = allStats[index];
+      const childTasks = allTasks[index];
+      
       totalTasks += stats.totalToday;
       completedToday += stats.completedToday;
       totalPoints += child.points || 0;
 
       // Calculer les tâches en attente de validation (completed mais pas validated)
-      const childTasks = this.getChildTasks(child.id);
       pendingTasks += childTasks.filter(task =>
         task.status === 'completed' && !task.validated
       ).length;
     });
 
-    return {
+    const result = {
       totalTasks,
       completedToday,
       totalPoints,
       pendingTasks
     };
+
+    // Cache the result (shorter TTL since stats change frequently)
+    if (this._setCachedData) {
+      this._setCachedData(cacheKey, result);
+    }
+
+    return result;
   }
 
   static getConfigElement() {

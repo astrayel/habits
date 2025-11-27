@@ -14,14 +14,13 @@ export interface HomeAssistant {
   language: string;
   translationMetadata: any;
   localize: (key: string, ...args: any[]) => string;
-  callService: (domain: string, service: string, serviceData?: any, options?: { return_response?: boolean }) => Promise<any>;
+  callService: (domain: string, service: string, serviceData?: any) => Promise<any>;
   callApi: <T>(method: string, path: string, parameters?: any) => Promise<T>;
 }
 
 export interface Connection {
   subscribeEvents: (callback: (event: any) => void, eventType?: string) => Promise<() => void>;
   sendMessage: (message: any) => void;
-  sendMessagePromise: (message: any) => Promise<any>;
 }
 
 export interface HassEntity {

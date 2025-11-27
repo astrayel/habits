@@ -2,7 +2,9 @@
 
 import { KidsTasksBaseCard } from './base-card.js';
 import { KidsTasksUtils } from './utils.js';
-import { ENTITY_PREFIX } from './constants.js';
+import { ENTITY_PREFIX, DEV_MODE } from './constants.js';
+import { DataAdapter } from './data-adapter.js';
+import logger from './logger.js';
 
 class KidsTasksChildCard extends KidsTasksBaseCard {
   constructor() {
@@ -36,14 +38,14 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
   // Smart refresh that only updates when data actually changes
   _setupSmartRefresh() {
-    const smartRefresh = () => {
+    const smartRefresh = async () => {
       if (!this._hass || !this._initialized || !this._isVisible) {
         this._scheduleNextRefresh();
         return;
       }
 
       // Check if data has actually changed
-      const currentDataHash = this._getDataHash();
+      const currentDataHash = await this._getDataHash();
       if (currentDataHash === this._lastDataHash) {
         this._scheduleNextRefresh();
         return;
@@ -75,12 +77,12 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
   }
 
   // Generate hash of relevant data to detect changes
-  _getDataHash() {
+  async _getDataHash() {
     if (!this._hass || !this.config?.child_id) return null;
     
-    const child = this.getChild();
-    const tasks = this.getChildTasks(this.config.child_id);
-    const rewards = this.getChildRewards(this.config.child_id);
+    const child = await this.getChild();
+    const tasks = await this.getChildTasks(this.config.child_id);
+    const rewards = await this.getChildRewards(this.config.child_id);
     
     // Create simple hash of key data points
     const dataString = JSON.stringify({
@@ -186,36 +188,43 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     }
   }
 
-  shouldUpdate(oldHass, newHass) {
+  async shouldUpdate(oldHass, newHass) {
     if (!oldHass) return true;
     
-    // Check if child data changed
+    // Optimized: Check specific fields instead of JSON.stringify (Phase 2)
     const childId = this.config.child_id;
-    const oldChild = this.getChildFromHass(oldHass, childId);
-    const newChild = this.getChildFromHass(newHass, childId);
     
-    if (JSON.stringify(oldChild) !== JSON.stringify(newChild)) {
-      return true;
+    // Quick check: entity state for child's points sensor
+    const childPointsEntity = `sensor.${ENTITY_PREFIX}_${childId}_points`;
+    const oldEntity = oldHass.states[childPointsEntity];
+    const newEntity = newHass.states[childPointsEntity];
+    
+    if (!oldEntity && !newEntity) {
+      // Child not found in sensors, check via API (cache will help)
+      const oldChild = await this.getChildFromHass(oldHass, childId);
+      const newChild = await this.getChildFromHass(newHass, childId);
+      
+      // Compare critical fields only
+      if (!oldChild || !newChild) return true;
+      return oldChild.points !== newChild.points || 
+             oldChild.coins !== newChild.coins ||
+             oldChild.level !== newChild.level;
     }
     
-    // Check tasks and rewards
-    const taskEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
-    const rewardEntities = Object.keys(newHass.states).filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`));
+    // Compare sensor states (faster than full JSON)
+    if (!oldEntity || !newEntity) return true;
+    if (oldEntity.state !== newEntity.state) return true;
     
-    for (const entityId of [...taskEntities, ...rewardEntities]) {
-      const oldEntity = oldHass.states[entityId];
-      const newEntity = newHass.states[entityId];
-      if (!oldEntity || !newEntity || 
-          oldEntity.state !== newEntity.state || 
-          JSON.stringify(oldEntity.attributes) !== JSON.stringify(newEntity.attributes)) {
-        return true;
-      }
-    }
+    // Check critical attributes only
+    const oldAttrs = oldEntity.attributes || {};
+    const newAttrs = newEntity.attributes || {};
     
-    return false;
+    return oldAttrs.coins !== newAttrs.coins ||
+           oldAttrs.level !== newAttrs.level ||
+           oldAttrs.experience !== newAttrs.experience;
   }
 
-  render() {
+  async render() {
     if (!this._hass || !this.config) {
       this.shadowRoot.innerHTML = `
         ${this.getCommonStyles()}
@@ -224,7 +233,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       return;
     }
 
-    const child = this.getChild();
+    const child = await this.getChild();
     if (!child) {
       this.shadowRoot.innerHTML = `
         ${this.getCommonStyles()}
@@ -236,13 +245,17 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     }
 
     try {
+      // Render async components
+      const header = await this.renderHeader(child);
+      const tabContent = await this.renderTabContent(child);
+      
       this.shadowRoot.innerHTML = `
         ${this.getCommonStyles()}
         ${this.getChildSpecificStyles()}
         <div class="child-card-container">
-          ${this.renderChild(child)}
+          ${header}
           ${this.renderTabs()}
-          ${this.renderTabContent(child)}
+          ${tabContent}
         </div>
       `;
     } catch (error) {
@@ -700,10 +713,10 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderHeader(child) {
+  async renderHeader(child) {
     if (!this.config.show_avatar) return '';
 
-    const stats = this.getChildStats(child);
+    const stats = await this.getChildStats(child);
     
     return `
       <div class="child-header">
@@ -764,25 +777,25 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderTabContent(child) {
+  async renderTabContent(child) {
     switch (this.currentTab) {
       case 'tasks':
-        return this.renderTasksTab(child);
+        return await this.renderTasksTab(child);
       case 'habits':
         return this.renderHabitsTab(child);
       case 'rewards':
-        return this.renderRewardsTab(child);
+        return await this.renderRewardsTab(child);
       case 'cosmetics':
         return this.renderCosmeticsTab(child);
       case 'history':
         return this.renderHistoryTab(child);
       default:
-        return this.renderTasksTab(child);
+        return await this.renderTasksTab(child);
     }
   }
 
-  renderTasksTab(child) {
-    const tasks = this.getChildTasks(child.child_id);
+  async renderTasksTab(child) {
+    const tasks = await this.getChildTasks(child.child_id);
     const filteredTasks = this.filterTasks(tasks, this.tasksFilter, 'child');
 
     // Debug
@@ -851,9 +864,10 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderRewardsTab(child) {
-    const rewards = this.getRewards().filter(r => (r.min_level || 1) <= (child.level || 1));
-    const affordableRewards = rewards.filter(r => 
+  async renderRewardsTab(child) {
+    const rewards = await this.getRewards();
+    const levelAppropriateRewards = rewards.filter(r => (r.min_level || 1) <= (child.level || 1));
+    const affordableRewards = levelAppropriateRewards.filter(r => 
       (r.cost <= child.points) && (r.coin_cost <= child.coins)
     );
 
@@ -1251,25 +1265,50 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
   }
 
   // Data access methods
-  getChild() {
+  async getChild() {
     const childId = this.config.child_id;
-    return this.getChildFromHass(this._hass, childId);
+    return await this.getChildFromHass(this._hass, childId);
   }
 
-  getChildFromHass(hass, childIdOrName) {
-    console.log('=== getChildFromHass DEBUG ===');
-    console.log('Looking for child:', childIdOrName);
+  async getChildFromHass(hass, childIdOrName) {
+    if (DEV_MODE) console.log('=== getChildFromHass DEBUG ===');
+    if (DEV_MODE) console.log('Looking for child:', childIdOrName);
 
-    // Get all points entities to see what we have
+    // Use API-based getChildren method
+    try {
+      const children = await this.getChildren();
+      if (DEV_MODE) console.log('Children from API:', children);
+
+      if (children && children.length > 0) {
+        // Search by ID or name
+        const child = children.find(c => 
+          c.child_id === childIdOrName || 
+          c.id === childIdOrName ||
+          c.name === childIdOrName ||
+          c.name?.toLowerCase() === childIdOrName.toLowerCase()
+        );
+
+        if (child) {
+          if (DEV_MODE) console.log('Found child:', child);
+          if (DEV_MODE) console.log('===============================');
+          return child;
+        }
+      }
+    } catch (error) {
+      logger.error('Error fetching children from API:', error);
+    }
+
+    // Fallback to entity scanning
+    if (DEV_MODE) console.log('Falling back to entity scanning');
     const pointsEntities = Object.keys(hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_`) && id.endsWith('_points'));
 
-    console.log('All points entities:', pointsEntities);
+    if (DEV_MODE) console.log('All points entities:', pointsEntities);
 
     // First, search by friendly_name (most common case)
     for (const entityId of pointsEntities) {
       const e = hass.states[entityId];
-      console.log(`Entity ${entityId}:`, {
+      if (DEV_MODE) console.log(`Entity ${entityId}:`, {
         friendly_name: e.attributes.friendly_name,
         state: e.state,
         attributes: e.attributes
@@ -1277,7 +1316,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
 
       if (e.attributes.friendly_name === childIdOrName || e.attributes.friendly_name?.toLowerCase() === childIdOrName.toLowerCase()) {
         const realId = e.attributes.child_id || entityId.replace(`sensor.${ENTITY_PREFIX}_`, '').replace('_points', '');
-        console.log('Found by friendly_name! Real ID:', realId);
+        if (DEV_MODE) console.log('Found by friendly_name! Real ID:', realId);
         return {
           id: realId,
           name: e.attributes.friendly_name || realId,
@@ -1294,7 +1333,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     let entity = hass.states[pointsEntityId];
 
     if (entity) {
-      console.log('Found by direct ID:', childIdOrName);
+      if (DEV_MODE) console.log('Found by direct ID:', childIdOrName);
       return {
         id: childIdOrName,
         name: entity.attributes.friendly_name || childIdOrName,
@@ -1305,22 +1344,51 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       };
     }
 
-    console.log('Child not found!');
-    console.log('===============================');
+    if (DEV_MODE) console.log('Child not found!');
+    if (DEV_MODE) console.log('===============================');
     return null;
   }
 
-  getChildTasks(childId) {
+  async getChildTasks(childId) {
     if (!this._hass) return [];
 
-    console.log('=== getChildTasks DEBUG ===');
-    console.log('Input childId:', childId);
+    if (DEV_MODE) console.log('=== getChildTasks DEBUG ===');
+    if (DEV_MODE) console.log('Input childId:', childId);
 
-    // Get all task entities
+    // Try API first
+    try {
+      const result = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_tasks',
+        service_data: { assigned_to: childId },
+        return_response: true
+      });
+
+      if (result && result.response && result.response.tasks) {
+        if (DEV_MODE) console.log('Tasks from API:', result.response.tasks);
+        if (DEV_MODE) console.log('==========================');
+        return result.response.tasks.map(task => {
+          const adapted = DataAdapter.adaptTask(task, []);
+          // Ensure compatibility with existing code
+          return {
+            ...adapted,
+            id: adapted.id || task.id,
+            name: adapted.name || task.title,
+            status: adapted.status || 'todo'
+          };
+        });
+      }
+    } catch (error) {
+      logger.error('Error fetching tasks from API:', error);
+    }
+
+    // Fallback to sensor scanning
+    if (DEV_MODE) console.log('Falling back to entity scanning');
     const allTaskEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`));
 
-    console.log('All task entities:', allTaskEntities);
+    if (DEV_MODE) console.log('All task entities:', allTaskEntities);
 
     const taskEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_task_`))
@@ -1333,7 +1401,7 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
                                 (entity.attributes.assigned_children ? entity.attributes.assigned_children :
                                 (entity.attributes.assigned_child_id ? [entity.attributes.assigned_child_id] : []));
 
-        console.log(`Task ${entity.entity_id}:`, {
+        if (DEV_MODE) console.log(`Task ${entity.entity_id}:`, {
           assigned_child_ids: entity.attributes.assigned_child_ids,
           assigned_children: entity.attributes.assigned_children,
           assigned_child_id: entity.attributes.assigned_child_id,
@@ -1342,12 +1410,12 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
         });
 
         const result = Array.isArray(assignedChildIds) ? assignedChildIds.includes(childId) : assignedChildIds === childId;
-        console.log('Match result:', result);
+        if (DEV_MODE) console.log('Match result:', result);
         return result;
       });
 
-    console.log('Filtered entities:', taskEntities.length);
-    console.log('==========================');
+    if (DEV_MODE) console.log('Filtered entities:', taskEntities.length);
+    if (DEV_MODE) console.log('==========================');
 
 
     const result = taskEntities.map(entity => ({
@@ -1361,13 +1429,31 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
       ...entity.attributes
     }));
 
-    console.log('Final mapped tasks:', result);
+    if (DEV_MODE) console.log('Final mapped tasks:', result);
     return result;
   }
 
-  getRewards() {
+  async getRewards() {
     if (!this._hass) return [];
 
+    // Try API first
+    try {
+      const result = await this._hass.callWS({
+        type: 'call_service',
+        domain: 'habits_manager',
+        service: 'list_rewards',
+        service_data: {},
+        return_response: true
+      });
+
+      if (result && result.response && result.response.rewards) {
+        return result.response.rewards.map(reward => DataAdapter.adaptReward(reward));
+      }
+    } catch (error) {
+      logger.error('Error fetching rewards from API:', error);
+    }
+
+    // Fallback to sensor scanning
     const rewardEntities = Object.keys(this._hass.states)
       .filter(id => id.startsWith(`sensor.${ENTITY_PREFIX}_reward_`))
       .map(id => this._hass.states[id]);
@@ -1385,16 +1471,16 @@ class KidsTasksChildCard extends KidsTasksBaseCard {
     }));
   }
 
-  getChildRewards(childId) {
-    const child = this.getChildFromHass(this._hass, childId);
+  async getChildRewards(childId) {
+    const child = await this.getChildFromHass(this._hass, childId);
     if (!child) return [];
 
-    const allRewards = this.getRewards();
+    const allRewards = await this.getRewards();
     return allRewards.filter(reward => (reward.min_level || 1) <= (child.level || 1));
   }
 
-  getChildStats(child) {
-    const tasks = this.getChildTasks(child.child_id);
+  async getChildStats(child) {
+    const tasks = await this.getChildTasks(child.child_id);
     const completedToday = tasks.filter(t => 
       (t.status === 'completed' || t.status === 'validated') && 
       this.isToday(t.completed_at)

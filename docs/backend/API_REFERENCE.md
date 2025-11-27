@@ -302,6 +302,52 @@ data:
 
 ---
 
+### `habits_manager.update_reward`
+
+Met à jour une récompense existante.
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `reward_id` | string | ✅ | ID de la récompense |
+| `title` | string | ❌ | Nouveau titre |
+| `description` | string | ❌ | Nouvelle description |
+| `cost_points` | int | ❌ | Nouveau coût en points |
+| `stock` | int | ❌ | Quantité disponible (null = illimité) |
+| `active` | bool | ❌ | Activer/désactiver |
+
+**Exemple:**
+```yaml
+service: habits_manager.update_reward
+data:
+  reward_id: "reward_abc123"
+  title: "45 min de temps d'écran"
+  cost_points: 120
+  stock: 5
+```
+
+---
+
+### `habits_manager.delete_reward`
+
+Supprime définitivement une récompense.
+
+⚠️ **Attention:** Cette action est irréversible!
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `reward_id` | string | ✅ | ID de la récompense |
+
+**Exemple:**
+```yaml
+service: habits_manager.delete_reward
+data:
+  reward_id: "reward_abc123"
+```
+
+---
+
 ### `habits_manager.claim_reward`
 
 Réclame une récompense avec les points de l'enfant.
@@ -361,6 +407,51 @@ data:
   rarity: "rare"
   cost_coins: 150
   level_required: 5
+```
+
+---
+
+### `habits_manager.update_cosmetic`
+
+Met à jour un cosmétique existant.
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `cosmetic_id` | string | ✅ | ID du cosmétique |
+| `name` | string | ❌ | Nouveau nom |
+| `description` | string | ❌ | Nouvelle description |
+| `cost_coins` | int | ❌ | Nouveau coût en pièces |
+| `active` | bool | ❌ | Activer/désactiver |
+
+**Exemple:**
+```yaml
+service: habits_manager.update_cosmetic
+data:
+  cosmetic_id: "cosmetic_def456"
+  name: "Cape de super-héros Édition Limitée"
+  cost_coins: 200
+  active: true
+```
+
+---
+
+### `habits_manager.delete_cosmetic`
+
+Supprime définitivement un cosmétique.
+
+⚠️ **Attention:** Cette action est irréversible!
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `cosmetic_id` | string | ✅ | ID du cosmétique |
+
+**Exemple:**
+```yaml
+service: habits_manager.delete_cosmetic
+data:
+  cosmetic_id: "cosmetic_def456"
 ```
 
 ---

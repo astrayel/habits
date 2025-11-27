@@ -98,6 +98,11 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           color: var(--primary-text-color);
         }
 
+        ha-button.add-btn {
+          --mdc-theme-primary: var(--kt-primary);
+          --mdc-theme-on-primary: white;
+        }
+
 
         .task-item.inactive {
           opacity: 0.6;
@@ -176,9 +181,9 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
       case 'tasks':
         return await this.renderTasksView();
       case 'rewards':
-        return this.renderRewardsView();
+        return await this.renderRewardsView();
       case 'cosmetics':
-        return this.renderCosmeticsView();
+        return await this.renderCosmeticsView();
       default:
         return await this.renderChildrenView();
     }
@@ -187,15 +192,28 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
   async renderChildrenView() {
     const children = await this.getChildren();
     return `
-    <div class="children-grid">
-        ${children.map(child => this.renderChild(child)).join('')}
-    </div>
+      <div class="section">
+        <h2>
+          Gestion des enfants
+          <ha-button class="add-btn" data-action="add-child" raised>Ajouter</ha-button>
+        </h2>
+        ${children.length > 0 ? `
+          <div class="children-grid">
+            ${children.map(child => this.renderChild(child)).join('')}
+          </div>
+        ` : `
+          <div class="empty-state">
+            <div class="empty-state-icon">👶</div>
+            <p>Aucun enfant configuré</p>
+            <ha-button class="add-btn" data-action="add-child" raised>Créer votre premier enfant</ha-button>
+          </div>
+        `}
+      </div>
     `;
-
   }
 
   async renderTasksView() {
-    const allTasks = this.getTasks();
+    const allTasks = await this.getTasks();
     const tasks = this.filterTasks(allTasks, this.taskFilter);
 
     // Handle async renderTaskItem
@@ -209,7 +227,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
       <div class="section">
         <h2>
           Gestion des tâches
-          <ha-button class="add-btn" data-action="add-task">Ajouter</ha-button>
+          <ha-button class="add-btn" data-action="add-task" raised>Ajouter</ha-button>
         </h2>
 
         <div class="filters">
@@ -224,7 +242,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           <div class="empty-state">
             <div class="empty-state-icon">📝</div>
             <p>Aucune tâche ${this.getFilterLabel(this.taskFilter)}</p>
-            ${this.taskFilter === 'active' ? '<ha-button class="add-btn" data-action="add-task">Créer votre première tâche</ha-button>' : ''}
+            ${this.taskFilter === 'active' ? '<ha-button class="add-btn" data-action="add-task" raised>Créer votre première tâche</ha-button>' : ''}
           </div>
         `}
       </div>
@@ -273,14 +291,14 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderRewardsView() {
-    const rewards = this.getRewards();
+  async renderRewardsView() {
+    const rewards = await this.getRewards();
 
     return `
       <div class="section">
         <h2>
           Gestion des récompenses
-          <ha-button class="add-btn" data-action="add-reward">Ajouter</ha-button>
+          <ha-button class="add-btn" data-action="add-reward" raised>Ajouter</ha-button>
         </h2>
         ${rewards.length > 0 ? `
           <div class="reward-list">
@@ -290,7 +308,7 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
           <div class="empty-state">
             <div class="empty-state-icon">🎁</div>
             <p>Aucune récompense créée</p>
-            <ha-button class="add-btn" data-action="add-reward">Créer votre première récompense</ha-button>
+            <ha-button class="add-btn" data-action="add-reward" raised>Créer votre première récompense</ha-button>
           </div>
         `}
       </div>
@@ -317,30 +335,62 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     `;
   }
 
-  renderCosmeticsView() {
-    const allRewards = this.getRewards();
-    const cosmeticsRewards = allRewards.filter(r =>
-      r.cosmetic_data || r.reward_type === 'cosmetic' || r.category === 'cosmetic'
-    );
-
-    if (cosmeticsRewards.length === 0) {
-      return `
-        <div class="section">
-          <h2>🎨 Cosmétiques</h2>
-          <div class="empty-state">
-            <div class="empty-state-icon">🎨</div>
-            <p>Aucun cosmétique disponible</p>
-            <p style="font-size: 0.9em; opacity: 0.8;">Créez des récompenses de type cosmétique pour les voir apparaître ici.</p>
-          </div>
-        </div>
-      `;
-    }
+  async renderCosmeticsView() {
+    // Charger les cosmétiques depuis le backend
+    const cosmetics = await this.getCosmetics();
 
     return `
       <div class="section">
-        <h2>🎨 Cosmétiques</h2>
-        <div class="reward-list">
-          ${cosmeticsRewards.map(cosmetic => this.renderRewardItem(cosmetic)).join('')}
+        <h2>
+          🎨 Cosmétiques
+          <ha-button class="add-btn" data-action="add-cosmetic" raised>Ajouter</ha-button>
+        </h2>
+        ${cosmetics.length > 0 ? `
+          <div class="reward-list">
+            ${cosmetics.map(cosmetic => this.renderCosmeticItem(cosmetic)).join('')}
+          </div>
+        ` : `
+          <div class="empty-state">
+            <div class="empty-state-icon">🎨</div>
+            <p>Aucun cosmétique disponible</p>
+            <ha-button class="add-btn" data-action="add-cosmetic" raised>Créer votre premier cosmétique</ha-button>
+          </div>
+        `}
+      </div>
+    `;
+  }
+
+  renderCosmeticItem(cosmetic) {
+    const rarityLabels = {
+      common: 'Commun',
+      rare: 'Rare',
+      epic: 'Épique',
+      legendary: 'Légendaire'
+    };
+
+    const categoryIcons = {
+      clothes: '👕',
+      accessory: '🎭',
+      pet: '🐾',
+      theme: '🎨',
+      badge: '🏆',
+      animation: '✨'
+    };
+
+    const icon = categoryIcons[cosmetic.category] || '🎁';
+
+    return `
+      <div class="reward-item kt-swipeable-item"
+           data-action="edit-cosmetic" data-id="${cosmetic.id}">
+        <div class="item-icon">${icon}</div>
+        <div class="reward-main">
+          <div class="reward-name">${cosmetic.name}</div>
+          <div class="reward-meta">
+            <span>🪙 ${cosmetic.cost_coins} pièces</span>
+            <span>✨ ${rarityLabels[cosmetic.rarity] || 'Commun'}</span>
+            ${cosmetic.unlock_requirements?.level ? `<span>🎯 Niveau ${cosmetic.unlock_requirements.level}+</span>` : ''}
+          </div>
+          ${cosmetic.description ? `<div style="margin-top: 4px; font-size: 0.9em;">${cosmetic.description}</div>` : ''}
         </div>
       </div>
     `;
@@ -358,6 +408,12 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
         this.taskFilter = event.target.dataset.filter;
         await this.render();
         break;
+      case 'add-child':
+        await this.showChildForm();
+        break;
+      case 'edit-child':
+        await this.showChildForm(id);
+        break;
       case 'add-task':
         await this.handleAddTask();
         break;
@@ -370,8 +426,11 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
       case 'edit-reward':
         await this.handleEditReward(id);
         break;
-      case 'edit-child':
-        await this.showChildForm(id);
+      case 'add-cosmetic':
+        await this.handleAddCosmetic();
+        break;
+      case 'edit-cosmetic':
+        await this.handleEditCosmetic(id);
         break;
       case 'show-child-history':
         await this.showChildHistory(id);
@@ -386,25 +445,654 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     }
   }
 
-  // CRUD operations - placeholder implementations
+  // CRUD operations
   async handleAddTask() {
-    console.info('Add task requested');
-    // TODO: Implement task creation dialog/service call
+    await this.showTaskForm();
   }
 
   async handleEditTask(taskId) {
-    console.info('Edit task:', taskId);
-    // TODO: Implement task edit dialog/service call
+    await this.showTaskForm(taskId);
+  }
+
+  async showTaskForm(editTaskId = null) {
+    const tasks = await this.getTasks();
+    const children = await this.getChildren();
+    const task = editTaskId ? tasks.find(t => t.id === editTaskId) : null;
+    const isEdit = !!task;
+
+    const categories = [
+      { value: 'homework', label: '📚 Devoirs' },
+      { value: 'chores', label: '🧹 Tâches ménagères' },
+      { value: 'hygiene', label: '🪥 Hygiène' },
+      { value: 'health', label: '💪 Santé' },
+      { value: 'learning', label: '🎓 Apprentissage' },
+      { value: 'creativity', label: '🎨 Créativité' },
+      { value: 'social', label: '👥 Social' },
+      { value: 'bonus', label: '⭐ Bonus' },
+      { value: 'other', label: '📋 Autre' }
+    ];
+
+    const frequencies = [
+      { value: 'daily', label: 'Quotidienne' },
+      { value: 'weekly', label: 'Hebdomadaire' },
+      { value: 'monthly', label: 'Mensuelle' },
+      { value: 'once', label: 'Une fois' }
+    ];
+
+    const weekDays = [
+      { value: 'monday', label: 'Lun' },
+      { value: 'tuesday', label: 'Mar' },
+      { value: 'wednesday', label: 'Mer' },
+      { value: 'thursday', label: 'Jeu' },
+      { value: 'friday', label: 'Ven' },
+      { value: 'saturday', label: 'Sam' },
+      { value: 'sunday', label: 'Dim' }
+    ];
+
+    const content = `
+      <form>
+        ${isEdit ? `<input type="hidden" name="task_id" value="${task.id}">` : ''}
+
+        <ha-textfield
+          label="Nom de la tâche *"
+          name="title"
+          required
+          value="${isEdit ? task.title || task.name : ''}"
+          placeholder="Ex: Ranger sa chambre">
+        </ha-textfield>
+
+        <ha-textarea
+          label="Description"
+          name="description"
+          value="${isEdit ? task.description || '' : ''}"
+          placeholder="Détails de la tâche..."
+          rows="3">
+        </ha-textarea>
+
+        <ha-select
+          label="Catégorie *"
+          name="category"
+          required
+          value="${isEdit ? task.category : 'chores'}">
+          ${categories.map(cat => `
+            <ha-list-item value="${cat.value}">${cat.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <ha-select
+          label="Fréquence *"
+          name="frequency"
+          required
+          value="${isEdit ? task.frequency : 'daily'}">
+          ${frequencies.map(freq => `
+            <ha-list-item value="${freq.value}">${freq.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <div class="selection-row">
+          <div class="children-column">
+            <div class="children-section">
+              <label class="form-label">Enfants assignés *</label>
+              <div class="children-grid">
+                ${children.map(child => {
+                  const childId = child.child_id || child.id;
+                  const assignedIds = task ? (task.assigned_to || task.assigned_child_ids || task.assigned_children || []) : [];
+                  const isAssigned = Array.isArray(assignedIds) ? assignedIds.includes(childId) : assignedIds === childId;
+                  return `
+                    <ha-formfield label="${child.name}">
+                      <ha-checkbox
+                        name="assigned_children"
+                        value="${childId}"
+                        ${isEdit && isAssigned ? 'checked' : ''}>
+                      </ha-checkbox>
+                    </ha-formfield>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="days-column">
+            <div class="weekly-days-section" id="weekly-days" style="display: ${isEdit && task.frequency === 'weekly' ? 'block' : 'none'};">
+              <label class="form-label">Jours de la semaine</label>
+              <div class="days-grid">
+                ${weekDays.map(day => `
+                  <ha-formfield label="${day.label}">
+                    <ha-checkbox
+                      name="weekly_days"
+                      value="${day.value}"
+                      ${isEdit && (task.weekly_days || []).includes(day.value) ? 'checked' : ''}>
+                    </ha-checkbox>
+                  </ha-formfield>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <ha-textfield
+            label="Difficulté (1=Facile, 3=Difficile)"
+            name="difficulty"
+            type="number"
+            value="${isEdit ? task.difficulty || 1 : 1}"
+            min="1"
+            max="3">
+          </ha-textfield>
+
+          <ha-select
+            label="Type de tâche"
+            name="task_type"
+            required
+            value="${isEdit ? task.task_type || 'mandatory' : 'mandatory'}">
+            <ha-list-item value="mandatory">Obligatoire</ha-list-item>
+            <ha-list-item value="bonus">Bonus</ha-list-item>
+          </ha-select>
+        </div>
+
+        <ha-formfield label="Tâche active">
+          <ha-checkbox
+            name="is_active"
+            ${isEdit ? (task.is_active !== false && task.active !== false ? 'checked' : '') : 'checked'}>
+          </ha-checkbox>
+        </ha-formfield>
+
+        <div class="dialog-actions">
+          <ha-button type="button" class="btn btn-secondary btn-cancel">
+            Annuler
+          </ha-button>
+          <ha-button type="button" class="btn btn-primary btn-submit">
+            ${isEdit ? 'Modifier' : 'Créer'}
+          </ha-button>
+        </div>
+      </form>
+    `;
+
+    const dialog = this.showModal(content, isEdit ? 'Modifier la tâche' : 'Ajouter une tâche');
+
+    // Wire up buttons and set checkbox states
+    setTimeout(() => {
+      const btnCancel = dialog.querySelector('.btn-cancel');
+      const btnSubmit = dialog.querySelector('.btn-submit');
+      
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => dialog.close());
+      }
+      
+      if (btnSubmit) {
+        btnSubmit.addEventListener('click', () => this.submitTaskForm(isEdit));
+      }
+      
+      // Manually set checkbox states for editing and add change listeners
+      if (isEdit && task) {
+        const assignedIds = task.assigned_to || task.assigned_child_ids || task.assigned_children || [];
+        const assignedArray = Array.isArray(assignedIds) ? assignedIds : [assignedIds];
+        
+        dialog.querySelectorAll('ha-checkbox[name="assigned_children"]').forEach(checkbox => {
+          const childId = checkbox.value;
+          const shouldBeChecked = assignedArray.includes(childId);
+          checkbox.checked = shouldBeChecked;
+          
+          // Listen for changes
+          checkbox.addEventListener('change', (e) => {
+            console.log('Checkbox changed:', childId, 'checked:', e.target.checked);
+          });
+        });
+      } else {
+        // Add listeners for creation too
+        dialog.querySelectorAll('ha-checkbox[name="assigned_children"]').forEach(checkbox => {
+          checkbox.addEventListener('change', (e) => {
+            console.log('Checkbox changed:', checkbox.value, 'checked:', e.target.checked);
+          });
+        });
+      }
+    }, 100);
+
+    // Show/hide weekly days based on frequency
+    setTimeout(() => {
+      const frequencySelect = dialog.querySelector('ha-select[name="frequency"]');
+      const weeklyDaysSection = dialog.querySelector('#weekly-days');
+
+      if (frequencySelect && weeklyDaysSection) {
+        const updateWeeklyDays = (freq) => {
+          weeklyDaysSection.style.display = freq === 'weekly' ? 'block' : 'none';
+        };
+
+        frequencySelect.addEventListener('selected', (e) => {
+          updateWeeklyDays(e.detail.value || e.target.value);
+        });
+
+        frequencySelect.addEventListener('change', (e) => {
+          updateWeeklyDays(e.target.value);
+        });
+      }
+    }, 100);
+  }
+
+  async submitTaskForm(isEdit = false) {
+    const dialog = document.querySelector('ha-dialog');
+    if (!dialog) return;
+
+    const form = dialog.querySelector('form');
+    if (!form) return;
+
+    // Get form values
+    const title = form.querySelector('[name="title"]').value;
+    const description = form.querySelector('[name="description"]')?.value || '';
+    const category = form.querySelector('[name="category"]').value;
+    const frequency = form.querySelector('[name="frequency"]').value;
+    const difficulty = parseInt(form.querySelector('[name="difficulty"]').value) || 1;
+    const task_type = form.querySelector('[name="task_type"]').value;
+    const is_active = form.querySelector('[name="is_active"]').checked;
+
+    // Get assigned children - ha-checkbox doesn't work with :checked selector
+    const allCheckboxes = form.querySelectorAll('ha-checkbox[name="assigned_children"]');
+    console.log('Reading checkbox states on submit:');
+    const assignedChildren = Array.from(allCheckboxes)
+      .filter(cb => {
+        console.log('  -', cb.value, 'checked:', cb.checked);
+        return cb.checked;
+      })
+      .map(cb => cb.value);
+    console.log('Final assigned children:', assignedChildren);
+
+    if (assignedChildren.length === 0) {
+      alert('Veuillez sélectionner au moins un enfant');
+      return;
+    }
+
+    // Get weekly days if applicable
+    const weeklyDays = frequency === 'weekly'
+      ? Array.from(form.querySelectorAll('[name="weekly_days"]:checked')).map(cb => cb.value)
+      : null;
+
+    const serviceData = {
+      title,
+      description,
+      assigned_to: assignedChildren[0], // Backend expects single child ID for now
+      difficulty,
+      task_type
+    };
+
+    // Add optional fields only if editing
+    if (isEdit) {
+      serviceData.is_active = is_active;
+    }
+
+    try {
+      if (isEdit) {
+        const taskId = form.querySelector('[name="task_id"]').value;
+        serviceData.task_id = taskId;
+        await this.callService(SERVICE_DOMAIN, 'update_task', serviceData);
+      } else {
+        await this.callService(SERVICE_DOMAIN, 'create_task', serviceData);
+      }
+    } catch (error) {
+      console.error('Error calling service:', error);
+      alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+      return;
+    }
+
+    dialog.close();
   }
 
   async handleAddReward() {
-    console.info('Add reward requested');
-    // TODO: Implement reward creation dialog/service call
+    await this.showRewardForm();
   }
 
   async handleEditReward(rewardId) {
-    console.info('Edit reward:', rewardId);
-    // TODO: Implement reward edit dialog/service call
+    await this.showRewardForm(rewardId);
+  }
+
+  async showRewardForm(editRewardId = null) {
+    const rewards = await this.getRewards();
+    const reward = editRewardId ? rewards.find(r => r.id === editRewardId) : null;
+    const isEdit = !!reward;
+
+    const categories = [
+      { value: 'toy', label: '🧸 Jouet' },
+      { value: 'activity', label: '🎮 Activité' },
+      { value: 'treat', label: '🍭 Friandise' },
+      { value: 'privilege', label: '⭐ Privilège' },
+      { value: 'outing', label: '🎟️ Sortie' },
+      { value: 'screen_time', label: "📺 Temps d'écran" },
+      { value: 'cosmetic', label: '🎨 Cosmétique' },
+      { value: 'other', label: '🎁 Autre' }
+    ];
+
+    const content = `
+      <form>
+        ${isEdit ? `<input type="hidden" name="reward_id" value="${reward.id}">` : ''}
+
+        <ha-textfield
+          label="Nom de la récompense *"
+          name="name"
+          required
+          value="${isEdit ? reward.name : ''}"
+          placeholder="Ex: 30 min de jeu vidéo">
+        </ha-textfield>
+
+        <ha-textarea
+          label="Description"
+          name="description"
+          value="${isEdit ? reward.description || '' : ''}"
+          placeholder="Détails de la récompense..."
+          rows="3">
+        </ha-textarea>
+
+        <ha-select
+          label="Catégorie *"
+          name="category"
+          required
+          value="${isEdit ? reward.category : 'other'}">
+          ${categories.map(cat => `
+            <ha-list-item value="${cat.value}">${cat.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <div class="form-row">
+          <ha-textfield
+            label="Coût en points 🎫"
+            name="cost"
+            type="number"
+            value="${isEdit ? reward.cost || 0 : 100}"
+            min="0"
+            max="10000">
+          </ha-textfield>
+
+          <ha-textfield
+            label="Coût en pièces 🪙"
+            name="coin_cost"
+            type="number"
+            value="${isEdit ? reward.coin_cost || 0 : 0}"
+            min="0"
+            max="10000">
+          </ha-textfield>
+        </div>
+
+        <ha-textfield
+          label="Niveau minimum requis"
+          name="min_level"
+          type="number"
+          value="${isEdit ? reward.min_level || 1 : 1}"
+          min="1"
+          max="99">
+        </ha-textfield>
+
+        <ha-textfield
+          label="Quantité disponible (laisser vide pour illimité)"
+          name="remaining_quantity"
+          type="number"
+          value="${isEdit && reward.remaining_quantity !== null ? reward.remaining_quantity : ''}"
+          min="0"
+          placeholder="Illimité">
+        </ha-textfield>
+
+        <ha-formfield label="Récompense active">
+          <ha-checkbox
+            name="active"
+            ${isEdit ? (reward.active !== false ? 'checked' : '') : 'checked'}>
+          </ha-checkbox>
+        </ha-formfield>
+
+        <div class="dialog-actions">
+          <ha-button type="button" class="btn btn-secondary btn-cancel">
+            Annuler
+          </ha-button>
+          <ha-button type="button" class="btn btn-primary btn-submit">
+            ${isEdit ? 'Modifier' : 'Créer'}
+          </ha-button>
+        </div>
+      </form>
+    `;
+
+    const dialog = this.showModal(content, isEdit ? 'Modifier la récompense' : 'Ajouter une récompense');
+
+    // Wire up buttons
+    setTimeout(() => {
+      const btnCancel = dialog.querySelector('.btn-cancel');
+      const btnSubmit = dialog.querySelector('.btn-submit');
+      
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => dialog.close());
+      }
+      
+      if (btnSubmit) {
+        btnSubmit.addEventListener('click', () => this.submitRewardForm(isEdit));
+      }
+    }, 100);
+  }
+
+  async submitRewardForm(isEdit = false) {
+    const dialog = document.querySelector('ha-dialog');
+    if (!dialog) return;
+
+    const form = dialog.querySelector('form');
+    if (!form) return;
+
+    // Get form values
+    const title = form.querySelector('[name="name"]').value;
+    const description = form.querySelector('[name="description"]')?.value || '';
+    const cost_points = parseInt(form.querySelector('[name="cost"]').value) || 0;
+    const stock_value = form.querySelector('[name="remaining_quantity"]').value;
+    const stock = stock_value ? parseInt(stock_value) : null;
+
+    const serviceData = {
+      title,
+      description,
+      cost_points
+    };
+
+    if (stock !== null) {
+      serviceData.stock = stock;
+    }
+
+    try {
+      if (isEdit) {
+        const rewardId = form.querySelector('[name="reward_id"]').value;
+        serviceData.reward_id = rewardId;
+        await this.callService(SERVICE_DOMAIN, 'update_reward', serviceData);
+      } else {
+        await this.callService(SERVICE_DOMAIN, 'create_reward', serviceData);
+      }
+    } catch (error) {
+      console.error('Error calling service:', error);
+      alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+      return;
+    }
+
+    dialog.close();
+  }
+
+  async handleAddCosmetic() {
+    await this.showCosmeticForm();
+  }
+
+  async handleEditCosmetic(cosmeticId) {
+    await this.showCosmeticForm(cosmeticId);
+  }
+
+  async showCosmeticForm(editCosmeticId = null) {
+    const cosmetics = await this.getCosmetics();
+    const cosmetic = editCosmeticId ? cosmetics.find(c => c.id === editCosmeticId) : null;
+    const isEdit = !!cosmetic;
+
+    const categories = [
+      { value: 'clothes', label: '👕 Vêtements' },
+      { value: 'accessory', label: '🎭 Accessoires' },
+      { value: 'pet', label: '🐾 Animaux' },
+      { value: 'theme', label: '🎨 Thèmes' },
+      { value: 'badge', label: '🏆 Badges' },
+      { value: 'animation', label: '✨ Animations' }
+    ];
+
+    const rarities = [
+      { value: 'common', label: 'Commun' },
+      { value: 'rare', label: 'Rare' },
+      { value: 'epic', label: 'Épique' },
+      { value: 'legendary', label: 'Légendaire' }
+    ];
+
+    const content = `
+      <form>
+        ${isEdit ? `<input type="hidden" name="cosmetic_id" value="${cosmetic.id}">` : ''}
+
+        <ha-textfield
+          label="Nom du cosmétique *"
+          name="name"
+          required
+          value="${isEdit ? cosmetic.name : ''}"
+          placeholder="Ex: T-shirt pirate">
+        </ha-textfield>
+
+        <ha-textarea
+          label="Description"
+          name="description"
+          value="${isEdit ? cosmetic.description || '' : ''}"
+          placeholder="Description du cosmétique..."
+          rows="3">
+        </ha-textarea>
+
+        <ha-select
+          label="Catégorie *"
+          name="category"
+          required
+          value="${isEdit ? cosmetic.category : 'clothes'}">
+          ${categories.map(cat => `
+            <ha-list-item value="${cat.value}">${cat.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <ha-textfield
+          label="Sous-catégorie"
+          name="subcategory"
+          value="${isEdit ? cosmetic.subcategory || '' : ''}"
+          placeholder="Ex: shirt, hat, dog...">
+        </ha-textfield>
+
+        <ha-select
+          label="Rareté *"
+          name="rarity"
+          required
+          value="${isEdit ? cosmetic.rarity : 'common'}">
+          ${rarities.map(r => `
+            <ha-list-item value="${r.value}">${r.label}</ha-list-item>
+          `).join('')}
+        </ha-select>
+
+        <ha-textfield
+          label="Coût en pièces 🪙"
+          name="cost_coins"
+          type="number"
+          value="${isEdit ? cosmetic.cost_coins || 50 : 50}"
+          min="0"
+          max="10000">
+        </ha-textfield>
+
+        <ha-textfield
+          label="URL de l'image (512x512px)"
+          name="preview_image"
+          value="${isEdit ? cosmetic.preview_image || '' : ''}"
+          placeholder="/local/cosmetics/item.png">
+        </ha-textfield>
+
+        <ha-textfield
+          label="Niveau minimum requis"
+          name="level"
+          type="number"
+          value="${isEdit && cosmetic.unlock_requirements?.level ? cosmetic.unlock_requirements.level : ''}"
+          min="1"
+          max="99"
+          placeholder="Aucun niveau requis">
+        </ha-textfield>
+
+        <ha-formfield label="Cosmétique actif">
+          <ha-checkbox
+            name="active"
+            ${isEdit ? (cosmetic.active !== false ? 'checked' : '') : 'checked'}>
+          </ha-checkbox>
+        </ha-formfield>
+
+        <div class="dialog-actions">
+          <ha-button type="button" class="btn btn-secondary btn-cancel">
+            Annuler
+          </ha-button>
+          <ha-button type="button" class="btn btn-primary btn-submit">
+            ${isEdit ? 'Modifier' : 'Créer'}
+          </ha-button>
+        </div>
+      </form>
+    `;
+
+    const dialog = this.showModal(content, isEdit ? 'Modifier le cosmétique' : 'Ajouter un cosmétique');
+
+    // Wire up buttons
+    setTimeout(() => {
+      const btnCancel = dialog.querySelector('.btn-cancel');
+      const btnSubmit = dialog.querySelector('.btn-submit');
+      
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => dialog.close());
+      }
+      
+      if (btnSubmit) {
+        btnSubmit.addEventListener('click', () => this.submitCosmeticForm(isEdit));
+      }
+    }, 100);
+  }
+
+  async submitCosmeticForm(isEdit = false) {
+    const dialog = document.querySelector('ha-dialog');
+    if (!dialog) return;
+
+    const form = dialog.querySelector('form');
+    if (!form) return;
+
+    // Get form values
+    const name = form.querySelector('[name="name"]').value;
+    const description = form.querySelector('[name="description"]')?.value || '';
+    const category = form.querySelector('[name="category"]').value;
+    const subcategory = form.querySelector('[name="subcategory"]')?.value || '';
+    const rarity = form.querySelector('[name="rarity"]').value;
+    const cost_coins = parseInt(form.querySelector('[name="cost_coins"]').value) || 50;
+    const preview_image = form.querySelector('[name="preview_image"]')?.value || '';
+    const level_value = form.querySelector('[name="level"]').value;
+    const level = level_value ? parseInt(level_value) : null;
+    const active = form.querySelector('[name="active"]').checked;
+
+    const serviceData = {
+      name,
+      description,
+      category,
+      subcategory,
+      rarity,
+      cost_coins,
+      active
+    };
+
+    if (preview_image) {
+      serviceData.preview_image = preview_image;
+    }
+
+    if (level) {
+      serviceData.unlock_requirements = { level };
+    }
+
+    try {
+      if (isEdit) {
+        const cosmeticId = form.querySelector('[name="cosmetic_id"]').value;
+        serviceData.cosmetic_id = cosmeticId;
+        await this.callService(SERVICE_DOMAIN, 'update_cosmetic', serviceData);
+      } else {
+        await this.callService(SERVICE_DOMAIN, 'create_cosmetic', serviceData);
+      }
+    } catch (error) {
+      console.error('Error calling service:', error);
+      alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+      return;
+    }
+
+    dialog.close();
   }
 
   async showChildForm(editChildId = null) {
@@ -514,10 +1202,10 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
         `}
 
         <div class="dialog-actions">
-          <ha-button type="button" class="btn btn-secondary" onclick="this.closest('ha-dialog').close()">
+          <ha-button type="button" class="btn btn-secondary btn-cancel">
             Annuler
           </ha-button>
-          <ha-button type="button" class="btn btn-primary" onclick="this.closest('ha-dialog')._cardInstance.submitChildForm(${isEdit})">
+          <ha-button type="button" class="btn btn-primary btn-submit">
             ${isEdit ? 'Modifier' : 'Créer'}
           </ha-button>
         </div>
@@ -525,6 +1213,20 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
     `;
 
     const dialog = this.showModal(content, isEdit ? 'Modifier l\'enfant' : 'Ajouter un enfant');
+
+    // Wire up buttons
+    setTimeout(() => {
+      const btnCancel = dialog.querySelector('.btn-cancel');
+      const btnSubmit = dialog.querySelector('.btn-submit');
+      
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => dialog.close());
+      }
+      
+      if (btnSubmit) {
+        btnSubmit.addEventListener('click', () => this.submitChildForm(isEdit));
+      }
+    }, 100);
 
     // Configuration des interactions avatar
     setTimeout(() => {
@@ -597,12 +1299,12 @@ class KidsTasksManagerCard extends KidsTasksBaseCard {
   async callService(domain, service, serviceData = {}) {
     try {
       await this._hass.callService(domain, service, serviceData);
-      this.showNotification(`Action "${service}" exécutée avec succès`, 'success');
-      setTimeout(() => { this.render(); }, 1000);
+      this._clearCache();
+      await this.smartRender(true);
       return true;
     } catch (error) {
-      this.showNotification(`Erreur: ${error.message}`, 'error');
-      return false;
+      console.error(`Error calling service ${service}:`, error);
+      throw error;
     }
   }
 

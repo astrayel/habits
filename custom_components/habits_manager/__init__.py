@@ -107,17 +107,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     # Charger les enfants existants et créer leurs entités
     children = await child_mgr.get_all_children()
-    _LOGGER.info(f"Loaded {len(children)} children from storage")
-
     for child in children:
-        _LOGGER.debug(f"Creating entities for child: {child.name} ({child.id})")
         await entity_mgr.create_child_entities(child)
 
-    # Vérifier que children_entities est bien créé
-    if "children_entities" in hass.data[DOMAIN]:
-        _LOGGER.info(f"children_entities prepared for {len(hass.data[DOMAIN]['children_entities'])} children")
-    else:
-        _LOGGER.warning("children_entities not created in hass.data!")
+    _LOGGER.info(f"Loaded {len(children)} children")
 
     # Générer les task instances pour aujourd'hui
     today = date.today()
@@ -129,8 +122,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # Enregistrer le chemin statique pour les cartes Lovelace
     await register_frontend_resources(hass)
 
-    # Charger la plateforme sensor (attendre qu'elle soit prête)
-    await discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
+    # Charger la plateforme sensor
+    hass.async_create_task(
+        discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
+    )
 
     _LOGGER.info("Habits Manager integration setup complete")
     _LOGGER.info(f"Registered {len(hass.services.async_services().get(DOMAIN, {}))} services for {DOMAIN}")
