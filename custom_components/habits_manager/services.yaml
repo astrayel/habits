@@ -481,8 +481,8 @@ delete_habit:
       selector:
         text:
 
-complete_habit:
-  name: Compléter une habitude
+mark_habit_completed:
+  name: Marquer une habitude comme complétée
   description: Enregistre la complétion d'une habitude pour aujourd'hui et calcule les récompenses avec bonus de streak
   fields:
     habit_id:
@@ -499,6 +499,48 @@ complete_habit:
       example: "child_123abc"
       selector:
         text:
+    completion_date:
+      name: Date de complétion
+      description: Date de complétion (défaut: aujourd'hui, format ISO 8601)
+      required: false
+      example: "2025-11-27"
+      selector:
+        text:
+
+reset_streak:
+  name: Réinitialiser le streak
+  description: Réinitialise le streak d'une habitude à zéro
+  fields:
+    habit_id:
+      name: ID habitude
+      description: Identifiant de l'habitude
+      required: true
+      example: "habit_xyz456"
+      selector:
+        text:
+
+get_habit_history:
+  name: Historique d'une habitude
+  description: Récupère l'historique des complétions d'une habitude
+  fields:
+    habit_id:
+      name: ID habitude
+      description: Identifiant de l'habitude
+      required: true
+      example: "habit_xyz456"
+      selector:
+        text:
+    limit:
+      name: Limite
+      description: Nombre maximum d'entrées à retourner
+      required: false
+      default: 30
+      example: 50
+      selector:
+        number:
+          min: 1
+          max: 365
+          mode: box
 
 # ========================================================================
 # SERVICES PHASE 2 - VALIDATION
@@ -666,6 +708,322 @@ approve_claim:
       selector:
         text:
 
+refuse_claim:
+  name: Refuser une réclamation
+  description: Refuse une réclamation de récompense et rembourse les points à l'enfant
+  fields:
+    claim_id:
+      name: ID réclamation
+      description: Identifiant de la réclamation à refuser
+      required: true
+      example: "claim_xyz789"
+      selector:
+        text:
+    reason:
+      name: Raison
+      description: Raison du refus (optionnel)
+      required: false
+      example: "Comportement inapproprié"
+      selector:
+        text:
+
+update_reward:
+  name: Mettre à jour une récompense
+  description: Modifie les propriétés d'une récompense existante
+  fields:
+    reward_id:
+      name: ID récompense
+      description: Identifiant de la récompense à mettre à jour
+      required: true
+      example: "reward_abc123"
+      selector:
+        text:
+    title:
+      name: Titre
+      description: Nouveau titre (optionnel)
+      required: false
+      example: "Sortie au cinéma - MAJ"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Nouvelle description (optionnel)
+      required: false
+      selector:
+        text:
+    cost_points:
+      name: Coût en points
+      description: Nouveau coût en points (optionnel)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    cost_coins:
+      name: Coût en pièces
+      description: Nouveau coût en pièces (optionnel)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 1000
+          mode: box
+    image_url:
+      name: URL image
+      description: Nouvelle URL de l'image (optionnel)
+      required: false
+      selector:
+        text:
+    active:
+      name: Active
+      description: Activer ou désactiver la récompense (optionnel)
+      required: false
+      selector:
+        boolean:
+
+delete_reward:
+  name: Supprimer une récompense
+  description: Supprime définitivement une récompense
+  fields:
+    reward_id:
+      name: ID récompense
+      description: Identifiant de la récompense à supprimer
+      required: true
+      example: "reward_abc123"
+      selector:
+        text:
+
+consume_claim:
+  name: Consommer une réclamation
+  description: Marque une réclamation approuvée comme consommée/utilisée
+  fields:
+    claim_id:
+      name: ID réclamation
+      description: Identifiant de la réclamation à consommer
+      required: true
+      example: "claim_xyz789"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES LISTING - INSTANCES ET CLAIMS
+# ========================================================================
+
+list_task_instances:
+  name: Lister les instances de tâches
+  description: Récupère la liste des instances de tâches avec filtres optionnels
+  fields:
+    child_id:
+      name: ID enfant
+      description: Filtrer par enfant (optionnel)
+      required: false
+      example: "child_abc123"
+      selector:
+        text:
+    task_id:
+      name: ID tâche
+      description: Filtrer par tâche (optionnel)
+      required: false
+      example: "task_def456"
+      selector:
+        text:
+    status:
+      name: Statut
+      description: Filtrer par statut (PENDING, COMPLETED_WAITING, VALIDATED, REFUSED)
+      required: false
+      example: "PENDING"
+      selector:
+        select:
+          options:
+            - "pending"
+            - "completed_waiting"
+            - "validated"
+            - "refused"
+            - "cancelled"
+    date_from:
+      name: Date de début
+      description: Date de début (format ISO 8601)
+      required: false
+      example: "2025-11-27"
+      selector:
+        text:
+    date_to:
+      name: Date de fin
+      description: Date de fin (format ISO 8601)
+      required: false
+      example: "2025-11-30"
+      selector:
+        text:
+    limit:
+      name: Limite
+      description: Nombre maximum de résultats
+      required: false
+      example: 50
+      selector:
+        number:
+          min: 1
+          max: 200
+
+list_claims:
+  name: Lister les réclamations
+  description: Récupère la liste des réclamations de récompenses avec filtres optionnels
+  fields:
+    child_id:
+      name: ID enfant
+      description: Filtrer par enfant (optionnel)
+      required: false
+      example: "child_abc123"
+      selector:
+        text:
+    status:
+      name: Statut
+      description: Filtrer par statut (PENDING, APPROVED, REFUSED, CONSUMED)
+      required: false
+      example: "PENDING"
+      selector:
+        select:
+          options:
+            - "pending"
+            - "approved"
+            - "refused"
+            - "consumed"
+    date_from:
+      name: Date de début
+      description: Date de début (format ISO 8601)
+      required: false
+      example: "2025-11-27"
+      selector:
+        text:
+    date_to:
+      name: Date de fin
+      description: Date de fin (format ISO 8601)
+      required: false
+      example: "2025-11-30"
+      selector:
+        text:
+
+get_task_instance:
+  name: Récupérer une instance de tâche
+  description: Récupère les détails d'une instance de tâche spécifique
+  fields:
+    instance_id:
+      name: ID instance
+      description: Identifiant de l'instance de tâche
+      required: true
+      example: "instance_xyz789"
+      selector:
+        text:
+
+cancel_task_instance:
+  name: Annuler une instance
+  description: Annule une instance de tâche planifiée
+  fields:
+    instance_id:
+      name: ID instance
+      description: Identifiant de l'instance à annuler
+      required: true
+      example: "instance_xyz789"
+      selector:
+        text:
+    reason:
+      name: Raison
+      description: Raison de l'annulation (optionnel)
+      required: false
+      example: "Tâche non applicable cette semaine"
+      selector:
+        text:
+
+reschedule_task_instance:
+  name: Replanifier une instance
+  description: Replanifie une instance de tâche à une nouvelle date
+  fields:
+    instance_id:
+      name: ID instance
+      description: Identifiant de l'instance à replanifier
+      required: true
+      example: "instance_xyz789"
+      selector:
+        text:
+    new_date:
+      name: Nouvelle date
+      description: Nouvelle date de planification (format ISO 8601)
+      required: true
+      example: "2025-12-05"
+      selector:
+        text:
+
+get_child_stats:
+  name: Statistiques d'un enfant
+  description: Récupère les statistiques globales d'un enfant (tâches, habitudes, récompenses, points)
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_abc123"
+      selector:
+        text:
+    period:
+      name: Période
+      description: Période d'analyse (week, month, all_time)
+      required: false
+      default: "all_time"
+      example: "week"
+      selector:
+        select:
+          options:
+            - "week"
+            - "month"
+            - "all_time"
+
+get_weekly_report:
+  name: Rapport hebdomadaire
+  description: Génère un rapport hebdomadaire détaillé pour un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_abc123"
+      selector:
+        text:
+    weeks_ago:
+      name: Semaines en arrière
+      description: Nombre de semaines en arrière (0 = semaine actuelle)
+      required: false
+      default: 0
+      example: 1
+      selector:
+        number:
+          min: 0
+          max: 52
+          mode: box
+
+compare_children:
+  name: Comparer les enfants
+  description: Compare les performances de plusieurs enfants sur une période donnée
+  fields:
+    child_ids:
+      name: IDs des enfants
+      description: Liste des identifiants d'enfants à comparer (minimum 2)
+      required: true
+      example: '["child_abc123", "child_def456"]'
+      selector:
+        object:
+    period:
+      name: Période
+      description: Période de comparaison (week, month, all_time)
+      required: false
+      default: "all_time"
+      example: "week"
+      selector:
+        select:
+          options:
+            - "week"
+            - "month"
+            - "all_time"
+
 # ========================================================================
 # SERVICES PHASE 2 - COSMÉTIQUES
 # ========================================================================
@@ -768,6 +1126,132 @@ purchase_cosmetic:
       description: Identifiant de l'enfant qui achète
       required: true
       example: "child_123abc"
+      selector:
+        text:
+
+update_cosmetic:
+  name: Mettre à jour un cosmétique
+  description: Modifie les propriétés d'un cosmétique existant
+  fields:
+    cosmetic_id:
+      name: ID cosmétique
+      description: Identifiant du cosmétique à mettre à jour
+      required: true
+      example: "cosmetic_clothes_001"
+      selector:
+        text:
+    name:
+      name: Nom
+      description: Nouveau nom (optionnel)
+      required: false
+      example: "T-shirt pirate - MAJ"
+      selector:
+        text:
+    description:
+      name: Description
+      description: Nouvelle description (optionnel)
+      required: false
+      selector:
+        text:
+    category:
+      name: Catégorie
+      description: Nouvelle catégorie (optionnel)
+      required: false
+      selector:
+        select:
+          options:
+            - "clothes"
+            - "accessory"
+            - "pet"
+            - "theme"
+            - "badge"
+            - "animation"
+    subcategory:
+      name: Sous-catégorie
+      description: Nouvelle sous-catégorie (optionnel)
+      required: false
+      selector:
+        text:
+    rarity:
+      name: Rareté
+      description: Nouvelle rareté (optionnel)
+      required: false
+      selector:
+        select:
+          options:
+            - "common"
+            - "rare"
+            - "epic"
+            - "legendary"
+    cost_coins:
+      name: Coût en pièces
+      description: Nouveau coût (optionnel)
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    image_url:
+      name: URL image
+      description: Nouvelle URL de l'image (optionnel)
+      required: false
+      selector:
+        text:
+    active:
+      name: Active
+      description: Activer ou désactiver (optionnel)
+      required: false
+      selector:
+        boolean:
+
+delete_cosmetic:
+  name: Supprimer un cosmétique
+  description: Supprime définitivement un cosmétique
+  fields:
+    cosmetic_id:
+      name: ID cosmétique
+      description: Identifiant du cosmétique à supprimer
+      required: true
+      example: "cosmetic_clothes_001"
+      selector:
+        text:
+
+equip_cosmetic:
+  name: Équiper un cosmétique
+  description: Équipe un cosmétique possédé sur un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_abc123"
+      selector:
+        text:
+    cosmetic_id:
+      name: ID cosmétique
+      description: Identifiant du cosmétique à équiper
+      required: true
+      example: "cosmetic_clothes_001"
+      selector:
+        text:
+
+unequip_cosmetic:
+  name: Déséquiper un cosmétique
+  description: Retire un cosmétique équipé d'un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_abc123"
+      selector:
+        text:
+    cosmetic_id:
+      name: ID cosmétique
+      description: Identifiant du cosmétique à déséquiper
+      required: true
+      example: "cosmetic_clothes_001"
       selector:
         text:
 
@@ -920,3 +1404,178 @@ list_cosmetics:
       example: true
       selector:
         boolean:
+
+list_owned_cosmetics:
+  name: Lister les cosmétiques possédés
+  description: Retourne la liste des cosmétiques possédés par un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_abc123"
+      selector:
+        text:
+    equipped_only:
+      name: Équipés uniquement
+      description: Ne retourner que les cosmétiques équipés
+      required: false
+      default: false
+      example: true
+      selector:
+        boolean:
+
+# ========================================================================
+# SERVICES PHASE 3 - XP ET NIVEAUX
+# ========================================================================
+
+add_experience:
+  name: Ajouter de l'expérience
+  description: Ajoute manuellement de l'XP à un enfant (peut déclencher un passage de niveau)
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_abc123"
+      selector:
+        text:
+    xp:
+      name: Points d'expérience
+      description: Nombre de points d'XP à ajouter
+      required: true
+      example: 50
+      selector:
+        number:
+          min: 1
+          max: 10000
+          mode: box
+    reason:
+      name: Raison
+      description: Raison de l'ajout d'XP (optionnel)
+      required: false
+      example: "Bonus pour comportement exemplaire"
+      selector:
+        text:
+
+set_level:
+  name: Définir le niveau
+  description: Définit directement le niveau d'un enfant (réinitialise l'XP)
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_abc123"
+      selector:
+        text:
+    level:
+      name: Niveau
+      description: Nouveau niveau à définir
+      required: true
+      example: 5
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    reason:
+      name: Raison
+      description: Raison de la modification de niveau (optionnel)
+      required: false
+      example: "Ajustement administratif"
+      selector:
+        text:
+
+# ========================================================================
+# SERVICES PHASE 3 - CONFIGURATION SYSTÈME
+# ========================================================================
+
+create_category:
+  name: Créer une catégorie
+  description: Crée une catégorie personnalisée pour les tâches, habitudes ou récompenses
+  fields:
+    name:
+      name: Nom
+      description: Nom de la catégorie
+      required: true
+      example: "Sport"
+      selector:
+        text:
+    type:
+      name: Type
+      description: Type de catégorie (task, habit, reward)
+      required: true
+      example: "task"
+      selector:
+        select:
+          options:
+            - "task"
+            - "habit"
+            - "reward"
+    icon:
+      name: Icône
+      description: Emoji ou icône pour la catégorie (optionnel)
+      required: false
+      example: "⚽"
+      selector:
+        text:
+    color:
+      name: Couleur
+      description: Couleur hexadécimale (optionnel)
+      required: false
+      example: "#FF5733"
+      selector:
+        text:
+
+list_categories:
+  name: Lister les catégories
+  description: Retourne toutes les catégories disponibles (built-in et personnalisées)
+  fields:
+    type:
+      name: Type
+      description: Filtrer par type de catégorie (optionnel)
+      required: false
+      example: "task"
+      selector:
+        select:
+          options:
+            - "task"
+            - "habit"
+            - "reward"
+
+update_level_config:
+  name: Configurer un niveau
+  description: Configure les seuils d'XP et messages de déblocage pour un niveau
+  fields:
+    level:
+      name: Niveau
+      description: Numéro du niveau à configurer (2 ou plus)
+      required: true
+      example: 10
+      selector:
+        number:
+          min: 2
+          max: 100
+          mode: box
+    xp_required:
+      name: XP requise
+      description: Points d'expérience requis pour atteindre ce niveau
+      required: true
+      example: 500
+      selector:
+        number:
+          min: 1
+          max: 100000
+          mode: box
+    unlock_message:
+      name: Message de déblocage
+      description: Message affiché lors du passage à ce niveau (optionnel)
+      required: false
+      example: "Félicitations ! Vous avez atteint le niveau Expert !"
+      selector:
+        text:
+
+get_system_config:
+  name: Obtenir la configuration système
+  description: Récupère la configuration complète du système (niveaux, XP, raretés, etc.)

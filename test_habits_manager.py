@@ -158,7 +158,7 @@ class HabitsManagerTester:
         self.run_test("Test 3", "Créer une tâche quotidienne", self.test_03_create_task)
         self.run_test("Test 4", "Vérifier génération d'instance", self.test_04_verify_task_instance)
         self.run_test("Test 5", "Créer une habitude", self.test_05_create_habit)
-        self.run_test("Test 6", "Compléter une habitude", self.test_06_complete_habit)
+        self.run_test("Test 6", "Marquer une habitude comme complétée", self.test_06_mark_habit_completed)
         self.run_test("Test 7", "Marquer tâche complétée", self.test_07_mark_task_completed)
 
         # Phase 2 Tests
@@ -319,8 +319,8 @@ class HabitsManagerTester:
             return True
         return False
 
-    def test_06_complete_habit(self):
-        """Test: Compléter une habitude."""
+    def test_06_mark_habit_completed(self):
+        """Test: Marquer une habitude comme complétée."""
         # Note: Nécessite habit_id et child_id réels
         print(f"  {Colors.YELLOW}⚠ Test manuel requis - IDs nécessaires{Colors.RESET}")
         return True  # Skip pour l'instant

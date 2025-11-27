@@ -25,10 +25,12 @@ from .const import (
     SERVICE_CREATE_HABIT,
     SERVICE_UPDATE_HABIT,
     SERVICE_DELETE_HABIT,
-    SERVICE_COMPLETE_HABIT,
+    SERVICE_MARK_HABIT_COMPLETED,
     SERVICE_CREATE_REWARD,
     SERVICE_CLAIM_REWARD,
     SERVICE_APPROVE_CLAIM,
+    SERVICE_REFUSE_CLAIM,
+    SERVICE_CONSUME_CLAIM,
     SERVICE_CREATE_COSMETIC,
     SERVICE_PURCHASE_COSMETIC,
     SERVICE_LIST_CHILDREN,
@@ -36,6 +38,8 @@ from .const import (
     SERVICE_LIST_HABITS,
     SERVICE_LIST_REWARDS,
     SERVICE_LIST_COSMETICS,
+    SERVICE_LIST_TASK_INSTANCES,
+    SERVICE_LIST_CLAIMS,
     SERVICE_GET_POINTS_HISTORY,
     SERVICE_GET_CHILD_HISTORY,
     SERVICE_BACKUP_DATA,
@@ -485,13 +489,13 @@ async def register_services(hass: HomeAssistant):
             _LOGGER.error(f"Error in delete_habit: {err}")
             raise HomeAssistantError(f"Failed to delete habit: {err}")
 
-    async def handle_complete_habit(call: ServiceCall):
-        """Service: ComplÃ©ter une habitude."""
+    async def handle_mark_habit_completed(call: ServiceCall):
+        """Service: Marquer une habitude comme complétée."""
         try:
             habit_id = call.data["habit_id"]
             child_id = call.data["child_id"]
 
-            # Enregistrer la complÃ©tion
+            # Enregistrer la complétion
             streak, streak_increased = await habit_mgr.record_completion(habit_id, child_id)
 
             # Calculer les rÃ©compenses avec bonus
@@ -549,8 +553,8 @@ async def register_services(hass: HomeAssistant):
             _LOGGER.error(f"Child not found: {err}")
             raise HomeAssistantError(f"Child not found: {err}")
         except Exception as err:
-            _LOGGER.error(f"Error in complete_habit: {err}")
-            raise HomeAssistantError(f"Failed to complete habit: {err}")
+            _LOGGER.error(f"Error in mark_habit_completed: {err}")
+            raise HomeAssistantError(f"Failed to mark habit completed: {err}")
 
     # ========================================================================
     # SERVICES VALIDATION (Phase 2)
@@ -1057,6 +1061,208 @@ async def register_services(hass: HomeAssistant):
             _LOGGER.error(f"Error in list_cosmetics: {err}")
             raise HomeAssistantError(f"Failed to list cosmetics: {err}")
 
+    async def handle_list_task_instances(call: ServiceCall):
+        """Service: Lister les instances de tâches avec filtres.
+
+        Filtres optionnels:
+        - child_id: Filtrer par enfant
+        - task_id: Filtrer par tâche
+        - status: Filtrer par statut
+        - date_from/date_to: Filtrer par période
+        - limit: Limiter le nombre de résultats
+        """
+        try:
+            task_mgr = hass.data[DOMAIN]["task_manager"]
+
+            # Récupérer les paramètres de filtre
+            child_id = call.data.get("child_id")
+            task_id = call.data.get("task_id")
+            status = call.data.get("status")
+            date_from = call.data.get("date_from")
+            date_to = call.data.get("date_to")
+            limit = call.data.get("limit")
+
+            # Récupérer toutes les instances
+            instances = await task_mgr.get_task_instances(
+                child_id=child_id,
+                task_id=task_id
+            )
+
+            # Appliquer les filtres supplémentaires
+            if status:
+                instances = [i for i in instances if i.status.value == status]
+
+            if date_from:
+                from datetime import datetime
+                date_from_dt = datetime.fromisoformat(date_from).date()
+                instances = [i for i in instances if i.scheduled_date >= date_from_dt]
+
+            if date_to:
+                from datetime import datetime
+                date_to_dt = datetime.fromisoformat(date_to).date()
+                instances = [i for i in instances if i.scheduled_date <= date_to_dt]
+
+            # Limiter le nombre de résultats
+            if limit:
+                instances = instances[:limit]
+
+            # Convertir en dictionnaires
+            instances_data = [instance.to_dict() for instance in instances]
+
+            _LOGGER.debug(f"Service call: list_task_instances returned {len(instances_data)} instances")
+
+            return {"instances": instances_data}
+
+        except Exception as err:
+            _LOGGER.error(f"Error in list_task_instances: {err}")
+            raise HomeAssistantError(f"Failed to list task instances: {err}")
+
+    async def handle_list_claims(call: ServiceCall):
+        """Service: Lister les réclamations de récompenses.
+
+        Filtres optionnels:
+        - child_id: Filtrer par enfant
+        - status: Filtrer par statut (PENDING, APPROVED, REFUSED, CONSUMED)
+        - date_from/date_to: Filtrer par période
+        """
+        try:
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            # Récupérer les paramètres de filtre
+            child_id = call.data.get("child_id")
+            status = call.data.get("status")
+            date_from = call.data.get("date_from")
+            date_to = call.data.get("date_to")
+
+            # Récupérer toutes les réclamations
+            claims = await reward_mgr.get_all_claims()
+
+            # Appliquer les filtres
+            if child_id:
+                claims = [c for c in claims if c.child_id == child_id]
+
+            if status:
+                claims = [c for c in claims if c.status.value == status]
+
+            if date_from:
+                from datetime import datetime
+                date_from_dt = datetime.fromisoformat(date_from)
+                claims = [c for c in claims if c.claimed_at >= date_from_dt]
+
+            if date_to:
+                from datetime import datetime
+                date_to_dt = datetime.fromisoformat(date_to)
+                claims = [c for c in claims if c.claimed_at <= date_to_dt]
+
+            # Convertir en dictionnaires
+            claims_data = [claim.to_dict() for claim in claims]
+
+            _LOGGER.debug(f"Service call: list_claims returned {len(claims_data)} claims")
+
+            return {"claims": claims_data}
+
+        except Exception as err:
+            _LOGGER.error(f"Error in list_claims: {err}")
+            raise HomeAssistantError(f"Failed to list claims: {err}")
+
+    async def handle_refuse_claim(call: ServiceCall):
+        """Service: Refuser une réclamation de récompense.
+
+        Paramètres:
+        - claim_id (str): ID de la réclamation
+        - reason (str, optional): Raison du refus
+        """
+        try:
+            claim_id = call.data["claim_id"]
+            reason = call.data.get("reason", "Réclamation refusée")
+
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+
+            # Récupérer la réclamation
+            claim = await reward_mgr.get_claim(claim_id)
+
+            # Vérifier que la réclamation est en attente
+            if claim.status.value != "pending":
+                raise ValidationError(f"Cannot refuse claim with status {claim.status.value}")
+
+            # Récupérer la reward pour connaître le coût
+            reward = await reward_mgr.get_reward(claim.reward_id)
+
+            # Refuser la réclamation
+            claim = await reward_mgr.refuse_claim(claim_id, reason)
+
+            # Rembourser les points à l'enfant
+            await child_mgr.update_points(
+                claim.child_id,
+                points=reward.cost_points,
+                coins=0,
+                xp=0
+            )
+
+            # Créer l'entrée d'historique
+            from .core.models import PointsHistoryEntry, HistoryActionType
+            import uuid
+            history_entry = PointsHistoryEntry(
+                id=f"history_{uuid.uuid4().hex[:8]}",
+                timestamp=datetime.now(),
+                action_type=HistoryActionType.MANUAL_ADJUSTMENT,
+                points_delta=reward.cost_points,
+                coins_delta=0,
+                experience_delta=0,
+                description=f"Remboursement : {reward.title} (réclamation refusée)",
+                related_entity_type="reward",
+                related_entity_id=reward.id,
+                related_entity_name=reward.title,
+            )
+            await child_mgr.add_points_history(claim.child_id, history_entry)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "claim_refused",
+                "claim_id": claim.id,
+                "child_id": claim.child_id,
+                "reward_id": claim.reward_id,
+            })
+
+            _LOGGER.info(f"Service call: Claim refused - {claim_id}")
+
+            return {"claim": claim.to_dict()}
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in refuse_claim: {err}")
+            raise HomeAssistantError(f"Failed to refuse claim: {err}")
+
+    async def handle_get_task_instance(call: ServiceCall):
+        """Service: Récupérer une instance de tâche spécifique.
+
+        Paramètres:
+        - instance_id (str): ID de l'instance
+        """
+        try:
+            instance_id = call.data["instance_id"]
+
+            task_mgr = hass.data[DOMAIN]["task_manager"]
+
+            # Get the instance
+            instance = await task_mgr.get_task_instance(instance_id)
+
+            if not instance:
+                raise ValidationError(f"Task instance {instance_id} not found")
+
+            _LOGGER.debug(f"Service call: get_task_instance returned instance {instance_id}")
+
+            return {"instance": instance.to_dict()}
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in get_task_instance: {err}")
+            raise HomeAssistantError(f"Failed to get task instance: {err}")
 
     async def handle_get_points_history(call: ServiceCall):
         """Service: Récupérer l'historique des points d'un enfant.
@@ -1102,6 +1308,1137 @@ async def register_services(hass: HomeAssistant):
         except Exception as err:
             _LOGGER.error(f"Error in get_points_history: {err}")
             raise HomeAssistantError(f"Failed to get points history: {err}")
+
+    async def handle_get_child_stats(call: ServiceCall):
+        """Service: Récupérer les statistiques globales d'un enfant.
+
+        Paramètres:
+        - child_id (str): ID de l'enfant
+        - period (str, optional): Période d'analyse (week, month, all_time) - défaut: all_time
+        """
+        try:
+            child_id = call.data["child_id"]
+            period = call.data.get("period", "all_time")
+
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+            task_mgr = hass.data[DOMAIN]["task_manager"]
+            habit_mgr = hass.data[DOMAIN]["habit_manager"]
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            # Get the child
+            child = await child_mgr.get_child(child_id)
+
+            # Determine date range based on period
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            date_from = None
+
+            if period == "week":
+                date_from = now - timedelta(days=7)
+            elif period == "month":
+                date_from = now - timedelta(days=30)
+            # all_time: date_from stays None
+
+            # Get task instances
+            instances = await task_mgr.get_task_instances(child_id=child_id)
+            if date_from:
+                instances = [i for i in instances if i.completion_date and i.completion_date >= date_from]
+
+            # Calculate task statistics
+            tasks_completed = len([i for i in instances if i.status.value == "validated"])
+            tasks_pending = len([i for i in instances if i.status.value in ["pending", "completed_waiting"]])
+            tasks_refused = len([i for i in instances if i.status.value == "refused"])
+
+            # Get habits
+            habits = await habit_mgr.get_habits(child_id=child_id)
+            active_habits = len([h for h in habits if h.active])
+
+            # Calculate habit streaks
+            total_streak = sum(h.current_streak for h in habits)
+            max_streak = max([h.current_streak for h in habits], default=0)
+
+            # Get reward claims
+            claims = await reward_mgr.get_all_claims()
+            child_claims = [c for c in claims if c.child_id == child_id]
+            if date_from:
+                child_claims = [c for c in child_claims if c.claimed_at >= date_from]
+
+            rewards_claimed = len([c for c in child_claims if c.status.value in ["approved", "consumed"]])
+            rewards_pending = len([c for c in child_claims if c.status.value == "pending"])
+
+            # Points statistics from history
+            history = child.points_history
+            if date_from:
+                history = [h for h in history if h.timestamp >= date_from]
+
+            points_earned = sum(h.points_delta for h in history if h.points_delta > 0)
+            points_spent = sum(abs(h.points_delta) for h in history if h.points_delta < 0)
+            coins_earned = sum(h.coins_delta for h in history if h.coins_delta > 0)
+            xp_earned = sum(h.experience_delta for h in history if h.experience_delta > 0)
+
+            stats = {
+                "child_id": child_id,
+                "child_name": child.name,
+                "period": period,
+                "current_status": {
+                    "points": child.points,
+                    "coins": child.coins,
+                    "level": child.level,
+                    "xp": child.experience,
+                    "xp_for_next_level": child.xp_for_next_level,
+                },
+                "tasks": {
+                    "completed": tasks_completed,
+                    "pending": tasks_pending,
+                    "refused": tasks_refused,
+                    "total": len(instances),
+                },
+                "habits": {
+                    "active": active_habits,
+                    "total": len(habits),
+                    "total_streak": total_streak,
+                    "max_streak": max_streak,
+                },
+                "rewards": {
+                    "claimed": rewards_claimed,
+                    "pending": rewards_pending,
+                    "total": len(child_claims),
+                },
+                "points_summary": {
+                    "earned": points_earned,
+                    "spent": points_spent,
+                    "net": points_earned - points_spent,
+                },
+                "coins_earned": coins_earned,
+                "xp_earned": xp_earned,
+            }
+
+            _LOGGER.debug(f"Service call: get_child_stats for {child.name} (period: {period})")
+
+            return {"stats": stats}
+
+        except ChildNotFoundError as err:
+            _LOGGER.error(f"Child not found: {err}")
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in get_child_stats: {err}")
+            raise HomeAssistantError(f"Failed to get child stats: {err}")
+
+    async def handle_equip_cosmetic(call: ServiceCall):
+        """Service: Équiper un cosmétique sur un enfant.
+
+        Paramètres:
+        - child_id (str): ID de l'enfant
+        - cosmetic_id (str): ID du cosmétique
+        """
+        try:
+            child_id = call.data["child_id"]
+            cosmetic_id = call.data["cosmetic_id"]
+
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+            cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
+
+            # Vérifier que l'enfant possède ce cosmétique
+            child = await child_mgr.get_child(child_id)
+            if cosmetic_id not in child.owned_cosmetics:
+                raise ValidationError(f"Child {child_id} does not own cosmetic {cosmetic_id}")
+
+            # Équiper le cosmétique
+            await cosmetic_mgr.equip_cosmetic(child_id, cosmetic_id)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "cosmetic_equipped",
+                "child_id": child_id,
+                "cosmetic_id": cosmetic_id,
+            })
+
+            _LOGGER.info(f"Service call: Cosmetic equipped - {cosmetic_id} for {child.name}")
+
+            return {
+                "child_id": child_id,
+                "cosmetic_id": cosmetic_id,
+                "equipped": True
+            }
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except ChildNotFoundError as err:
+            _LOGGER.error(f"Child not found: {err}")
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in equip_cosmetic: {err}")
+            raise HomeAssistantError(f"Failed to equip cosmetic: {err}")
+
+    async def handle_unequip_cosmetic(call: ServiceCall):
+        """Service: Déséquiper un cosmétique d'un enfant.
+
+        Paramètres:
+        - child_id (str): ID de l'enfant
+        - cosmetic_id (str): ID du cosmétique
+        """
+        try:
+            child_id = call.data["child_id"]
+            cosmetic_id = call.data["cosmetic_id"]
+
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+            cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
+
+            # Déséquiper le cosmétique
+            await cosmetic_mgr.unequip_cosmetic(child_id, cosmetic_id)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "cosmetic_unequipped",
+                "child_id": child_id,
+                "cosmetic_id": cosmetic_id,
+            })
+
+            child = await child_mgr.get_child(child_id)
+            _LOGGER.info(f"Service call: Cosmetic unequipped - {cosmetic_id} for {child.name}")
+
+            return {
+                "child_id": child_id,
+                "cosmetic_id": cosmetic_id,
+                "equipped": False
+            }
+
+        except ChildNotFoundError as err:
+            _LOGGER.error(f"Child not found: {err}")
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in unequip_cosmetic: {err}")
+            raise HomeAssistantError(f"Failed to unequip cosmetic: {err}")
+
+    async def handle_get_weekly_report(call: ServiceCall):
+        """Service: Générer un rapport hebdomadaire pour un enfant.
+
+        Paramètres:
+        - child_id (str): ID de l'enfant
+        - weeks_ago (int, optional): Nombre de semaines en arrière (0 = semaine actuelle)
+        """
+        try:
+            child_id = call.data["child_id"]
+            weeks_ago = call.data.get("weeks_ago", 0)
+
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+            task_mgr = hass.data[DOMAIN]["task_manager"]
+            habit_mgr = hass.data[DOMAIN]["habit_manager"]
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            # Get the child
+            child = await child_mgr.get_child(child_id)
+
+            # Calculate date range for the week
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            week_start = now - timedelta(days=now.weekday(), weeks=weeks_ago)
+            week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            week_end = week_start + timedelta(days=7)
+
+            # Get task instances for the week
+            instances = await task_mgr.get_task_instances(child_id=child_id)
+            week_instances = [
+                i for i in instances
+                if i.scheduled_date and week_start.date() <= i.scheduled_date < week_end.date()
+            ]
+
+            tasks_completed = len([i for i in week_instances if i.status.value == "validated"])
+            tasks_refused = len([i for i in week_instances if i.status.value == "refused"])
+            tasks_pending = len([i for i in week_instances if i.status.value in ["pending", "completed_waiting"]])
+
+            # Calculate completion rate
+            total_tasks = len(week_instances)
+            completion_rate = (tasks_completed / total_tasks * 100) if total_tasks > 0 else 0
+
+            # Get habit completions for the week
+            habits = await habit_mgr.get_habits(child_id=child_id)
+            habit_completions = []
+            for habit in habits:
+                # Count completions in the week (this would need habit history)
+                habit_completions.append({
+                    "habit_id": habit.id,
+                    "habit_name": habit.title,
+                    "current_streak": habit.current_streak,
+                    "active": habit.active,
+                })
+
+            # Get points history for the week
+            history = child.points_history
+            week_history = [h for h in history if week_start <= h.timestamp < week_end]
+
+            points_earned = sum(h.points_delta for h in week_history if h.points_delta > 0)
+            points_spent = sum(abs(h.points_delta) for h in week_history if h.points_delta < 0)
+            coins_earned = sum(h.coins_delta for h in week_history if h.coins_delta > 0)
+            xp_earned = sum(h.experience_delta for h in week_history if h.experience_delta > 0)
+
+            # Get reward claims for the week
+            claims = await reward_mgr.get_all_claims()
+            week_claims = [
+                c for c in claims
+                if c.child_id == child_id and week_start <= c.claimed_at < week_end
+            ]
+
+            rewards_claimed = len([c for c in week_claims if c.status.value in ["approved", "consumed"]])
+
+            # Build the report
+            report = {
+                "child_id": child_id,
+                "child_name": child.name,
+                "week_start": week_start.isoformat(),
+                "week_end": week_end.isoformat(),
+                "tasks": {
+                    "total": total_tasks,
+                    "completed": tasks_completed,
+                    "pending": tasks_pending,
+                    "refused": tasks_refused,
+                    "completion_rate": round(completion_rate, 2),
+                },
+                "habits": habit_completions,
+                "points": {
+                    "earned": points_earned,
+                    "spent": points_spent,
+                    "net": points_earned - points_spent,
+                },
+                "coins_earned": coins_earned,
+                "xp_earned": xp_earned,
+                "rewards_claimed": rewards_claimed,
+                "current_status": {
+                    "points": child.points,
+                    "coins": child.coins,
+                    "level": child.level,
+                    "xp": child.experience,
+                },
+            }
+
+            _LOGGER.debug(f"Service call: get_weekly_report for {child.name} (week {weeks_ago} ago)")
+
+            return {"report": report}
+
+        except ChildNotFoundError as err:
+            _LOGGER.error(f"Child not found: {err}")
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in get_weekly_report: {err}")
+            raise HomeAssistantError(f"Failed to get weekly report: {err}")
+
+    async def handle_compare_children(call: ServiceCall):
+        """Service: Comparer les performances de plusieurs enfants.
+
+        Paramètres:
+        - child_ids (list): Liste des IDs d'enfants à comparer
+        - period (str, optional): Période de comparaison (week, month, all_time)
+        """
+        try:
+            child_ids = call.data["child_ids"]
+            period = call.data.get("period", "all_time")
+
+            if not isinstance(child_ids, list) or len(child_ids) < 2:
+                raise ValidationError("At least 2 child IDs are required for comparison")
+
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+            task_mgr = hass.data[DOMAIN]["task_manager"]
+            habit_mgr = hass.data[DOMAIN]["habit_manager"]
+
+            # Determine date range based on period
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            date_from = None
+
+            if period == "week":
+                date_from = now - timedelta(days=7)
+            elif period == "month":
+                date_from = now - timedelta(days=30)
+
+            # Collect stats for each child
+            children_stats = []
+
+            for child_id in child_ids:
+                try:
+                    child = await child_mgr.get_child(child_id)
+
+                    # Get task instances
+                    instances = await task_mgr.get_task_instances(child_id=child_id)
+                    if date_from:
+                        instances = [i for i in instances if i.completion_date and i.completion_date >= date_from]
+
+                    tasks_completed = len([i for i in instances if i.status.value == "validated"])
+                    total_tasks = len(instances)
+                    completion_rate = (tasks_completed / total_tasks * 100) if total_tasks > 0 else 0
+
+                    # Get habits
+                    habits = await habit_mgr.get_habits(child_id=child_id)
+                    total_streak = sum(h.current_streak for h in habits)
+
+                    # Points from history
+                    history = child.points_history
+                    if date_from:
+                        history = [h for h in history if h.timestamp >= date_from]
+
+                    points_earned = sum(h.points_delta for h in history if h.points_delta > 0)
+
+                    children_stats.append({
+                        "child_id": child_id,
+                        "child_name": child.name,
+                        "level": child.level,
+                        "points": child.points,
+                        "coins": child.coins,
+                        "tasks_completed": tasks_completed,
+                        "total_tasks": total_tasks,
+                        "completion_rate": round(completion_rate, 2),
+                        "total_streak": total_streak,
+                        "points_earned": points_earned,
+                    })
+
+                except ChildNotFoundError:
+                    _LOGGER.warning(f"Child {child_id} not found, skipping")
+                    continue
+
+            # Sort by level descending
+            children_stats.sort(key=lambda x: x["level"], reverse=True)
+
+            # Add rankings
+            for idx, stats in enumerate(children_stats):
+                stats["rank"] = idx + 1
+
+            comparison = {
+                "period": period,
+                "children_count": len(children_stats),
+                "children": children_stats,
+            }
+
+            _LOGGER.debug(f"Service call: compare_children ({len(children_stats)} children, period: {period})")
+
+            return {"comparison": comparison}
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in compare_children: {err}")
+            raise HomeAssistantError(f"Failed to compare children: {err}")
+
+    async def handle_consume_claim(call: ServiceCall):
+        """Service: Marquer une réclamation comme consommée.
+
+        Paramètres:
+        - claim_id (str): ID de la réclamation
+        """
+        try:
+            claim_id = call.data["claim_id"]
+
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            # Récupérer la réclamation
+            claim = await reward_mgr.get_claim(claim_id)
+
+            # Vérifier que la réclamation est approuvée
+            if claim.status.value != "approved":
+                raise ValidationError(f"Cannot consume claim with status {claim.status.value}")
+
+            # Marquer comme consommée
+            claim = await reward_mgr.consume_claim(claim_id)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "claim_consumed",
+                "claim_id": claim.id,
+                "child_id": claim.child_id,
+                "reward_id": claim.reward_id,
+            })
+
+            _LOGGER.info(f"Service call: Claim consumed - {claim_id}")
+
+            return {"claim": claim.to_dict()}
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in consume_claim: {err}")
+            raise HomeAssistantError(f"Failed to consume claim: {err}")
+
+    async def handle_update_reward(call: ServiceCall):
+        """Service: Mettre à jour une récompense existante.
+
+        Paramètres:
+        - reward_id (str): ID de la récompense
+        - title, description, cost_points, cost_coins, image_url, active (optionnels)
+        """
+        try:
+            reward_id = call.data["reward_id"]
+
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            # Récupérer les champs à mettre à jour
+            updates = {}
+            if "title" in call.data:
+                updates["title"] = call.data["title"]
+            if "description" in call.data:
+                updates["description"] = call.data["description"]
+            if "cost_points" in call.data:
+                updates["cost_points"] = call.data["cost_points"]
+            if "cost_coins" in call.data:
+                updates["cost_coins"] = call.data["cost_coins"]
+            if "image_url" in call.data:
+                updates["image_url"] = call.data["image_url"]
+            if "active" in call.data:
+                updates["active"] = call.data["active"]
+
+            # Mettre à jour la récompense
+            reward = await reward_mgr.update_reward(reward_id, **updates)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "reward_updated",
+                "reward_id": reward.id,
+            })
+
+            _LOGGER.info(f"Service call: Reward updated - {reward.title}")
+
+            return {"reward": reward.to_dict()}
+
+        except Exception as err:
+            _LOGGER.error(f"Error in update_reward: {err}")
+            raise HomeAssistantError(f"Failed to update reward: {err}")
+
+    async def handle_delete_reward(call: ServiceCall):
+        """Service: Supprimer une récompense.
+
+        Paramètres:
+        - reward_id (str): ID de la récompense
+        """
+        try:
+            reward_id = call.data["reward_id"]
+
+            reward_mgr = hass.data[DOMAIN]["reward_manager"]
+
+            # Supprimer la récompense
+            await reward_mgr.delete_reward(reward_id)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "reward_deleted",
+                "reward_id": reward_id,
+            })
+
+            _LOGGER.info(f"Service call: Reward deleted - {reward_id}")
+
+            return {"reward_id": reward_id, "deleted": True}
+
+        except Exception as err:
+            _LOGGER.error(f"Error in delete_reward: {err}")
+            raise HomeAssistantError(f"Failed to delete reward: {err}")
+
+    async def handle_reset_streak(call: ServiceCall):
+        """Service: Réinitialiser le streak d'une habitude.
+
+        Paramètres:
+        - habit_id (str): ID de l'habitude
+        """
+        try:
+            habit_id = call.data["habit_id"]
+
+            habit_mgr = hass.data[DOMAIN]["habit_manager"]
+
+            # Réinitialiser le streak
+            habit = await habit_mgr.reset_streak(habit_id)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "habit_streak_reset",
+                "habit_id": habit.id,
+            })
+
+            _LOGGER.info(f"Service call: Habit streak reset - {habit.title}")
+
+            return {
+                "habit_id": habit.id,
+                "current_streak": habit.current_streak,
+                "best_streak": habit.best_streak,
+            }
+
+        except Exception as err:
+            _LOGGER.error(f"Error in reset_streak: {err}")
+            raise HomeAssistantError(f"Failed to reset streak: {err}")
+
+    async def handle_get_habit_history(call: ServiceCall):
+        """Service: Récupérer l'historique des complétions d'une habitude.
+
+        Paramètres:
+        - habit_id (str): ID de l'habitude
+        - limit (int, optional): Nombre max d'entrées (défaut 30)
+        """
+        try:
+            habit_id = call.data["habit_id"]
+            limit = call.data.get("limit", 30)
+
+            habit_mgr = hass.data[DOMAIN]["habit_manager"]
+
+            # Récupérer l'historique
+            history = await habit_mgr.get_habit_history(habit_id, limit=limit)
+
+            _LOGGER.debug(f"Service call: get_habit_history returned {len(history)} entries")
+
+            return {"history": history}
+
+        except Exception as err:
+            _LOGGER.error(f"Error in get_habit_history: {err}")
+            raise HomeAssistantError(f"Failed to get habit history: {err}")
+
+    async def handle_list_owned_cosmetics(call: ServiceCall):
+        """Service: Lister les cosmétiques possédés par un enfant.
+
+        Paramètres:
+        - child_id (str): ID de l'enfant
+        - equipped_only (bool, optional): Filtrer uniquement les cosmétiques équipés
+        """
+        try:
+            child_id = call.data["child_id"]
+            equipped_only = call.data.get("equipped_only", False)
+
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+            cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
+
+            # Récupérer l'enfant
+            child = await child_mgr.get_child(child_id)
+
+            # Récupérer tous les cosmétiques
+            all_cosmetics = await cosmetic_mgr.get_all_cosmetics()
+
+            # Filtrer les cosmétiques possédés
+            owned_cosmetics = [
+                c for c in all_cosmetics
+                if c.id in child.owned_cosmetics
+            ]
+
+            # Filtrer par équipés si demandé
+            if equipped_only:
+                owned_cosmetics = [
+                    c for c in owned_cosmetics
+                    if c.id in child.equipped_cosmetics
+                ]
+
+            # Convertir en dictionnaires et ajouter le statut équipé
+            cosmetics_data = []
+            for cosmetic in owned_cosmetics:
+                cosmetic_dict = cosmetic.to_dict()
+                cosmetic_dict["equipped"] = cosmetic.id in child.equipped_cosmetics
+                cosmetics_data.append(cosmetic_dict)
+
+            _LOGGER.debug(f"Service call: list_owned_cosmetics for {child.name} returned {len(cosmetics_data)} cosmetics")
+
+            return {"cosmetics": cosmetics_data}
+
+        except ChildNotFoundError as err:
+            _LOGGER.error(f"Child not found: {err}")
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in list_owned_cosmetics: {err}")
+            raise HomeAssistantError(f"Failed to list owned cosmetics: {err}")
+
+    async def handle_update_cosmetic(call: ServiceCall):
+        """Service: Mettre à jour un cosmétique existant.
+
+        Paramètres:
+        - cosmetic_id (str): ID du cosmétique
+        - name, description, category, subcategory, rarity, cost_coins, image_url, active (optionnels)
+        """
+        try:
+            cosmetic_id = call.data["cosmetic_id"]
+
+            cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
+
+            # Récupérer les champs à mettre à jour
+            updates = {}
+            if "name" in call.data:
+                updates["name"] = call.data["name"]
+            if "description" in call.data:
+                updates["description"] = call.data["description"]
+            if "category" in call.data:
+                updates["category"] = call.data["category"]
+            if "subcategory" in call.data:
+                updates["subcategory"] = call.data["subcategory"]
+            if "rarity" in call.data:
+                updates["rarity"] = call.data["rarity"]
+            if "cost_coins" in call.data:
+                updates["cost_coins"] = call.data["cost_coins"]
+            if "image_url" in call.data:
+                updates["image_url"] = call.data["image_url"]
+            if "active" in call.data:
+                updates["active"] = call.data["active"]
+
+            # Mettre à jour le cosmétique
+            cosmetic = await cosmetic_mgr.update_cosmetic(cosmetic_id, **updates)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "cosmetic_updated",
+                "cosmetic_id": cosmetic.id,
+            })
+
+            _LOGGER.info(f"Service call: Cosmetic updated - {cosmetic.name}")
+
+            return {"cosmetic": cosmetic.to_dict()}
+
+        except Exception as err:
+            _LOGGER.error(f"Error in update_cosmetic: {err}")
+            raise HomeAssistantError(f"Failed to update cosmetic: {err}")
+
+    async def handle_delete_cosmetic(call: ServiceCall):
+        """Service: Supprimer un cosmétique.
+
+        Paramètres:
+        - cosmetic_id (str): ID du cosmétique
+        """
+        try:
+            cosmetic_id = call.data["cosmetic_id"]
+
+            cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
+
+            # Supprimer le cosmétique
+            await cosmetic_mgr.delete_cosmetic(cosmetic_id)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "cosmetic_deleted",
+                "cosmetic_id": cosmetic_id,
+            })
+
+            _LOGGER.info(f"Service call: Cosmetic deleted - {cosmetic_id}")
+
+            return {"cosmetic_id": cosmetic_id, "deleted": True}
+
+        except Exception as err:
+            _LOGGER.error(f"Error in delete_cosmetic: {err}")
+            raise HomeAssistantError(f"Failed to delete cosmetic: {err}")
+
+    async def handle_cancel_task_instance(call: ServiceCall):
+        """Service: Annuler une instance de tâche.
+
+        Paramètres:
+        - instance_id (str): ID de l'instance
+        - reason (str, optional): Raison de l'annulation
+        """
+        try:
+            instance_id = call.data["instance_id"]
+            reason = call.data.get("reason", "Instance annulée")
+
+            task_mgr = hass.data[DOMAIN]["task_manager"]
+
+            # Récupérer l'instance
+            instance = await task_mgr.get_task_instance(instance_id)
+
+            # Vérifier que l'instance peut être annulée
+            if instance.status.value in ["validated", "refused"]:
+                raise ValidationError(f"Cannot cancel instance with status {instance.status.value}")
+
+            # Annuler l'instance
+            instance = await task_mgr.cancel_task_instance(instance_id, reason)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "task_instance_cancelled",
+                "instance_id": instance.id,
+                "task_id": instance.task_id,
+                "child_id": instance.child_id,
+            })
+
+            _LOGGER.info(f"Service call: Task instance cancelled - {instance_id}")
+
+            return {"instance": instance.to_dict()}
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in cancel_task_instance: {err}")
+            raise HomeAssistantError(f"Failed to cancel task instance: {err}")
+
+    async def handle_reschedule_task_instance(call: ServiceCall):
+        """Service: Replanifier une instance de tâche.
+
+        Paramètres:
+        - instance_id (str): ID de l'instance
+        - new_date (str): Nouvelle date (format ISO 8601)
+        """
+        try:
+            instance_id = call.data["instance_id"]
+            new_date_str = call.data["new_date"]
+
+            task_mgr = hass.data[DOMAIN]["task_manager"]
+
+            # Convertir la date
+            from datetime import datetime
+            new_date = datetime.fromisoformat(new_date_str).date()
+
+            # Récupérer l'instance
+            instance = await task_mgr.get_task_instance(instance_id)
+
+            # Vérifier que l'instance peut être replanifiée
+            if instance.status.value in ["validated", "refused", "cancelled"]:
+                raise ValidationError(f"Cannot reschedule instance with status {instance.status.value}")
+
+            # Replanifier l'instance
+            instance = await task_mgr.reschedule_task_instance(instance_id, new_date)
+
+            # Émettre un événement
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "task_instance_rescheduled",
+                "instance_id": instance.id,
+                "task_id": instance.task_id,
+                "child_id": instance.child_id,
+                "new_date": new_date.isoformat(),
+            })
+
+            _LOGGER.info(f"Service call: Task instance rescheduled - {instance_id} to {new_date}")
+
+            return {"instance": instance.to_dict()}
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in reschedule_task_instance: {err}")
+            raise HomeAssistantError(f"Failed to reschedule task instance: {err}")
+
+    async def handle_add_experience(call: ServiceCall):
+        """Service: Ajouter de l'expérience manuellement à un enfant.
+
+        Paramètres:
+        - child_id (str): ID de l'enfant
+        - xp (int): Quantité d'XP à ajouter
+        - reason (str, optional): Raison de l'ajout
+        """
+        try:
+            child_id = call.data["child_id"]
+            xp = call.data["xp"]
+            reason = call.data.get("reason", "Ajout manuel d'expérience")
+
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+
+            # Ajouter l'XP (cela peut faire monter de niveau automatiquement)
+            child = await child_mgr.add_currency_manual(child_id, points=0, coins=0, xp=xp, reason=reason)
+
+            _LOGGER.info(f"Service call: add_experience - {xp} XP for {child.name} (now level {child.level})")
+
+            return {
+                "child_id": child.id,
+                "xp_added": xp,
+                "total_xp": child.experience,
+                "level": child.level,
+                "xp_for_next_level": child.xp_for_next_level,
+            }
+
+        except ChildNotFoundError as err:
+            _LOGGER.error(f"Child not found: {err}")
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in add_experience: {err}")
+            raise HomeAssistantError(f"Failed to add experience: {err}")
+
+    async def handle_set_level(call: ServiceCall):
+        """Service: Définir directement le niveau d'un enfant.
+
+        Paramètres:
+        - child_id (str): ID de l'enfant
+        - level (int): Nouveau niveau
+        - reason (str, optional): Raison du changement
+        """
+        try:
+            child_id = call.data["child_id"]
+            new_level = call.data["level"]
+            reason = call.data.get("reason", "Ajustement manuel du niveau")
+
+            child_mgr = hass.data[DOMAIN]["child_manager"]
+
+            # Récupérer l'enfant
+            child = await child_mgr.get_child(child_id)
+
+            # Définir le niveau directement
+            child = await child_mgr.set_level(child_id, new_level, reason=reason)
+
+            _LOGGER.info(f"Service call: set_level - {child.name} set to level {new_level}")
+
+            return {
+                "child_id": child.id,
+                "previous_level": child.level if hasattr(child, 'previous_level') else None,
+                "new_level": child.level,
+                "xp": child.experience,
+                "xp_for_next_level": child.xp_for_next_level,
+            }
+
+        except ChildNotFoundError as err:
+            _LOGGER.error(f"Child not found: {err}")
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in set_level: {err}")
+            raise HomeAssistantError(f"Failed to set level: {err}")
+
+    # ========================================================================
+    # CONFIGURATION SYSTÈME
+    # ========================================================================
+
+    async def handle_create_category(call: ServiceCall):
+        """Service: Créer une catégorie personnalisée.
+
+        Paramètres:
+        - name (str): Nom de la catégorie
+        - type (str): Type (task, habit, reward)
+        - icon (str, optional): Emoji/icône
+        - color (str, optional): Couleur hex
+
+        Retourne les détails de la catégorie créée.
+        """
+        try:
+            name = call.data["name"]
+            category_type = call.data["type"]
+            icon = call.data.get("icon")
+            color = call.data.get("color")
+
+            # Valider le type
+            valid_types = ["task", "habit", "reward"]
+            if category_type not in valid_types:
+                raise ValidationError(f"Invalid type. Must be one of: {', '.join(valid_types)}")
+
+            # Charger les catégories existantes
+            from homeassistant.util.json import load_json, save_json
+            from pathlib import Path
+
+            storage_path = Path(hass.config.path(STORAGE_DIR))
+            categories_file = storage_path / FILE_CATEGORIES
+
+            # Créer le répertoire si nécessaire
+            storage_path.mkdir(parents=True, exist_ok=True)
+
+            # Charger ou initialiser les catégories
+            if categories_file.exists():
+                categories = await hass.async_add_executor_job(load_json, str(categories_file))
+            else:
+                categories = []
+
+            # Générer un ID unique
+            import uuid
+            category_id = str(uuid.uuid4())
+
+            # Créer la nouvelle catégorie
+            new_category = {
+                "id": category_id,
+                "name": name,
+                "type": category_type,
+                "icon": icon,
+                "color": color,
+                "created_at": datetime.now().isoformat()
+            }
+
+            categories.append(new_category)
+
+            # Sauvegarder
+            await hass.async_add_executor_job(save_json, str(categories_file), categories)
+
+            _LOGGER.info(f"Category created: {category_id} - {name}")
+
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "category_created",
+                "category_id": category_id,
+                "name": name,
+                "type": category_type,
+            })
+
+            return {"category": new_category}
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in create_category: {err}")
+            raise HomeAssistantError(f"Failed to create category: {err}")
+
+    async def handle_list_categories(call: ServiceCall):
+        """Service: Lister toutes les catégories disponibles.
+
+        Paramètres:
+        - type (str, optional): Filtrer par type (task, habit, reward)
+
+        Retourne la liste des catégories (built-in + personnalisées).
+        """
+        try:
+            filter_type = call.data.get("type")
+
+            # Catégories intégrées (built-in)
+            builtin_categories = {
+                "task": [
+                    {"id": "chores", "name": "Tâches ménagères", "type": "task", "builtin": True},
+                    {"id": "homework", "name": "Devoirs", "type": "task", "builtin": True},
+                    {"id": "personal", "name": "Personnel", "type": "task", "builtin": True},
+                    {"id": "other", "name": "Autre", "type": "task", "builtin": True},
+                ],
+                "habit": [
+                    {"id": "health", "name": "Santé", "type": "habit", "builtin": True},
+                    {"id": "education", "name": "Éducation", "type": "habit", "builtin": True},
+                    {"id": "social", "name": "Social", "type": "habit", "builtin": True},
+                ],
+                "reward": [
+                    {"id": "entertainment", "name": "Divertissement", "type": "reward", "builtin": True},
+                    {"id": "treats", "name": "Friandises", "type": "reward", "builtin": True},
+                    {"id": "privileges", "name": "Privilèges", "type": "reward", "builtin": True},
+                ]
+            }
+
+            # Charger les catégories personnalisées
+            from homeassistant.util.json import load_json
+            from pathlib import Path
+
+            storage_path = Path(hass.config.path(STORAGE_DIR))
+            categories_file = storage_path / FILE_CATEGORIES
+
+            custom_categories = []
+            if categories_file.exists():
+                custom_categories = await hass.async_add_executor_job(load_json, str(categories_file))
+
+            # Combiner les catégories
+            all_categories = []
+
+            # Ajouter les built-in selon le filtre
+            if filter_type:
+                if filter_type in builtin_categories:
+                    all_categories.extend(builtin_categories[filter_type])
+            else:
+                for cats in builtin_categories.values():
+                    all_categories.extend(cats)
+
+            # Ajouter les personnalisées selon le filtre
+            for cat in custom_categories:
+                if not filter_type or cat.get("type") == filter_type:
+                    cat["builtin"] = False
+                    all_categories.append(cat)
+
+            return {
+                "categories": all_categories,
+                "count": len(all_categories)
+            }
+
+        except Exception as err:
+            _LOGGER.error(f"Error in list_categories: {err}")
+            raise HomeAssistantError(f"Failed to list categories: {err}")
+
+    async def handle_update_level_config(call: ServiceCall):
+        """Service: Configurer les seuils de niveau et d'expérience.
+
+        Paramètres:
+        - level (int): Niveau à configurer
+        - xp_required (int): XP requise pour atteindre ce niveau
+        - unlock_message (str, optional): Message de déblocage personnalisé
+
+        Retourne la configuration mise à jour.
+        """
+        try:
+            level = call.data["level"]
+            xp_required = call.data["xp_required"]
+            unlock_message = call.data.get("unlock_message")
+
+            if level < 2:
+                raise ValidationError("Level must be 2 or higher (level 1 is default)")
+
+            if xp_required < 1:
+                raise ValidationError("XP required must be positive")
+
+            # Charger la config système
+            from homeassistant.util.json import load_json, save_json
+            from pathlib import Path
+
+            storage_path = Path(hass.config.path(STORAGE_DIR))
+            config_file = storage_path / FILE_SYSTEM_CONFIG
+
+            storage_path.mkdir(parents=True, exist_ok=True)
+
+            # Charger ou initialiser
+            if config_file.exists():
+                system_config = await hass.async_add_executor_job(load_json, str(config_file))
+            else:
+                system_config = {
+                    "max_level": 100,
+                    "xp_multiplier": XP_MULTIPLIER_PER_LEVEL,
+                    "level_thresholds": []
+                }
+
+            # Trouver et mettre à jour ou ajouter le seuil
+            level_thresholds = system_config.get("level_thresholds", [])
+
+            threshold_found = False
+            for threshold in level_thresholds:
+                if threshold["level"] == level:
+                    threshold["xp_required"] = xp_required
+                    if unlock_message:
+                        threshold["unlock_message"] = unlock_message
+                    threshold_found = True
+                    break
+
+            if not threshold_found:
+                new_threshold = {
+                    "level": level,
+                    "xp_required": xp_required
+                }
+                if unlock_message:
+                    new_threshold["unlock_message"] = unlock_message
+                level_thresholds.append(new_threshold)
+
+                # Trier par niveau
+                level_thresholds.sort(key=lambda x: x["level"])
+
+            system_config["level_thresholds"] = level_thresholds
+            system_config["last_updated"] = datetime.now().isoformat()
+
+            # Sauvegarder
+            await hass.async_add_executor_job(save_json, str(config_file), system_config)
+
+            _LOGGER.info(f"Level config updated: Level {level} requires {xp_required} XP")
+
+            hass.bus.fire(EVENT_UPDATE, {
+                "update_type": "level_config_updated",
+                "level": level,
+                "xp_required": xp_required,
+            })
+
+            return {"config": system_config}
+
+        except ValidationError as err:
+            _LOGGER.error(f"Validation error: {err}")
+            raise HomeAssistantError(f"Validation error: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in update_level_config: {err}")
+            raise HomeAssistantError(f"Failed to update level config: {err}")
+
+    async def handle_get_system_config(call: ServiceCall):
+        """Service: Récupérer la configuration système actuelle.
+
+        Retourne la configuration complète du système.
+        """
+        try:
+            from homeassistant.util.json import load_json
+            from pathlib import Path
+
+            storage_path = Path(hass.config.path(STORAGE_DIR))
+            config_file = storage_path / FILE_SYSTEM_CONFIG
+
+            # Charger ou retourner config par défaut
+            if config_file.exists():
+                system_config = await hass.async_add_executor_job(load_json, str(config_file))
+            else:
+                system_config = {
+                    "max_level": 100,
+                    "xp_multiplier": XP_MULTIPLIER_PER_LEVEL,
+                    "base_xp": BASE_XP_FOR_LEVEL_UP,
+                    "level_thresholds": [],
+                    "rarity_costs": RARITY_COST
+                }
+
+            return {"config": system_config}
+
+        except Exception as err:
+            _LOGGER.error(f"Error in get_system_config: {err}")
+            raise HomeAssistantError(f"Failed to get system config: {err}")
 
 
     async def handle_backup_data(call: ServiceCall):
@@ -1404,16 +2741,26 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_CREATE_HABIT, handle_create_habit)
     hass.services.async_register(DOMAIN, SERVICE_UPDATE_HABIT, handle_update_habit)
     hass.services.async_register(DOMAIN, SERVICE_DELETE_HABIT, handle_delete_habit)
-    hass.services.async_register(DOMAIN, SERVICE_COMPLETE_HABIT, handle_complete_habit)
+    hass.services.async_register(DOMAIN, SERVICE_MARK_HABIT_COMPLETED, handle_mark_habit_completed)
+    hass.services.async_register(DOMAIN, SERVICE_RESET_STREAK, handle_reset_streak, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_GET_HABIT_HISTORY, handle_get_habit_history, supports_response=SupportsResponse.ONLY)
 
     # Phase 2 services
     hass.services.async_register(DOMAIN, SERVICE_VALIDATE_TASK, handle_validate_task)
     hass.services.async_register(DOMAIN, SERVICE_REFUSE_TASK, handle_refuse_task)
     hass.services.async_register(DOMAIN, SERVICE_CREATE_REWARD, handle_create_reward)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_REWARD, handle_update_reward, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_DELETE_REWARD, handle_delete_reward, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_CLAIM_REWARD, handle_claim_reward)
     hass.services.async_register(DOMAIN, SERVICE_APPROVE_CLAIM, handle_approve_claim)
+    hass.services.async_register(DOMAIN, SERVICE_REFUSE_CLAIM, handle_refuse_claim, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_CONSUME_CLAIM, handle_consume_claim, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_CREATE_COSMETIC, handle_create_cosmetic)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_COSMETIC, handle_update_cosmetic, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_DELETE_COSMETIC, handle_delete_cosmetic, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_PURCHASE_COSMETIC, handle_purchase_cosmetic)
+    hass.services.async_register(DOMAIN, SERVICE_EQUIP_COSMETIC, handle_equip_cosmetic, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_UNEQUIP_COSMETIC, handle_unequip_cosmetic, supports_response=SupportsResponse.ONLY)
 
     # Services de lecture (avec support de réponse)
     hass.services.async_register(DOMAIN, SERVICE_LIST_CHILDREN, handle_list_children, supports_response=SupportsResponse.ONLY)
@@ -1421,6 +2768,15 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_LIST_HABITS, handle_list_habits, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_LIST_REWARDS, handle_list_rewards, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_LIST_COSMETICS, handle_list_cosmetics, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_OWNED_COSMETICS, handle_list_owned_cosmetics, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_TASK_INSTANCES, handle_list_task_instances, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_CLAIMS, handle_list_claims, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_GET_TASK_INSTANCE, handle_get_task_instance, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_CANCEL_TASK_INSTANCE, handle_cancel_task_instance, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_RESCHEDULE_TASK_INSTANCE, handle_reschedule_task_instance, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_GET_CHILD_STATS, handle_get_child_stats, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_GET_WEEKLY_REPORT, handle_get_weekly_report, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_COMPARE_CHILDREN, handle_compare_children, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_GET_POINTS_HISTORY, handle_get_points_history, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_GET_CHILD_HISTORY, handle_get_points_history, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_BACKUP_DATA, handle_backup_data, supports_response=SupportsResponse.ONLY)
@@ -1434,6 +2790,12 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_ADD_COINS, handle_add_coins, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_REMOVE_COINS, handle_remove_coins, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_SET_COINS, handle_set_coins, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_ADD_EXPERIENCE, handle_add_experience, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_SET_LEVEL, handle_set_level, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_CATEGORY, handle_create_category, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_LIST_CATEGORIES, handle_list_categories, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_LEVEL_CONFIG, handle_update_level_config, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_GET_SYSTEM_CONFIG, handle_get_system_config, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_RESET_DAILY_TASKS, handle_reset_daily_tasks, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_RESET_WEEKLY_TASKS, handle_reset_weekly_tasks, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_RESET_MONTHLY_TASKS, handle_reset_monthly_tasks, supports_response=SupportsResponse.ONLY)
