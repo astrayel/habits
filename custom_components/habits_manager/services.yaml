@@ -56,6 +56,221 @@ delete_child:
       selector:
         text:
 
+add_points:
+  name: Ajouter des points
+  description: Ajoute des points manuellement à un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    points:
+      name: Points
+      description: Nombre de points à ajouter
+      required: true
+      example: 50
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    reason:
+      name: Raison
+      description: Raison de l'ajout (optionnel)
+      required: false
+      example: "Bonus pour bon comportement"
+      selector:
+        text:
+
+remove_points:
+  name: Retirer des points
+  description: Retire des points manuellement à un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    points:
+      name: Points
+      description: Nombre de points à retirer
+      required: true
+      example: 20
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    reason:
+      name: Raison
+      description: Raison du retrait (optionnel)
+      required: false
+      example: "Pénalité pour comportement inapproprié"
+      selector:
+        text:
+
+set_points:
+  name: Définir les points
+  description: Définit le nombre total de points d'un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    points:
+      name: Points
+      description: Nombre de points à définir
+      required: true
+      example: 100
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    reason:
+      name: Raison
+      description: Raison du changement (optionnel)
+      required: false
+      example: "Réinitialisation mensuelle"
+      selector:
+        text:
+
+add_coins:
+  name: Ajouter des pièces
+  description: Ajoute des pièces manuellement à un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    coins:
+      name: Pièces
+      description: Nombre de pièces à ajouter
+      required: true
+      example: 10
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    reason:
+      name: Raison
+      description: Raison de l'ajout (optionnel)
+      required: false
+      example: "Bonus exceptionnel"
+      selector:
+        text:
+
+remove_coins:
+  name: Retirer des pièces
+  description: Retire des pièces manuellement à un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    coins:
+      name: Pièces
+      description: Nombre de pièces à retirer
+      required: true
+      example: 5
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    reason:
+      name: Raison
+      description: Raison du retrait (optionnel)
+      required: false
+      example: "Correction d'erreur"
+      selector:
+        text:
+
+set_coins:
+  name: Définir les pièces
+  description: Définit le nombre total de pièces d'un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    coins:
+      name: Pièces
+      description: Nombre de pièces à définir
+      required: true
+      example: 50
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+    reason:
+      name: Raison
+      description: Raison du changement (optionnel)
+      required: false
+      example: "Réinitialisation"
+      selector:
+        text:
+
+get_child_history:
+  name: Historique d'un enfant
+  description: Récupère l'historique des points d'un enfant
+  fields:
+    child_id:
+      name: ID enfant
+      description: Identifiant de l'enfant
+      required: true
+      example: "child_123abc"
+      selector:
+        text:
+    limit:
+      name: Limite
+      description: Nombre maximum d'entrées à retourner (max 50)
+      required: false
+      default: 20
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 50
+          mode: box
+    action_type_filter:
+      name: Filtre type d'action
+      description: Filtrer par type d'action (optionnel)
+      required: false
+      example: "task_validated"
+      selector:
+        select:
+          options:
+            - label: "Tâche validée"
+              value: "task_validated"
+            - label: "Habitude complétée"
+              value: "habit_completed"
+            - label: "Récompense réclamée"
+              value: "reward_claimed"
+            - label: "Pénalité appliquée"
+              value: "penalty_applied"
+            - label: "Ajustement manuel"
+              value: "manual_adjustment"
+
 # ========================================================================
 # SERVICES TÂCHES
 # ========================================================================

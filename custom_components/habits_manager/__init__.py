@@ -37,6 +37,7 @@ from .const import (
     SERVICE_LIST_REWARDS,
     SERVICE_LIST_COSMETICS,
     SERVICE_GET_POINTS_HISTORY,
+    SERVICE_GET_CHILD_HISTORY,
     SERVICE_BACKUP_DATA,
     SERVICE_RESTORE_DATA,
     SERVICE_SUSPEND_TASK,
@@ -44,8 +45,10 @@ from .const import (
     SERVICE_CHECK_EXPIRED_SUSPENSIONS,
     SERVICE_ADD_POINTS,
     SERVICE_REMOVE_POINTS,
+    SERVICE_SET_POINTS,
     SERVICE_ADD_COINS,
     SERVICE_REMOVE_COINS,
+    SERVICE_SET_COINS,
     SERVICE_RESET_DAILY_TASKS,
     SERVICE_RESET_WEEKLY_TASKS,
     SERVICE_RESET_MONTHLY_TASKS,
@@ -1285,7 +1288,7 @@ async def register_services(hass: HomeAssistant):
             child_id = call.data["child_id"]
             coins = call.data["coins"]
             reason = call.data.get("reason", "Retrait manuel de pièces")
-            
+
             child = await child_mgr.add_currency_manual(child_id, points=0, coins=-coins, reason=reason)
             _LOGGER.info(f"Service call: remove_coins - {coins} coins for {child.name}")
             return {"child_id": child.id, "coins": child.coins}
@@ -1294,11 +1297,42 @@ async def register_services(hass: HomeAssistant):
         except Exception as err:
             _LOGGER.error(f"Error in remove_coins: {err}")
             raise HomeAssistantError(f"Failed to remove coins: {err}")
+
+    async def handle_set_points(call: ServiceCall):
+        """Service: Définir les points d'un enfant."""
+        try:
+            child_id = call.data["child_id"]
+            points = call.data["points"]
+            reason = call.data.get("reason", "Définition manuelle des points")
+
+            child = await child_mgr.get_child(child_id)
+            delta = points - child.points
+            child = await child_mgr.add_currency_manual(child_id, points=delta, coins=0, reason=reason)
+            _LOGGER.info(f"Service call: set_points - set to {points} points for {child.name}")
+            return {"child_id": child.id, "points": child.points}
+        except ChildNotFoundError as err:
+            raise HomeAssistantError(f"Child not found: {err}")
         except Exception as err:
-            _LOGGER.error(f"Error in remove_coins: {err}")
-            raise HomeAssistantError(f"Failed to remove coins: {err}")
-            _LOGGER.error(f"Error in check_expired_suspensions: {err}")
-            raise HomeAssistantError(f"Failed to check expired suspensions: {err}")
+            _LOGGER.error(f"Error in set_points: {err}")
+            raise HomeAssistantError(f"Failed to set points: {err}")
+
+    async def handle_set_coins(call: ServiceCall):
+        """Service: Définir les pièces d'un enfant."""
+        try:
+            child_id = call.data["child_id"]
+            coins = call.data["coins"]
+            reason = call.data.get("reason", "Définition manuelle des pièces")
+
+            child = await child_mgr.get_child(child_id)
+            delta = coins - child.coins
+            child = await child_mgr.add_currency_manual(child_id, points=0, coins=delta, reason=reason)
+            _LOGGER.info(f"Service call: set_coins - set to {coins} coins for {child.name}")
+            return {"child_id": child.id, "coins": child.coins}
+        except ChildNotFoundError as err:
+            raise HomeAssistantError(f"Child not found: {err}")
+        except Exception as err:
+            _LOGGER.error(f"Error in set_coins: {err}")
+            raise HomeAssistantError(f"Failed to set coins: {err}")
 
     async def handle_reset_daily_tasks(call: ServiceCall):
         """Service: Réinitialiser toutes les tâches quotidiennes."""
@@ -1388,6 +1422,7 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_LIST_REWARDS, handle_list_rewards, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_LIST_COSMETICS, handle_list_cosmetics, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_GET_POINTS_HISTORY, handle_get_points_history, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_GET_CHILD_HISTORY, handle_get_points_history, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_BACKUP_DATA, handle_backup_data, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_RESTORE_DATA, handle_restore_data, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_SUSPEND_TASK, handle_suspend_task, supports_response=SupportsResponse.ONLY)
@@ -1395,8 +1430,10 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_CHECK_EXPIRED_SUSPENSIONS, handle_check_expired_suspensions, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_ADD_POINTS, handle_add_points, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_REMOVE_POINTS, handle_remove_points, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_SET_POINTS, handle_set_points, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_ADD_COINS, handle_add_coins, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_REMOVE_COINS, handle_remove_coins, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_SET_COINS, handle_set_coins, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_RESET_DAILY_TASKS, handle_reset_daily_tasks, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_RESET_WEEKLY_TASKS, handle_reset_weekly_tasks, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_RESET_MONTHLY_TASKS, handle_reset_monthly_tasks, supports_response=SupportsResponse.ONLY)

@@ -5,12 +5,40 @@ Ce document liste tous les services exposés par l'intégration Habits Manager.
 ## Table des matières
 
 - [Services Enfants](#services-enfants)
+  - `habits_manager.create_child`
+  - `habits_manager.update_child`
+  - `habits_manager.delete_child`
+  - `habits_manager.add_points`
+  - `habits_manager.remove_points`
+  - `habits_manager.set_points`
+  - `habits_manager.add_coins`
+  - `habits_manager.remove_coins`
+  - `habits_manager.set_coins`
+  - `habits_manager.get_child_history`
 - [Services Tâches](#services-tâches)
+  - `habits_manager.create_task`
+  - `habits_manager.update_task`
+  - `habits_manager.delete_task`
+  - `habits_manager.mark_task_completed`
 - [Services Habitudes](#services-habitudes)
+  - `habits_manager.create_habit`
+  - `habits_manager.complete_habit`
 - [Services Récompenses](#services-récompenses)
+  - `habits_manager.create_reward`
+  - `habits_manager.claim_reward`
+  - `habits_manager.approve_claim`
 - [Services Cosmétiques](#services-cosmétiques)
+  - `habits_manager.create_cosmetic`
+  - `habits_manager.purchase_cosmetic`
 - [Services de Lecture](#services-de-lecture)
+  - `habits_manager.list_children`
+  - `habits_manager.list_tasks`
+  - `habits_manager.list_habits`
+  - `habits_manager.list_rewards`
+  - `habits_manager.list_cosmetics`
 - [Services de Validation](#services-de-validation)
+  - `habits_manager.validate_task`
+  - `habits_manager.refuse_task`
 
 ---
 
@@ -83,10 +111,217 @@ Supprime définitivement un enfant et toutes ses données.
 |-----------|------|--------|-------------|
 | `child_id` | string | ✅ | ID de l'enfant |
 
-**Effet:** 
+**Effet:**
 - Supprime tous les sensors de l'enfant
 - Supprime toutes ses tâches, habitudes, récompenses
 - Émet un événement `habits_manager_entity_delete`
+
+---
+
+### `habits_manager.add_points`
+
+Ajoute des points manuellement à un enfant.
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `child_id` | string | ✅ | ID de l'enfant |
+| `points` | int | ✅ | Nombre de points à ajouter |
+| `reason` | string | ❌ | Raison de l'ajout |
+
+**Exemple:**
+```yaml
+service: habits_manager.add_points
+data:
+  child_id: "child_abc123"
+  points: 50
+  reason: "Bonus pour bon comportement"
+```
+
+**Effet:**
+- Ajoute les points au total de l'enfant
+- Crée une entrée dans l'historique des points
+- Met à jour les sensors
+
+---
+
+### `habits_manager.remove_points`
+
+Retire des points manuellement à un enfant.
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `child_id` | string | ✅ | ID de l'enfant |
+| `points` | int | ✅ | Nombre de points à retirer |
+| `reason` | string | ❌ | Raison du retrait |
+
+**Exemple:**
+```yaml
+service: habits_manager.remove_points
+data:
+  child_id: "child_abc123"
+  points: 20
+  reason: "Pénalité pour comportement inapproprié"
+```
+
+**Effet:**
+- Retire les points du total de l'enfant (minimum 0)
+- Crée une entrée dans l'historique des points
+- Met à jour les sensors
+
+---
+
+### `habits_manager.set_points`
+
+Définit le nombre total de points d'un enfant.
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `child_id` | string | ✅ | ID de l'enfant |
+| `points` | int | ✅ | Nombre de points à définir |
+| `reason` | string | ❌ | Raison du changement |
+
+**Exemple:**
+```yaml
+service: habits_manager.set_points
+data:
+  child_id: "child_abc123"
+  points: 100
+  reason: "Réinitialisation mensuelle"
+```
+
+**Effet:**
+- Définit le total de points de l'enfant
+- Crée une entrée dans l'historique des points
+- Met à jour les sensors
+
+---
+
+### `habits_manager.add_coins`
+
+Ajoute des pièces manuellement à un enfant.
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `child_id` | string | ✅ | ID de l'enfant |
+| `coins` | int | ✅ | Nombre de pièces à ajouter |
+| `reason` | string | ❌ | Raison de l'ajout |
+
+**Exemple:**
+```yaml
+service: habits_manager.add_coins
+data:
+  child_id: "child_abc123"
+  coins: 10
+  reason: "Bonus exceptionnel"
+```
+
+**Effet:**
+- Ajoute les pièces au total de l'enfant
+- Crée une entrée dans l'historique
+- Met à jour les sensors
+
+---
+
+### `habits_manager.remove_coins`
+
+Retire des pièces manuellement à un enfant.
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `child_id` | string | ✅ | ID de l'enfant |
+| `coins` | int | ✅ | Nombre de pièces à retirer |
+| `reason` | string | ❌ | Raison du retrait |
+
+**Exemple:**
+```yaml
+service: habits_manager.remove_coins
+data:
+  child_id: "child_abc123"
+  coins: 5
+  reason: "Correction d'erreur"
+```
+
+**Effet:**
+- Retire les pièces du total de l'enfant (minimum 0)
+- Crée une entrée dans l'historique
+- Met à jour les sensors
+
+---
+
+### `habits_manager.set_coins`
+
+Définit le nombre total de pièces d'un enfant.
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `child_id` | string | ✅ | ID de l'enfant |
+| `coins` | int | ✅ | Nombre de pièces à définir |
+| `reason` | string | ❌ | Raison du changement |
+
+**Exemple:**
+```yaml
+service: habits_manager.set_coins
+data:
+  child_id: "child_abc123"
+  coins: 50
+  reason: "Réinitialisation"
+```
+
+**Effet:**
+- Définit le total de pièces de l'enfant
+- Crée une entrée dans l'historique
+- Met à jour les sensors
+
+---
+
+### `habits_manager.get_child_history`
+
+Récupère l'historique des points d'un enfant.
+
+**Paramètres:**
+| Paramètre | Type | Requis | Description |
+|-----------|------|--------|-------------|
+| `child_id` | string | ✅ | ID de l'enfant |
+| `limit` | int | ❌ | Nombre max d'entrées (défaut: 20, max: 50) |
+| `action_type_filter` | string | ❌ | Filtrer par type d'action |
+
+**Types d'action disponibles:**
+- `task_validated` - Tâche validée
+- `habit_completed` - Habitude complétée
+- `reward_claimed` - Récompense réclamée
+- `penalty_applied` - Pénalité appliquée
+- `manual_adjustment` - Ajustement manuel
+
+**Exemple:**
+```yaml
+service: habits_manager.get_child_history
+data:
+  child_id: "child_abc123"
+  limit: 30
+  action_type_filter: "task_validated"
+response_variable: history
+```
+
+**Retour:**
+```yaml
+history:
+  - id: "history_xyz123"
+    timestamp: "2025-11-27T10:30:00"
+    action_type: "task_validated"
+    points_delta: 10
+    coins_delta: 5
+    experience_delta: 15
+    description: "Tâche validée : Ranger sa chambre"
+    related_entity_type: "task"
+    related_entity_id: "task_def456"
+    related_entity_name: "Ranger sa chambre"
+```
 
 ---
 
