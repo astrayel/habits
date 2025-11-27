@@ -126,7 +126,7 @@ class StorageManager:
         for child_id, child_data in data.items():
             try:
                 # Reconstruction du Child depuis le dict
-                from ..core.models import Avatar, AvatarCustomization
+                from ..core.models import Avatar, AvatarCustomization, PointsHistoryEntry, HistoryActionType
 
                 avatar_data = child_data.get("avatar", {})
                 customization_data = avatar_data.get("customization", {})
@@ -143,6 +143,28 @@ class StorageManager:
                     customization=customization,
                 )
 
+                # Désérialisation de l'historique des points
+                points_history = []
+                for entry_data in child_data.get("points_history", []):
+                    try:
+                        entry = PointsHistoryEntry(
+                            id=entry_data["id"],
+                            timestamp=datetime.fromisoformat(entry_data["timestamp"]),
+                            action_type=HistoryActionType(entry_data["action_type"]),
+                            points_delta=entry_data["points_delta"],
+                            coins_delta=entry_data.get("coins_delta", 0),
+                            experience_delta=entry_data.get("experience_delta", 0),
+                            description=entry_data.get("description", ""),
+                            related_entity_type=entry_data.get("related_entity_type", ""),
+                            related_entity_id=entry_data.get("related_entity_id", ""),
+                            related_entity_name=entry_data.get("related_entity_name", ""),
+                            validator_id=entry_data.get("validator_id"),
+                        )
+                        points_history.append(entry)
+                    except Exception as e:
+                        _LOGGER.warning(f"Failed to deserialize points history entry: {e}")
+                        continue
+
                 child = Child(
                     id=child_data["id"],
                     name=child_data["name"],
@@ -155,6 +177,7 @@ class StorageManager:
                     avatar=avatar,
                     badges=child_data.get("badges", []),
                     owned_cosmetics=child_data.get("owned_cosmetics", []),
+                    points_history=points_history,
                     created_at=datetime.fromisoformat(child_data["created_at"]),
                     updated_at=datetime.fromisoformat(child_data["updated_at"]),
                 )
@@ -241,6 +264,11 @@ class StorageManager:
                 rewards = TaskRewards(**task_data["rewards"])
                 penalties = TaskPenalties(**task_data["penalties"])
 
+                # Désérialiser suspended_until si présent
+                suspended_until = None
+                if task_data.get("suspended_until"):
+                    suspended_until = datetime.fromisoformat(task_data["suspended_until"])
+
                 task = Task(
                     id=task_data["id"],
                     title=task_data["title"],
@@ -256,6 +284,9 @@ class StorageManager:
                     estimated_duration=task_data.get("estimated_duration", 10),
                     category=TaskCategory(task_data.get("category", "other")),
                     active=task_data.get("active", True),
+                    suspended=task_data.get("suspended", False),
+                    suspended_until=suspended_until,
+                    suspended_reason=task_data.get("suspended_reason", ""),
                     created_at=datetime.fromisoformat(task_data["created_at"]),
                 )
                 tasks.append(task)

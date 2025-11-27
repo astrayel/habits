@@ -1,12 +1,62 @@
 # Enhancements & Missing Features
 
+> **Dernière mise à jour**: 2025-11-08  
+> **État**: Phases 1 & 2 partiellement complètes (voir ci-dessous)
+
 Ce document compile toutes les améliorations suggérées pour Habits Manager, incluant :
 - Fonctionnalités présentes dans kids-tasks-ha mais absentes dans habits
 - Améliorations architecturales identifiées lors de l'analyse
 - Priorisation et recommandations d'implémentation
 
-**Date de création**: 2025-11-07
+**Date de création**: 2025-11-07  
 **Basé sur**: Analyse comparative avec kids-tasks-ha
+
+---
+
+## 🎯 État d'Implémentation (2025-11-08)
+
+### ✅ Phase 1 : Fonctionnalités Critiques - **COMPLÈTE**
+
+| Fonctionnalité | Priorité | Statut | Commit |
+|----------------|----------|--------|--------|
+| 1.1 Backup/Restore | ⭐⭐⭐⭐⭐ | ✅ IMPLÉMENTÉ | 6779dc9 |
+| 1.2 Points History | ⭐⭐⭐⭐⭐ | ✅ IMPLÉMENTÉ | 6779dc9 |
+| 1.3 Suspension Tâches | ⭐⭐⭐⭐ | ✅ IMPLÉMENTÉ | 6779dc9 |
+
+### ✅ Phase 2 : Fonctionnalités Importantes - **PARTIELLEMENT COMPLÈTE**
+
+| Fonctionnalité | Priorité | Statut | Commit |
+|----------------|----------|--------|--------|
+| 2.1 Reset en Masse | ⭐⭐⭐⭐ | ✅ IMPLÉMENTÉ | 6779dc9 |
+| 2.2 Services Monnaie Manuels | ⭐⭐⭐⭐ | ✅ IMPLÉMENTÉ | 6779dc9 |
+| 2.3 Deadlines Granulaires | ⭐⭐⭐⭐ | ❌ NON IMPLÉMENTÉ | - |
+| 2.4 Clear All Data | ⭐⭐⭐ | ✅ IMPLÉMENTÉ | 6779dc9 |
+
+### ⏳ Phase 3 : Fonctionnalités Mineures - **NON COMMENCÉE**
+
+| Fonctionnalité | Priorité | Statut |
+|----------------|----------|--------|
+| 3.1 Cleanup Entities | ⭐⭐⭐ | ❌ NON IMPLÉMENTÉ |
+| 3.2 Difficulté par Enfant | ⭐⭐ | ❌ NON IMPLÉMENTÉ |
+| 3.3 Export CSV | ⭐⭐ | ❌ NON IMPLÉMENTÉ |
+
+### ⏳ Phase 4 : Améliorations Architecturales - **PARTIELLEMENT COMPLÈTE**
+
+| Amélioration | Priorité | Statut |
+|--------------|----------|--------|
+| 4.1 Système Migrations | ⭐⭐⭐⭐ | ❌ NON IMPLÉMENTÉ |
+| 4.2 Tests Unitaires | ⭐⭐⭐⭐ | ❌ NON IMPLÉMENTÉ |
+| 4.3 JSON Schema Validation | ⭐⭐⭐ | ❌ NON IMPLÉMENTÉ |
+| 4.4 Logging Structuré | ⭐⭐⭐ | ❌ NON IMPLÉMENTÉ |
+
+### 📊 Résumé Global
+
+- **Fonctionnalités implémentées**: 6/15 (40%)
+- **Priorité CRITIQUE implémentée**: 3/3 (100%) ✅
+- **Priorité HAUTE implémentée**: 3/5 (60%)
+- **Lignes de code ajoutées**: ~1500+
+- **Nouveaux services**: 15
+- **Fichiers créés/modifiés**: 7
 
 ---
 
@@ -25,7 +75,7 @@ Ce document compile toutes les améliorations suggérées pour Habits Manager, i
 
 ### 1.1 Système de Backup/Restore ⭐⭐⭐⭐⭐
 
-**Statut**: ❌ Absent
+**Statut**: ✅ IMPLÉMENTÉ (2025-11-08, commit 6779dc9)
 **Priorité**: CRITIQUE
 **Difficulté**: Moyenne
 **Effort estimé**: 3-5 jours
@@ -260,7 +310,7 @@ Créer un nouveau composant `points-history.ts` qui affiche:
 
 ### 1.3 Suspension Temporaire de Tâches ⭐⭐⭐⭐
 
-**Statut**: ❌ Absent
+**Statut**: ✅ IMPLÉMENTÉ (2025-11-08, commit 6779dc9)
 **Priorité**: IMPORTANT
 **Difficulté**: Facile
 **Effort estimé**: 2-3 jours

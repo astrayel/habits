@@ -404,3 +404,115 @@ class TaskManager:
             filtered = [inst for inst in filtered if inst.status == status]
 
         return filtered
+
+    async def suspend_task(
+        self,
+        task_id: str,
+        until: Optional[datetime] = None,
+        reason: str = ""
+    ) -> Task:
+        """Suspend une tâche temporairement ou indéfiniment.
+
+        Args:
+            task_id: ID de la tâche
+            until: Date de fin de suspension (None = indéfini)
+            reason: Raison de la suspension
+
+        Returns:
+            Task mise à jour
+
+        Raises:
+            TaskNotFoundError: Si la tâche n'existe pas
+        """
+        task = await self.get_task(task_id)
+
+        task.suspended = True
+        task.suspended_until = until
+        task.suspended_reason = reason
+
+        await self.update_task(task)
+
+        if until:
+            _LOGGER.info(f"Task {task.title} suspended until {until.isoformat()}: {reason}")
+        else:
+            _LOGGER.info(f"Task {task.title} suspended indefinitely: {reason}")
+
+        return task
+
+    async def resume_task(self, task_id: str) -> Task:
+        """Lève la suspension d'une tâche.
+
+        Args:
+            task_id: ID de la tâche
+
+        Returns:
+            Task mise à jour
+
+        Raises:
+            TaskNotFoundError: Si la tâche n'existe pas
+        """
+        task = await self.get_task(task_id)
+
+        task.suspended = False
+        task.suspended_until = None
+        task.suspended_reason = ""
+
+        await self.update_task(task)
+
+        _LOGGER.info(f"Task {task.title} resumed")
+
+        return task
+
+    async def check_expired_suspensions(self) -> List[Task]:
+        """Vérifie et lève les suspensions expirées.
+
+        Returns:
+            Liste des tâches dont la suspension a été levée
+        """
+        tasks = await self.storage.load_tasks()
+        resumed_tasks = []
+
+        for task in tasks:
+            if task.suspended and task.suspended_until:
+                if datetime.now() > task.suspended_until:
+                    _LOGGER.info(f"Suspension expired for task {task.title}, resuming...")
+                    task.suspended = False
+                    task.suspended_until = None
+                    task.suspended_reason = ""
+                    await self.update_task(task)
+                    resumed_tasks.append(task)
+
+        if resumed_tasks:
+            _LOGGER.info(f"Resumed {len(resumed_tasks)} tasks with expired suspensions")
+
+        return resumed_tasks
+
+    async def reset_tasks_by_schedule(self, schedule_type: str) -> int:
+        """Reset toutes les tâches d'un type de planning.
+
+        Args:
+            schedule_type: Type de planning (daily, weekly, monthly)
+
+        Returns:
+            Nombre de tâches réinitialisées
+        """
+        from ..core.models import ScheduleType
+        
+        all_instances = await self.storage.load_task_instances()
+        tasks = await self.storage.load_tasks()
+        
+        # Filtrer les tâches du bon type
+        task_ids = [
+            t.id for t in tasks 
+            if t.schedule.type.value == schedule_type
+        ]
+        
+        # Supprimer toutes les instances de ces tâches
+        count = 0
+        for instance in all_instances:
+            if instance.task_id in task_ids:
+                await self.storage.delete_task_instance(instance.id)
+                count += 1
+        
+        _LOGGER.info(f"Reset {count} task instances for schedule type {schedule_type}")
+        return count

@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import List, Optional, Dict
 
 from ..const import _LOGGER, DEFAULT_STARTING_POINTS, DEFAULT_STARTING_COINS, DEFAULT_STARTING_LEVEL, DEFAULT_STARTING_XP
-from ..core.models import Child, Avatar, AvatarCustomization
+from ..core.models import Child, Avatar, AvatarCustomization, PointsHistoryEntry
 from ..core.exceptions import ChildNotFoundError, InsufficientCoinsError, ValidationError
 from ..storage.storage_manager import StorageManager
 from ..storage.entity_manager import EntityManager
@@ -221,6 +221,21 @@ class ChildManager:
 
         return child
 
+    async def add_points_history(self, child_id: str, entry: PointsHistoryEntry) -> None:
+        """Ajoute une entrée dans l'historique des points d'un enfant.
+
+        Args:
+            child_id: ID de l'enfant
+            entry: Entrée d'historique à ajouter
+
+        Raises:
+            ChildNotFoundError: Si l'enfant n'existe pas
+        """
+        child = await self.get_child(child_id)
+        child.add_history_entry(entry)
+        await self.update_child(child)
+        _LOGGER.debug(f"History entry added for {child.name}: {entry.action_type.value} ({entry.points_delta:+d} pts)")
+
     async def purchase_cosmetic(self, child_id: str, cosmetic_id: str, cost: int) -> Child:
         """Achète un cosmétique pour un enfant.
 
@@ -359,3 +374,51 @@ class ChildManager:
             "badges_count": len(child.badges),
             "cosmetics_count": len(child.owned_cosmetics),
         }
+
+    async def add_currency_manual(
+        self,
+        child_id: str,
+        points: int = 0,
+        coins: int = 0,
+        reason: str = ""
+    ) -> Child:
+        """Ajoute des points/pièces manuellement avec historique.
+
+        Args:
+            child_id: ID de l'enfant
+            points: Points à ajouter
+            coins: Pièces à ajouter
+            reason: Raison de l'ajout
+
+        Returns:
+            Child mis à jour
+        """
+        child = await self.get_child(child_id)
+
+        # Appliquer les changements
+        if points != 0:
+            child.points += points
+        if coins != 0:
+            child.coins += coins
+
+        await self.update_child(child)
+
+        # Créer l'entrée d'historique
+        from ..core.models import PointsHistoryEntry, HistoryActionType
+        history_entry = PointsHistoryEntry(
+            id=f"history_{__import__('uuid').uuid4().hex[:8]}",
+            timestamp=datetime.now(),
+            action_type=HistoryActionType.MANUAL_ADJUSTMENT,
+            points_delta=points,
+            coins_delta=coins,
+            experience_delta=0,
+            description=reason or "Ajustement manuel",
+            related_entity_type="manual",
+            related_entity_id="",
+            related_entity_name="",
+        )
+        await self.add_points_history(child_id, history_entry)
+
+        _LOGGER.info(f"Manual currency adjustment for {child.name}: {points:+d} pts, {coins:+d} coins - {reason}")
+
+        return child

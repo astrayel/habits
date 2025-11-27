@@ -5,6 +5,76 @@
 
 ---
 
+
+## PointsHistoryEntry (Historique des Points)
+
+> **Ajouté**: 2025-11-08
+> **Fonctionnalité**: Points History (1.2)
+
+### Python (Backend)
+
+```python
+@dataclass
+class PointsHistoryEntry:
+    """Entrée dans l'historique des points"""
+    id: str
+    timestamp: datetime
+    action_type: HistoryActionType  # TASK_VALIDATED, HABIT_COMPLETED, etc.
+    points_delta: int
+    coins_delta: int = 0
+    experience_delta: int = 0
+    description: str = ""
+    related_entity_type: str = ""  # "task", "habit", "reward", "manual"
+    related_entity_id: str = ""
+    related_entity_name: str = ""
+    validator_id: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat(),
+            "action_type": self.action_type.value,
+            "points_delta": self.points_delta,
+            "coins_delta": self.coins_delta,
+            "experience_delta": self.experience_delta,
+            "description": self.description,
+            "related_entity_type": self.related_entity_type,
+            "related_entity_id": self.related_entity_id,
+            "related_entity_name": self.related_entity_name,
+            "validator_id": self.validator_id,
+        }
+```
+
+### TypeScript (Frontend)
+
+```typescript
+export enum HistoryActionType {
+  TASK_COMPLETED = "task_completed",
+  TASK_VALIDATED = "task_validated",
+  TASK_REFUSED = "task_refused",
+  HABIT_COMPLETED = "habit_completed",
+  PENALTY_APPLIED = "penalty_applied",
+  REWARD_CLAIMED = "reward_claimed",
+  MANUAL_ADJUSTMENT = "manual_adjustment",
+}
+
+export interface PointsHistoryEntry {
+  id: string;
+  timestamp: string;  // ISO format
+  action_type: HistoryActionType;
+  points_delta: number;
+  coins_delta: number;
+  experience_delta: number;
+  description: string;
+  related_entity_type: string;
+  related_entity_id: string;
+  related_entity_name: string;
+  validator_id: string | null;
+}
+```
+
+---
+
 ## Child (Enfant)
 
 ### Python (Backend)
@@ -42,6 +112,7 @@ class Child:
     avatar: Avatar = field(default_factory=lambda: Avatar(photo_url=""))
     badges: List[str] = field(default_factory=list)
     owned_cosmetics: List[str] = field(default_factory=list)
+    points_history: List[PointsHistoryEntry] = field(default_factory=list)  # NEW: Historique des points
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
@@ -67,6 +138,7 @@ class Child:
             },
             "badges": self.badges,
             "owned_cosmetics": self.owned_cosmetics,
+            "points_history": [entry.to_dict() for entry in self.points_history],
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -99,6 +171,7 @@ export interface Child {
   avatar: Avatar;
   badges: string[];
   owned_cosmetics: string[];
+  points_history: PointsHistoryEntry[];  // NEW: Historique des points
   created_at: string;  // ISO 8601 format
   updated_at: string;  // ISO 8601 format
 }
@@ -180,6 +253,9 @@ class Task:
     estimated_duration: int = 10  # minutes
     category: TaskCategory = TaskCategory.OTHER
     active: bool = True
+    suspended: bool = False  # NEW: Tâche suspendue
+    suspended_until: Optional[datetime] = None  # NEW: Date de fin de suspension
+    suspended_reason: str = ""  # NEW: Raison de la suspension
     created_at: datetime = field(default_factory=datetime.now)
 
     def to_dict(self) -> dict:
@@ -210,6 +286,9 @@ class Task:
             "estimated_duration": self.estimated_duration,
             "category": self.category.value,
             "active": self.active,
+            "suspended": self.suspended,
+            "suspended_until": self.suspended_until.isoformat() if self.suspended_until else None,
+            "suspended_reason": self.suspended_reason,
             "created_at": self.created_at.isoformat(),
         }
 ```
@@ -269,6 +348,9 @@ export interface Task {
   estimated_duration: number;  // minutes
   category: TaskCategory;
   active: boolean;
+  suspended: boolean;  // NEW: Tâche suspendue
+  suspended_until: string | null;  // NEW: Date fin suspension ISO
+  suspended_reason: string;  // NEW: Raison suspension
   created_at: string;  // ISO 8601
 }
 ```
@@ -395,6 +477,9 @@ class Habit:
     frequency: HabitFrequency
     rewards: HabitRewards
     active: bool = True
+    suspended: bool = False  # NEW: Tâche suspendue
+    suspended_until: Optional[datetime] = None  # NEW: Date de fin de suspension
+    suspended_reason: str = ""  # NEW: Raison de la suspension
     assigned_to: List[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -416,6 +501,9 @@ class Habit:
                 }
             },
             "active": self.active,
+            "suspended": self.suspended,
+            "suspended_until": self.suspended_until.isoformat() if self.suspended_until else None,
+            "suspended_reason": self.suspended_reason,
             "assigned_to": self.assigned_to,
         }
 ```
@@ -456,6 +544,9 @@ export interface Habit {
   frequency: HabitFrequency;
   rewards: HabitRewards;
   active: boolean;
+  suspended: boolean;  // NEW: Tâche suspendue
+  suspended_until: string | null;  // NEW: Date fin suspension ISO
+  suspended_reason: string;  // NEW: Raison suspension
   assigned_to: string[];
 }
 ```
@@ -560,6 +651,9 @@ class Reward:
     stock: Optional[int] = None  # None = illimité
     cooldown_days: int = 0
     active: bool = True
+    suspended: bool = False  # NEW: Tâche suspendue
+    suspended_until: Optional[datetime] = None  # NEW: Date de fin de suspension
+    suspended_reason: str = ""  # NEW: Raison de la suspension
     requires_parent_approval: bool = True
 
     def to_dict(self) -> dict:
@@ -575,6 +669,9 @@ class Reward:
             "stock": self.stock,
             "cooldown_days": self.cooldown_days,
             "active": self.active,
+            "suspended": self.suspended,
+            "suspended_until": self.suspended_until.isoformat() if self.suspended_until else None,
+            "suspended_reason": self.suspended_reason,
             "requires_parent_approval": self.requires_parent_approval,
         }
 ```
@@ -601,6 +698,9 @@ export interface Reward {
   stock: number | null;
   cooldown_days: number;
   active: boolean;
+  suspended: boolean;  // NEW: Tâche suspendue
+  suspended_until: string | null;  // NEW: Date fin suspension ISO
+  suspended_reason: string;  // NEW: Raison suspension
   requires_parent_approval: boolean;
 }
 ```
@@ -720,6 +820,9 @@ class CosmeticItem:
     preview_image: str
     unlock_requirements: Optional[CosmeticUnlockRequirements] = None
     active: bool = True
+    suspended: bool = False  # NEW: Tâche suspendue
+    suspended_until: Optional[datetime] = None  # NEW: Date de fin de suspension
+    suspended_reason: str = ""  # NEW: Raison de la suspension
 
     def to_dict(self) -> dict:
         return {
@@ -736,6 +839,9 @@ class CosmeticItem:
                 "badge": self.unlock_requirements.badge,
             } if self.unlock_requirements else None,
             "active": self.active,
+            "suspended": self.suspended,
+            "suspended_until": self.suspended_until.isoformat() if self.suspended_until else None,
+            "suspended_reason": self.suspended_reason,
         }
 ```
 
@@ -774,6 +880,9 @@ export interface CosmeticItem {
   preview_image: string;
   unlock_requirements: CosmeticUnlockRequirements | null;
   active: boolean;
+  suspended: boolean;  // NEW: Tâche suspendue
+  suspended_until: string | null;  // NEW: Date fin suspension ISO
+  suspended_reason: string;  // NEW: Raison suspension
 }
 ```
 
