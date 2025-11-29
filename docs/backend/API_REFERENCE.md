@@ -2,8 +2,8 @@
 
 Ce document liste tous les services exposés par l'intégration Habits Manager.
 
-> **📝 Dernière mise à jour:** 2025-11-27
-> **✨ Version complète:** Ce document inclut désormais tous les 27 nouveaux services implémentés (instances de tâches, CRUD complet cosmétiques/récompenses/habitudes, statistiques, configuration système, XP/niveaux).
+> **📝 Dernière mise à jour:** 2025-11-29
+> **✨ Version complète:** Ce document inclut tous les services implémentés, y compris le support `photo_url` pour les preuves photo.
 
 ## Table des matières
 
@@ -526,15 +526,38 @@ Marque une instance de tâche comme complétée par un enfant.
 |-----------|------|--------|-------------|
 | `instance_id` | string | ✅ | ID de l'instance |
 | `child_id` | string | ✅ | ID de l'enfant |
+| `photo_url` | string | ❌ | URL de la preuve photo (optionnel) |
 
 **État après:** Instance passe à `COMPLETED_WAITING` (en attente de validation parent)
 
-**Exemple:**
+**Exemple sans preuve photo:**
 ```yaml
 service: habits_manager.mark_task_completed
 data:
   instance_id: "instance_xyz789"
   child_id: "child_abc123"
+```
+
+**Exemple avec preuve photo:**
+```yaml
+service: habits_manager.mark_task_completed
+data:
+  instance_id: "instance_xyz789"
+  child_id: "child_abc123"
+  photo_url: "/local/proofs/chambre_rangee.jpg"
+```
+
+**Retour:**
+```yaml
+instance:
+  id: "instance_xyz789"
+  task_id: "task_def456"
+  child_id: "child_abc123"
+  status: "completed_waiting"
+  completed_at: "2025-11-29T10:30:00"
+  photo_url: "/local/proofs/chambre_rangee.jpg"  # Si fourni
+pending_count: 2
+waiting_count: 3
 ```
 
 ---

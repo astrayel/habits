@@ -270,11 +270,12 @@ class TaskManager:
             date_filter=target_date
         )
 
-    async def mark_completed(self, instance_id: str) -> TaskInstance:
+    async def mark_completed(self, instance_id: str, photo_url: Optional[str] = None) -> TaskInstance:
         """Marque une instance comme complétée (en attente de validation).
 
         Args:
             instance_id: ID de l'instance
+            photo_url: URL de la preuve photo (optionnel)
 
         Returns:
             TaskInstance mise à jour
@@ -297,6 +298,10 @@ class TaskManager:
         # Marquer comme complétée en attente
         instance.status = TaskInstanceStatus.COMPLETED_WAITING
         instance.completed_at = datetime.now()
+
+        # Stocker la preuve photo si fournie
+        if photo_url:
+            instance.photo_url = photo_url
 
         # Sauvegarder
         await self.storage.save_task_instance(instance)
@@ -377,6 +382,82 @@ class TaskManager:
                 return instance
 
         raise TaskNotFoundError(f"Task instance {instance_id} not found")
+
+    # Alias for backward compatibility with handlers
+    async def get_task_instance(self, instance_id: str) -> TaskInstance:
+        """Alias pour get_instance (compatibilité handlers)."""
+        return await self.get_instance(instance_id)
+
+    async def cancel_task_instance(
+        self,
+        instance_id: str,
+        reason: str = ""
+    ) -> TaskInstance:
+        """Annule une instance de tâche.
+
+        Args:
+            instance_id: ID de l'instance à annuler
+            reason: Raison de l'annulation
+
+        Returns:
+            TaskInstance mise à jour
+
+        Raises:
+            TaskNotFoundError: Si l'instance n'existe pas
+            ValidationError: Si l'instance n'est pas en status PENDING
+        """
+        instance = await self.get_instance(instance_id)
+
+        if instance.status != TaskInstanceStatus.PENDING:
+            raise ValidationError(f"Cannot cancel instance with status {instance.status.value}")
+
+        instance.status = TaskInstanceStatus.CANCELLED
+        instance.cancelled_at = datetime.now()
+        instance.cancel_reason = reason
+
+        await self.storage.save_task_instance(instance)
+
+        _LOGGER.info(f"Task instance {instance_id} cancelled: {reason}")
+
+        return instance
+
+    async def reschedule_task_instance(
+        self,
+        instance_id: str,
+        new_date: date
+    ) -> TaskInstance:
+        """Replanifie une instance de tâche à une nouvelle date.
+
+        Args:
+            instance_id: ID de l'instance à replanifier
+            new_date: Nouvelle date d'échéance
+
+        Returns:
+            TaskInstance mise à jour
+
+        Raises:
+            TaskNotFoundError: Si l'instance n'existe pas
+            ValidationError: Si l'instance n'est pas dans un status replanifiable ou si la date est dans le passé
+        """
+        instance = await self.get_instance(instance_id)
+
+        if instance.status not in [TaskInstanceStatus.PENDING, TaskInstanceStatus.FAILED]:
+            raise ValidationError(f"Cannot reschedule instance with status {instance.status.value}")
+
+        if new_date < date.today():
+            raise ValidationError("Cannot reschedule to a past date")
+
+        old_date = instance.date
+        instance.date = new_date
+        instance.status = TaskInstanceStatus.PENDING  # Reset si était FAILED
+        instance.rescheduled_at = datetime.now()
+        instance.rescheduled_from = old_date
+
+        await self.storage.save_task_instance(instance)
+
+        _LOGGER.info(f"Task instance {instance_id} rescheduled: {old_date} → {new_date}")
+
+        return instance
 
     async def get_task_instances(self, child_id: str = None, task_id: str = None, status: TaskInstanceStatus = None) -> List[TaskInstance]:
         """Récupère les instances de tâches avec filtres optionnels.

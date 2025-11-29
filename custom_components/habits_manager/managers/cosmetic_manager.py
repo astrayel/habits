@@ -212,3 +212,60 @@ class CosmeticManager:
         """
         all_cosmetics = await self.get_all_cosmetics(active_only=True)
         return [c for c in all_cosmetics if c.rarity == rarity]
+
+    async def equip_cosmetic(self, child_id: str, cosmetic_id: str) -> None:
+        """Équipe un cosmétique sur un enfant.
+
+        Args:
+            child_id: ID de l'enfant
+            cosmetic_id: ID du cosmétique
+
+        Raises:
+            CosmeticNotFoundError: Si le cosmétique n'existe pas
+            ValidationError: Si l'enfant ne possède pas ce cosmétique
+        """
+        # Vérifier que le cosmétique existe
+        await self.get_cosmetic(cosmetic_id)
+
+        # Charger l'enfant
+        children = await self.storage.load_children()
+        child = next((c for c in children if c.id == child_id), None)
+        if not child:
+            from ..core.exceptions import ChildNotFoundError
+            raise ChildNotFoundError(f"Child {child_id} not found")
+
+        # Vérifier que l'enfant possède ce cosmétique
+        if cosmetic_id not in child.owned_cosmetics:
+            raise ValidationError(f"Child {child_id} does not own cosmetic {cosmetic_id}")
+
+        # Équiper le cosmétique s'il n'est pas déjà équipé
+        if cosmetic_id not in child.equipped_cosmetics:
+            child.equipped_cosmetics.append(cosmetic_id)
+            await self.storage.save_child(child)
+            _LOGGER.info(f"Cosmetic {cosmetic_id} equipped for child {child.name}")
+
+    async def unequip_cosmetic(self, child_id: str, cosmetic_id: str) -> None:
+        """Déséquipe un cosmétique d'un enfant.
+
+        Args:
+            child_id: ID de l'enfant
+            cosmetic_id: ID du cosmétique
+
+        Raises:
+            CosmeticNotFoundError: Si le cosmétique n'existe pas
+        """
+        # Vérifier que le cosmétique existe
+        await self.get_cosmetic(cosmetic_id)
+
+        # Charger l'enfant
+        children = await self.storage.load_children()
+        child = next((c for c in children if c.id == child_id), None)
+        if not child:
+            from ..core.exceptions import ChildNotFoundError
+            raise ChildNotFoundError(f"Child {child_id} not found")
+
+        # Déséquiper le cosmétique s'il est équipé
+        if cosmetic_id in child.equipped_cosmetics:
+            child.equipped_cosmetics.remove(cosmetic_id)
+            await self.storage.save_child(child)
+            _LOGGER.info(f"Cosmetic {cosmetic_id} unequipped for child {child.name}")

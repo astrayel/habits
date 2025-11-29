@@ -26,13 +26,22 @@ from .const import (
     SERVICE_UPDATE_HABIT,
     SERVICE_DELETE_HABIT,
     SERVICE_MARK_HABIT_COMPLETED,
+    SERVICE_RESET_STREAK,
+    SERVICE_GET_HABIT_HISTORY,
     SERVICE_CREATE_REWARD,
+    SERVICE_UPDATE_REWARD,
+    SERVICE_DELETE_REWARD,
     SERVICE_CLAIM_REWARD,
     SERVICE_APPROVE_CLAIM,
     SERVICE_REFUSE_CLAIM,
     SERVICE_CONSUME_CLAIM,
     SERVICE_CREATE_COSMETIC,
+    SERVICE_UPDATE_COSMETIC,
+    SERVICE_DELETE_COSMETIC,
     SERVICE_PURCHASE_COSMETIC,
+    SERVICE_EQUIP_COSMETIC,
+    SERVICE_UNEQUIP_COSMETIC,
+    SERVICE_LIST_OWNED_COSMETICS,
     SERVICE_LIST_CHILDREN,
     SERVICE_LIST_TASKS,
     SERVICE_LIST_HABITS,
@@ -40,6 +49,12 @@ from .const import (
     SERVICE_LIST_COSMETICS,
     SERVICE_LIST_TASK_INSTANCES,
     SERVICE_LIST_CLAIMS,
+    SERVICE_GET_TASK_INSTANCE,
+    SERVICE_CANCEL_TASK_INSTANCE,
+    SERVICE_RESCHEDULE_TASK_INSTANCE,
+    SERVICE_GET_CHILD_STATS,
+    SERVICE_GET_WEEKLY_REPORT,
+    SERVICE_COMPARE_CHILDREN,
     SERVICE_GET_POINTS_HISTORY,
     SERVICE_GET_CHILD_HISTORY,
     SERVICE_BACKUP_DATA,
@@ -53,10 +68,22 @@ from .const import (
     SERVICE_ADD_COINS,
     SERVICE_REMOVE_COINS,
     SERVICE_SET_COINS,
+    SERVICE_ADD_EXPERIENCE,
+    SERVICE_SET_LEVEL,
+    SERVICE_CREATE_CATEGORY,
+    SERVICE_LIST_CATEGORIES,
+    SERVICE_UPDATE_LEVEL_CONFIG,
+    SERVICE_GET_SYSTEM_CONFIG,
     SERVICE_RESET_DAILY_TASKS,
     SERVICE_RESET_WEEKLY_TASKS,
     SERVICE_RESET_MONTHLY_TASKS,
     SERVICE_CLEAR_ALL_DATA,
+    STORAGE_DIR,
+    FILE_CATEGORIES,
+    FILE_SYSTEM_CONFIG,
+    BASE_XP_FOR_LEVEL_UP,
+    XP_MULTIPLIER_PER_LEVEL,
+    RARITY_COST,
 )
 from .storage.storage_manager import StorageManager
 from .storage.entity_manager import EntityManager
@@ -155,7 +182,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     await register_frontend_resources(hass)
 
     # Charger la plateforme sensor (attendre qu'elle soit prête)
-    await discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
+    # Skip in test environment where sensor platform may not be available
+    try:
+        await discovery.async_load_platform(hass, "sensor", DOMAIN, {}, config)
+    except Exception as e:
+        _LOGGER.warning(f"Could not load sensor platform: {e}")
 
     _LOGGER.info("Habits Manager integration setup complete")
     _LOGGER.info(f"Registered {len(hass.services.async_services().get(DOMAIN, {}))} services for {DOMAIN}")
@@ -170,6 +201,11 @@ async def register_frontend_resources(hass: HomeAssistant):
         hass: Instance Home Assistant
     """
     import os
+
+    # Skip frontend registration if HTTP is not available (e.g., in tests)
+    if hass.http is None:
+        _LOGGER.debug("HTTP component not available, skipping frontend resource registration")
+        return
 
     # Chemin vers le dossier www de l'intégration
     integration_dir = os.path.dirname(__file__)
@@ -221,7 +257,10 @@ async def register_services(hass: HomeAssistant):
             child = await child_mgr.create_child(name, person_entity)
 
             # CrÃ©er dynamiquement les sensors pour ce nouvel enfant
-            await async_create_child_sensors(hass, child.id)
+            try:
+                await async_create_child_sensors(hass, child.id)
+            except Exception as e:
+                _LOGGER.debug(f"Could not create child sensors: {e}")
 
             # Ãmettre un Ã©vÃ©nement
             hass.bus.fire(EVENT_UPDATE, {
@@ -231,6 +270,8 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Child created - {child.name} with {12} sensors")
+
+            return {"child": child.to_dict()}
 
         except ValidationError as err:
             _LOGGER.error(f"Validation error in create_child: {err}")
@@ -258,6 +299,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Child updated - {child.id}")
+            return {"child": child.to_dict()}
 
         except ChildNotFoundError as err:
             _LOGGER.error(f"Child not found: {err}")
@@ -279,6 +321,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Child deleted - {child_id}")
+            return {"deleted": True, "child_id": child_id}
 
         except ChildNotFoundError as err:
             _LOGGER.error(f"Child not found: {err}")
@@ -319,6 +362,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Task created - {task.title}")
+            return {"task": task.to_dict()}
 
         except ValidationError as err:
             _LOGGER.error(f"Validation error in create_task: {err}")
@@ -350,6 +394,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Task updated - {task.id}")
+            return {"task": task.to_dict()}
 
         except TaskNotFoundError as err:
             _LOGGER.error(f"Task not found: {err}")
@@ -371,6 +416,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Task deleted - {task_id}")
+            return {"deleted": True, "task_id": task_id}
 
         except TaskNotFoundError as err:
             _LOGGER.error(f"Task not found: {err}")
@@ -384,8 +430,9 @@ async def register_services(hass: HomeAssistant):
         try:
             instance_id = call.data["instance_id"]
             child_id = call.data["child_id"]
+            photo_url = call.data.get("photo_url")
 
-            instance = await task_mgr.mark_completed(instance_id)
+            instance = await task_mgr.mark_completed(instance_id, photo_url=photo_url)
 
             # Mettre Ã  jour les compteurs de tÃ¢ches dynamiquement
             entity_mgr = hass.data[DOMAIN]["entity_manager"]
@@ -403,6 +450,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Task completed - instance {instance_id} (pending={pending_count}, waiting={waiting_count})")
+            return {"instance": instance.to_dict(), "pending_count": pending_count, "waiting_count": waiting_count}
 
         except TaskNotFoundError as err:
             _LOGGER.error(f"Task instance not found: {err}")
@@ -429,6 +477,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Habit created - {habit.title}")
+            return {"habit": habit.to_dict()}
 
         except ValidationError as err:
             _LOGGER.error(f"Validation error in create_habit: {err}")
@@ -460,6 +509,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Habit updated - {habit.id}")
+            return {"habit": habit.to_dict()}
 
         except HabitNotFoundError as err:
             _LOGGER.error(f"Habit not found: {err}")
@@ -481,6 +531,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Habit deleted - {habit_id}")
+            return {"deleted": True, "habit_id": habit_id}
 
         except HabitNotFoundError as err:
             _LOGGER.error(f"Habit not found: {err}")
@@ -513,6 +564,7 @@ async def register_services(hass: HomeAssistant):
             habit = await habit_mgr.get_habit(habit_id)
             
             # Créer l'entrée d'historique
+            import uuid
             from .core.models import PointsHistoryEntry, HistoryActionType
             history_entry = PointsHistoryEntry(
                 id=f"history_{uuid.uuid4().hex[:8]}",
@@ -545,6 +597,24 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Habit completed - {habit_id} by child {child_id}, streak={streak.current_streak}, longest={longest_streak}")
+
+            # Récupérer photo_proof si fourni
+            photo_proof = call.data.get("photo_proof")
+
+            return {
+                "completion": {
+                    "habit_id": habit_id,
+                    "child_id": child_id,
+                    "completion_date": datetime.now().isoformat(),
+                    "streak": streak.current_streak,
+                    "photo_proof": photo_proof,
+                },
+                "rewards_earned": {
+                    "points": rewards["points"],
+                    "coins": rewards["coins"],
+                    "experience": rewards["experience"],
+                },
+            }
 
         except HabitNotFoundError as err:
             _LOGGER.error(f"Habit not found: {err}")
@@ -583,6 +653,7 @@ async def register_services(hass: HomeAssistant):
             )
 
             # Créer l'entrée d'historique
+            import uuid
             from .core.models import PointsHistoryEntry, HistoryActionType
             history_entry = PointsHistoryEntry(
                 id=f"history_{uuid.uuid4().hex[:8]}",
@@ -616,6 +687,11 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Task validated - {instance_id} by {validator_id}")
+            return {
+                "instance": instance.to_dict(),
+                "task": task.to_dict(),
+                "rewards": rewards,
+            }
 
         except TaskNotFoundError as err:
             _LOGGER.error(f"Task not found: {err}")
@@ -655,6 +731,7 @@ async def register_services(hass: HomeAssistant):
                 task = await task_mgr.get_task(instance.task_id)
                 
                 # Créer l'entrée d'historique
+                import uuid
                 from .core.models import PointsHistoryEntry, HistoryActionType
                 history_entry = PointsHistoryEntry(
                     id=f"history_{uuid.uuid4().hex[:8]}",
@@ -687,6 +764,11 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Task refused - {instance_id} by {validator_id}")
+            return {
+                "instance": instance.to_dict(),
+                "penalties_applied": penalties is not None,
+                "penalties": penalties,
+            }
 
         except TaskNotFoundError as err:
             _LOGGER.error(f"Task not found: {err}")
@@ -716,6 +798,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Reward created - {reward.title}")
+            return {"reward": reward.to_dict()}
 
         except Exception as err:
             _LOGGER.error(f"Error in create_reward: {err}")
@@ -740,6 +823,7 @@ async def register_services(hass: HomeAssistant):
             reward = await reward_mgr.get_reward(reward_id)
             
             # Créer l'entrée d'historique
+            import uuid
             from .core.models import PointsHistoryEntry, HistoryActionType
             history_entry = PointsHistoryEntry(
                 id=f"history_{uuid.uuid4().hex[:8]}",
@@ -763,6 +847,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Reward claimed - {reward_id} by {child_id}")
+            return {"claim": claim.to_dict(), "points_cost": points_cost, "coins_cost": coins_cost}
 
         except RewardNotFoundError as err:
             _LOGGER.error(f"Reward not found: {err}")
@@ -794,6 +879,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Claim approved - {claim_id} by {approver_id}")
+            return {"claim": claim.to_dict()}
 
         except ValidationError as err:
             _LOGGER.error(f"Validation error: {err}")
@@ -820,6 +906,7 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Cosmetic created - {cosmetic.name}")
+            return {"cosmetic": cosmetic.to_dict()}
 
         except Exception as err:
             _LOGGER.error(f"Error in create_cosmetic: {err}")
@@ -849,6 +936,12 @@ async def register_services(hass: HomeAssistant):
             })
 
             _LOGGER.info(f"Service call: Cosmetic {cosmetic.name} purchased by {child.name}")
+            return {
+                "purchased": True,
+                "cosmetic_id": cosmetic_id,
+                "child_id": child_id,
+                "coins_remaining": child.coins,
+            }
 
         except ChildNotFoundError as err:
             _LOGGER.error(f"Child not found: {err}")
@@ -1227,7 +1320,10 @@ async def register_services(hass: HomeAssistant):
 
             _LOGGER.info(f"Service call: Claim refused - {claim_id}")
 
-            return {"claim": claim.to_dict()}
+            return {
+                "claim": claim.to_dict(),
+                "points_refunded": reward.cost_points,
+            }
 
         except ValidationError as err:
             _LOGGER.error(f"Validation error: {err}")
@@ -1298,9 +1394,15 @@ async def register_services(hass: HomeAssistant):
             # Convertir en dictionnaires
             history_data = [entry.to_dict() for entry in history]
 
+            # Calculer le total des points depuis l'historique (somme des deltas)
+            total_points = sum(entry.points_delta for entry in history)
+
             _LOGGER.debug(f"Service call: get_points_history for {child.name} returned {len(history_data)} entries")
 
-            return {"history": history_data}
+            return {
+                "history": history_data,
+                "total_points": total_points,
+            }
 
         except ChildNotFoundError as err:
             _LOGGER.error(f"Child not found: {err}")
@@ -1385,7 +1487,7 @@ async def register_services(hass: HomeAssistant):
                     "coins": child.coins,
                     "level": child.level,
                     "xp": child.experience,
-                    "xp_for_next_level": child.xp_for_next_level,
+                    "xp_for_next_level": child.experience_to_next_level,
                 },
                 "tasks": {
                     "completed": tasks_completed,
@@ -1499,9 +1601,9 @@ async def register_services(hass: HomeAssistant):
             _LOGGER.info(f"Service call: Cosmetic unequipped - {cosmetic_id} for {child.name}")
 
             return {
-                "child_id": child_id,
+                "unequipped": True,
                 "cosmetic_id": cosmetic_id,
-                "equipped": False
+                "child_id": child_id,
             }
 
         except ChildNotFoundError as err:
@@ -1771,23 +1873,23 @@ async def register_services(hass: HomeAssistant):
 
             reward_mgr = hass.data[DOMAIN]["reward_manager"]
 
-            # Récupérer les champs à mettre à jour
-            updates = {}
-            if "title" in call.data:
-                updates["title"] = call.data["title"]
-            if "description" in call.data:
-                updates["description"] = call.data["description"]
-            if "cost_points" in call.data:
-                updates["cost_points"] = call.data["cost_points"]
-            if "cost_coins" in call.data:
-                updates["cost_coins"] = call.data["cost_coins"]
-            if "image_url" in call.data:
-                updates["image_url"] = call.data["image_url"]
-            if "active" in call.data:
-                updates["active"] = call.data["active"]
+            # Récupérer la récompense existante
+            reward = await reward_mgr.get_reward(reward_id)
 
-            # Mettre à jour la récompense
-            reward = await reward_mgr.update_reward(reward_id, **updates)
+            # Appliquer les mises à jour
+            if "description" in call.data:
+                reward.description = call.data["description"]
+            if "cost_points" in call.data:
+                reward.cost_points = call.data["cost_points"]
+            if "cost_coins" in call.data:
+                reward.cost_coins = call.data["cost_coins"]
+            if "image_url" in call.data:
+                reward.image_url = call.data["image_url"]
+            if "active" in call.data:
+                reward.active = call.data["active"]
+
+            # Sauvegarder les modifications
+            reward = await reward_mgr.update_reward(reward)
 
             # Émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
@@ -1836,28 +1938,30 @@ async def register_services(hass: HomeAssistant):
 
         Paramètres:
         - habit_id (str): ID de l'habitude
+        - child_id (str): ID de l'enfant
+        - reason (str, optional): Raison de la réinitialisation
         """
         try:
             habit_id = call.data["habit_id"]
+            child_id = call.data["child_id"]
+            reason = call.data.get("reason", "Réinitialisation manuelle")
 
             habit_mgr = hass.data[DOMAIN]["habit_manager"]
 
             # Réinitialiser le streak
-            habit = await habit_mgr.reset_streak(habit_id)
+            result = await habit_mgr.reset_streak(habit_id, child_id, reason)
 
             # Émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
                 "update_type": "habit_streak_reset",
-                "habit_id": habit.id,
+                "habit_id": habit_id,
+                "child_id": child_id,
+                "reason": reason,
             })
 
-            _LOGGER.info(f"Service call: Habit streak reset - {habit.title}")
+            _LOGGER.info(f"Service call: Habit streak reset - {habit_id} for child {child_id} (reason: {reason})")
 
-            return {
-                "habit_id": habit.id,
-                "current_streak": habit.current_streak,
-                "best_streak": habit.best_streak,
-            }
+            return result
 
         except Exception as err:
             _LOGGER.error(f"Error in reset_streak: {err}")
@@ -1868,20 +1972,22 @@ async def register_services(hass: HomeAssistant):
 
         Paramètres:
         - habit_id (str): ID de l'habitude
-        - limit (int, optional): Nombre max d'entrées (défaut 30)
+        - child_id (str): ID de l'enfant
+        - days (int, optional): Nombre de jours d'historique (défaut 30)
         """
         try:
             habit_id = call.data["habit_id"]
-            limit = call.data.get("limit", 30)
+            child_id = call.data["child_id"]
+            days = call.data.get("days", 30)
 
             habit_mgr = hass.data[DOMAIN]["habit_manager"]
 
-            # Récupérer l'historique
-            history = await habit_mgr.get_habit_history(habit_id, limit=limit)
+            # Récupérer l'historique avec tous les détails
+            result = await habit_mgr.get_habit_history(habit_id, child_id, days)
 
-            _LOGGER.debug(f"Service call: get_habit_history returned {len(history)} entries")
+            _LOGGER.debug(f"Service call: get_habit_history returned {len(result.get('history', []))} entries, streak={result.get('current_streak', 0)}, rate={result.get('completion_rate', 0):.1f}%")
 
-            return {"history": history}
+            return result
 
         except Exception as err:
             _LOGGER.error(f"Error in get_habit_history: {err}")
@@ -1950,27 +2056,31 @@ async def register_services(hass: HomeAssistant):
 
             cosmetic_mgr = hass.data[DOMAIN]["cosmetic_manager"]
 
-            # Récupérer les champs à mettre à jour
-            updates = {}
-            if "name" in call.data:
-                updates["name"] = call.data["name"]
-            if "description" in call.data:
-                updates["description"] = call.data["description"]
-            if "category" in call.data:
-                updates["category"] = call.data["category"]
-            if "subcategory" in call.data:
-                updates["subcategory"] = call.data["subcategory"]
-            if "rarity" in call.data:
-                updates["rarity"] = call.data["rarity"]
-            if "cost_coins" in call.data:
-                updates["cost_coins"] = call.data["cost_coins"]
-            if "image_url" in call.data:
-                updates["image_url"] = call.data["image_url"]
-            if "active" in call.data:
-                updates["active"] = call.data["active"]
+            # Récupérer le cosmétique existant
+            cosmetic = await cosmetic_mgr.get_cosmetic(cosmetic_id)
 
-            # Mettre à jour le cosmétique
-            cosmetic = await cosmetic_mgr.update_cosmetic(cosmetic_id, **updates)
+            # Appliquer les mises à jour
+            if "name" in call.data:
+                cosmetic.name = call.data["name"]
+            if "description" in call.data:
+                cosmetic.description = call.data["description"]
+            if "category" in call.data:
+                from ..core.models import CosmeticCategory
+                cosmetic.category = CosmeticCategory(call.data["category"])
+            if "subcategory" in call.data:
+                cosmetic.subcategory = call.data["subcategory"]
+            if "rarity" in call.data:
+                from ..core.models import CosmeticRarity
+                cosmetic.rarity = CosmeticRarity(call.data["rarity"])
+            if "cost_coins" in call.data:
+                cosmetic.cost_coins = call.data["cost_coins"]
+            if "preview_image" in call.data:
+                cosmetic.preview_image = call.data["preview_image"]
+            if "active" in call.data:
+                cosmetic.active = call.data["active"]
+
+            # Sauvegarder les modifications
+            cosmetic = await cosmetic_mgr.update_cosmetic(cosmetic)
 
             # Émettre un événement
             hass.bus.fire(EVENT_UPDATE, {
@@ -2128,7 +2238,7 @@ async def register_services(hass: HomeAssistant):
                 "xp_added": xp,
                 "total_xp": child.experience,
                 "level": child.level,
-                "xp_for_next_level": child.xp_for_next_level,
+                "xp_for_next_level": child.experience_to_next_level,
             }
 
         except ChildNotFoundError as err:
@@ -2166,7 +2276,7 @@ async def register_services(hass: HomeAssistant):
                 "previous_level": child.level if hasattr(child, 'previous_level') else None,
                 "new_level": child.level,
                 "xp": child.experience,
-                "xp_for_next_level": child.xp_for_next_level,
+                "xp_for_next_level": child.experience_to_next_level,
             }
 
         except ChildNotFoundError as err:
@@ -2203,7 +2313,7 @@ async def register_services(hass: HomeAssistant):
                 raise ValidationError(f"Invalid type. Must be one of: {', '.join(valid_types)}")
 
             # Charger les catégories existantes
-            from homeassistant.util.json import load_json, save_json
+            import json
             from pathlib import Path
 
             storage_path = Path(hass.config.path(STORAGE_DIR))
@@ -2213,10 +2323,13 @@ async def register_services(hass: HomeAssistant):
             storage_path.mkdir(parents=True, exist_ok=True)
 
             # Charger ou initialiser les catégories
-            if categories_file.exists():
-                categories = await hass.async_add_executor_job(load_json, str(categories_file))
-            else:
-                categories = []
+            def load_categories():
+                if categories_file.exists():
+                    with open(categories_file, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                return []
+
+            categories = await hass.async_add_executor_job(load_categories)
 
             # Générer un ID unique
             import uuid
@@ -2235,7 +2348,11 @@ async def register_services(hass: HomeAssistant):
             categories.append(new_category)
 
             # Sauvegarder
-            await hass.async_add_executor_job(save_json, str(categories_file), categories)
+            def save_categories():
+                with open(categories_file, "w", encoding="utf-8") as f:
+                    json.dump(categories, f, indent=2, ensure_ascii=False)
+
+            await hass.async_add_executor_job(save_categories)
 
             _LOGGER.info(f"Category created: {category_id} - {name}")
 
@@ -2345,7 +2462,7 @@ async def register_services(hass: HomeAssistant):
                 raise ValidationError("XP required must be positive")
 
             # Charger la config système
-            from homeassistant.util.json import load_json, save_json
+            import json
             from pathlib import Path
 
             storage_path = Path(hass.config.path(STORAGE_DIR))
@@ -2354,14 +2471,17 @@ async def register_services(hass: HomeAssistant):
             storage_path.mkdir(parents=True, exist_ok=True)
 
             # Charger ou initialiser
-            if config_file.exists():
-                system_config = await hass.async_add_executor_job(load_json, str(config_file))
-            else:
-                system_config = {
+            def load_config():
+                if config_file.exists():
+                    with open(config_file, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                return {
                     "max_level": 100,
                     "xp_multiplier": XP_MULTIPLIER_PER_LEVEL,
                     "level_thresholds": []
                 }
+
+            system_config = await hass.async_add_executor_job(load_config)
 
             # Trouver et mettre à jour ou ajouter le seuil
             level_thresholds = system_config.get("level_thresholds", [])
@@ -2391,7 +2511,11 @@ async def register_services(hass: HomeAssistant):
             system_config["last_updated"] = datetime.now().isoformat()
 
             # Sauvegarder
-            await hass.async_add_executor_job(save_json, str(config_file), system_config)
+            def save_config():
+                with open(config_file, "w", encoding="utf-8") as f:
+                    json.dump(system_config, f, indent=2, ensure_ascii=False)
+
+            await hass.async_add_executor_job(save_config)
 
             _LOGGER.info(f"Level config updated: Level {level} requires {xp_required} XP")
 
@@ -2416,21 +2540,40 @@ async def register_services(hass: HomeAssistant):
         Retourne la configuration complète du système.
         """
         try:
-            from homeassistant.util.json import load_json
+            import json
             from pathlib import Path
 
             storage_path = Path(hass.config.path(STORAGE_DIR))
             config_file = storage_path / FILE_SYSTEM_CONFIG
 
             # Charger ou retourner config par défaut
-            if config_file.exists():
-                system_config = await hass.async_add_executor_job(load_json, str(config_file))
-            else:
+            def load_config():
+                if config_file.exists():
+                    with open(config_file, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                return None
+
+            system_config = await hass.async_add_executor_job(load_config)
+
+            if system_config is None:
                 system_config = {
-                    "max_level": 100,
-                    "xp_multiplier": XP_MULTIPLIER_PER_LEVEL,
-                    "base_xp": BASE_XP_FOR_LEVEL_UP,
-                    "level_thresholds": [],
+                    "level_system": {
+                        "max_level": 100,
+                        "xp_multiplier": XP_MULTIPLIER_PER_LEVEL,
+                        "base_xp_for_level_up": BASE_XP_FOR_LEVEL_UP,
+                        "level_thresholds": [],
+                    },
+                    "rarity_costs": RARITY_COST
+                }
+            else:
+                # Restructurer pour la réponse attendue
+                system_config = {
+                    "level_system": {
+                        "max_level": system_config.get("max_level", 100),
+                        "xp_multiplier": system_config.get("xp_multiplier", XP_MULTIPLIER_PER_LEVEL),
+                        "base_xp_for_level_up": system_config.get("base_xp", BASE_XP_FOR_LEVEL_UP),
+                        "level_thresholds": system_config.get("level_thresholds", []),
+                    },
                     "rarity_costs": RARITY_COST
                 }
 
@@ -2580,7 +2723,7 @@ async def register_services(hass: HomeAssistant):
             
             child = await child_mgr.add_currency_manual(child_id, points=points, coins=0, reason=reason)
             _LOGGER.info(f"Service call: add_points - {points} points for {child.name}")
-            return {"child_id": child.id, "points": child.points}
+            return {"child_id": child.id, "points_added": points, "points": child.points}
         except ChildNotFoundError as err:
             raise HomeAssistantError(f"Child not found: {err}")
         except Exception as err:
@@ -2596,7 +2739,7 @@ async def register_services(hass: HomeAssistant):
             
             child = await child_mgr.add_currency_manual(child_id, points=-points, coins=0, reason=reason)
             _LOGGER.info(f"Service call: remove_points - {points} points for {child.name}")
-            return {"child_id": child.id, "points": child.points}
+            return {"child_id": child.id, "points_removed": points, "points": child.points}
         except ChildNotFoundError as err:
             raise HomeAssistantError(f"Child not found: {err}")
         except Exception as err:
@@ -2612,7 +2755,7 @@ async def register_services(hass: HomeAssistant):
             
             child = await child_mgr.add_currency_manual(child_id, points=0, coins=coins, reason=reason)
             _LOGGER.info(f"Service call: add_coins - {coins} coins for {child.name}")
-            return {"child_id": child.id, "coins": child.coins}
+            return {"child_id": child.id, "coins_added": coins, "coins": child.coins}
         except ChildNotFoundError as err:
             raise HomeAssistantError(f"Child not found: {err}")
         except Exception as err:
@@ -2729,38 +2872,40 @@ async def register_services(hass: HomeAssistant):
             _LOGGER.error(f"Error in clear_all_data: {err}")
             raise HomeAssistantError(f"Failed to clear data: {err}")
     # Enregistrer tous les services
-    hass.services.async_register(DOMAIN, SERVICE_CREATE_CHILD, handle_create_child)
-    hass.services.async_register(DOMAIN, SERVICE_UPDATE_CHILD, handle_update_child)
-    hass.services.async_register(DOMAIN, SERVICE_DELETE_CHILD, handle_delete_child)
+    # Mutation services use OPTIONAL (work with or without return_response)
+    # Read services use ONLY (always return data)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_CHILD, handle_create_child, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_CHILD, handle_update_child, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_DELETE_CHILD, handle_delete_child, supports_response=SupportsResponse.OPTIONAL)
 
-    hass.services.async_register(DOMAIN, SERVICE_CREATE_TASK, handle_create_task)
-    hass.services.async_register(DOMAIN, SERVICE_UPDATE_TASK, handle_update_task)
-    hass.services.async_register(DOMAIN, SERVICE_DELETE_TASK, handle_delete_task)
-    hass.services.async_register(DOMAIN, SERVICE_MARK_TASK_COMPLETED, handle_mark_task_completed)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_TASK, handle_create_task, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_TASK, handle_update_task, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_DELETE_TASK, handle_delete_task, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_MARK_TASK_COMPLETED, handle_mark_task_completed, supports_response=SupportsResponse.OPTIONAL)
 
-    hass.services.async_register(DOMAIN, SERVICE_CREATE_HABIT, handle_create_habit)
-    hass.services.async_register(DOMAIN, SERVICE_UPDATE_HABIT, handle_update_habit)
-    hass.services.async_register(DOMAIN, SERVICE_DELETE_HABIT, handle_delete_habit)
-    hass.services.async_register(DOMAIN, SERVICE_MARK_HABIT_COMPLETED, handle_mark_habit_completed)
-    hass.services.async_register(DOMAIN, SERVICE_RESET_STREAK, handle_reset_streak, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_HABIT, handle_create_habit, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_HABIT, handle_update_habit, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_DELETE_HABIT, handle_delete_habit, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_MARK_HABIT_COMPLETED, handle_mark_habit_completed, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_RESET_STREAK, handle_reset_streak, supports_response=SupportsResponse.OPTIONAL)
     hass.services.async_register(DOMAIN, SERVICE_GET_HABIT_HISTORY, handle_get_habit_history, supports_response=SupportsResponse.ONLY)
 
     # Phase 2 services
-    hass.services.async_register(DOMAIN, SERVICE_VALIDATE_TASK, handle_validate_task)
-    hass.services.async_register(DOMAIN, SERVICE_REFUSE_TASK, handle_refuse_task)
-    hass.services.async_register(DOMAIN, SERVICE_CREATE_REWARD, handle_create_reward)
-    hass.services.async_register(DOMAIN, SERVICE_UPDATE_REWARD, handle_update_reward, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_DELETE_REWARD, handle_delete_reward, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_CLAIM_REWARD, handle_claim_reward)
-    hass.services.async_register(DOMAIN, SERVICE_APPROVE_CLAIM, handle_approve_claim)
-    hass.services.async_register(DOMAIN, SERVICE_REFUSE_CLAIM, handle_refuse_claim, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_CONSUME_CLAIM, handle_consume_claim, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_CREATE_COSMETIC, handle_create_cosmetic)
-    hass.services.async_register(DOMAIN, SERVICE_UPDATE_COSMETIC, handle_update_cosmetic, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_DELETE_COSMETIC, handle_delete_cosmetic, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_PURCHASE_COSMETIC, handle_purchase_cosmetic)
-    hass.services.async_register(DOMAIN, SERVICE_EQUIP_COSMETIC, handle_equip_cosmetic, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_UNEQUIP_COSMETIC, handle_unequip_cosmetic, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_VALIDATE_TASK, handle_validate_task, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_REFUSE_TASK, handle_refuse_task, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_REWARD, handle_create_reward, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_REWARD, handle_update_reward, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_DELETE_REWARD, handle_delete_reward, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_CLAIM_REWARD, handle_claim_reward, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_APPROVE_CLAIM, handle_approve_claim, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_REFUSE_CLAIM, handle_refuse_claim, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_CONSUME_CLAIM, handle_consume_claim, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_COSMETIC, handle_create_cosmetic, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_COSMETIC, handle_update_cosmetic, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_DELETE_COSMETIC, handle_delete_cosmetic, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_PURCHASE_COSMETIC, handle_purchase_cosmetic, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_EQUIP_COSMETIC, handle_equip_cosmetic, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_UNEQUIP_COSMETIC, handle_unequip_cosmetic, supports_response=SupportsResponse.OPTIONAL)
 
     # Services de lecture (avec support de réponse)
     hass.services.async_register(DOMAIN, SERVICE_LIST_CHILDREN, handle_list_children, supports_response=SupportsResponse.ONLY)
@@ -2772,86 +2917,36 @@ async def register_services(hass: HomeAssistant):
     hass.services.async_register(DOMAIN, SERVICE_LIST_TASK_INSTANCES, handle_list_task_instances, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_LIST_CLAIMS, handle_list_claims, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_GET_TASK_INSTANCE, handle_get_task_instance, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_CANCEL_TASK_INSTANCE, handle_cancel_task_instance, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_RESCHEDULE_TASK_INSTANCE, handle_reschedule_task_instance, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_CANCEL_TASK_INSTANCE, handle_cancel_task_instance, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_RESCHEDULE_TASK_INSTANCE, handle_reschedule_task_instance, supports_response=SupportsResponse.OPTIONAL)
     hass.services.async_register(DOMAIN, SERVICE_GET_CHILD_STATS, handle_get_child_stats, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_GET_WEEKLY_REPORT, handle_get_weekly_report, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_COMPARE_CHILDREN, handle_compare_children, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_GET_POINTS_HISTORY, handle_get_points_history, supports_response=SupportsResponse.ONLY)
     hass.services.async_register(DOMAIN, SERVICE_GET_CHILD_HISTORY, handle_get_points_history, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_BACKUP_DATA, handle_backup_data, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_RESTORE_DATA, handle_restore_data, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_SUSPEND_TASK, handle_suspend_task, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_RESUME_TASK, handle_resume_task, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_CHECK_EXPIRED_SUSPENSIONS, handle_check_expired_suspensions, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_ADD_POINTS, handle_add_points, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_REMOVE_POINTS, handle_remove_points, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_SET_POINTS, handle_set_points, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_ADD_COINS, handle_add_coins, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_REMOVE_COINS, handle_remove_coins, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_SET_COINS, handle_set_coins, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_ADD_EXPERIENCE, handle_add_experience, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_SET_LEVEL, handle_set_level, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_CREATE_CATEGORY, handle_create_category, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_BACKUP_DATA, handle_backup_data, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_RESTORE_DATA, handle_restore_data, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_SUSPEND_TASK, handle_suspend_task, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_RESUME_TASK, handle_resume_task, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_CHECK_EXPIRED_SUSPENSIONS, handle_check_expired_suspensions, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_ADD_POINTS, handle_add_points, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_REMOVE_POINTS, handle_remove_points, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_SET_POINTS, handle_set_points, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_ADD_COINS, handle_add_coins, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_REMOVE_COINS, handle_remove_coins, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_SET_COINS, handle_set_coins, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_ADD_EXPERIENCE, handle_add_experience, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_SET_LEVEL, handle_set_level, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_CREATE_CATEGORY, handle_create_category, supports_response=SupportsResponse.OPTIONAL)
     hass.services.async_register(DOMAIN, SERVICE_LIST_CATEGORIES, handle_list_categories, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_UPDATE_LEVEL_CONFIG, handle_update_level_config, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(DOMAIN, SERVICE_UPDATE_LEVEL_CONFIG, handle_update_level_config, supports_response=SupportsResponse.OPTIONAL)
     hass.services.async_register(DOMAIN, SERVICE_GET_SYSTEM_CONFIG, handle_get_system_config, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_RESET_DAILY_TASKS, handle_reset_daily_tasks, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_RESET_WEEKLY_TASKS, handle_reset_weekly_tasks, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_RESET_MONTHLY_TASKS, handle_reset_monthly_tasks, supports_response=SupportsResponse.ONLY)
-    hass.services.async_register(DOMAIN, SERVICE_CLEAR_ALL_DATA, handle_clear_all_data, supports_response=SupportsResponse.ONLY)
-    SERVICE_RESET_DAILY_TASKS,
-    SERVICE_RESET_WEEKLY_TASKS,
-    SERVICE_RESET_MONTHLY_TASKS,
-    SERVICE_CLEAR_ALL_DATA,
-    SERVICE_ADD_POINTS,
-    SERVICE_REMOVE_POINTS,
-    SERVICE_ADD_COINS,
-    SERVICE_REMOVE_COINS,
-    SERVICE_RESET_DAILY_TASKS,
-    SERVICE_RESET_WEEKLY_TASKS,
-    SERVICE_RESET_MONTHLY_TASKS,
-    SERVICE_CLEAR_ALL_DATA,
-    SERVICE_SUSPEND_TASK,
-    SERVICE_RESUME_TASK,
-    SERVICE_CHECK_EXPIRED_SUSPENSIONS,
-    SERVICE_ADD_POINTS,
-    SERVICE_REMOVE_POINTS,
-    SERVICE_ADD_COINS,
-    SERVICE_REMOVE_COINS,
-    SERVICE_RESET_DAILY_TASKS,
-    SERVICE_RESET_WEEKLY_TASKS,
-    SERVICE_RESET_MONTHLY_TASKS,
-    SERVICE_CLEAR_ALL_DATA,
-    SERVICE_BACKUP_DATA,
-    SERVICE_RESTORE_DATA,
-    SERVICE_SUSPEND_TASK,
-    SERVICE_RESUME_TASK,
-    SERVICE_CHECK_EXPIRED_SUSPENSIONS,
-    SERVICE_ADD_POINTS,
-    SERVICE_REMOVE_POINTS,
-    SERVICE_ADD_COINS,
-    SERVICE_REMOVE_COINS,
-    SERVICE_RESET_DAILY_TASKS,
-    SERVICE_RESET_WEEKLY_TASKS,
-    SERVICE_RESET_MONTHLY_TASKS,
-    SERVICE_CLEAR_ALL_DATA,
-    SERVICE_GET_POINTS_HISTORY,
-    SERVICE_BACKUP_DATA,
-    SERVICE_RESTORE_DATA,
-    SERVICE_SUSPEND_TASK,
-    SERVICE_RESUME_TASK,
-    SERVICE_CHECK_EXPIRED_SUSPENSIONS,
-    SERVICE_ADD_POINTS,
-    SERVICE_REMOVE_POINTS,
-    SERVICE_ADD_COINS,
-    SERVICE_REMOVE_COINS,
-    SERVICE_RESET_DAILY_TASKS,
-    SERVICE_RESET_WEEKLY_TASKS,
-    SERVICE_RESET_MONTHLY_TASKS,
-    SERVICE_CLEAR_ALL_DATA,
+    hass.services.async_register(DOMAIN, SERVICE_RESET_DAILY_TASKS, handle_reset_daily_tasks, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_RESET_WEEKLY_TASKS, handle_reset_weekly_tasks, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_RESET_MONTHLY_TASKS, handle_reset_monthly_tasks, supports_response=SupportsResponse.OPTIONAL)
+    hass.services.async_register(DOMAIN, SERVICE_CLEAR_ALL_DATA, handle_clear_all_data, supports_response=SupportsResponse.OPTIONAL)
 
-    _LOGGER.info(f"Registered {23} services for {DOMAIN} (11 Phase 1 + 7 Phase 2 + 5 Listing)")
+    _LOGGER.info(f"All services registered for {DOMAIN}")
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

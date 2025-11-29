@@ -361,3 +361,70 @@ class RewardManager:
         """
         all_claims = await self.storage.load_reward_claims()
         return [c for c in all_claims if c.status == RewardClaimStatus.PENDING]
+
+    async def get_claim(self, claim_id: str) -> RewardClaim:
+        """Récupère une réclamation par son ID.
+
+        Args:
+            claim_id: ID de la réclamation
+
+        Returns:
+            RewardClaim
+
+        Raises:
+            ValidationError: Si la réclamation n'existe pas
+        """
+        claims = await self.storage.load_reward_claims()
+        for claim in claims:
+            if claim.id == claim_id:
+                return claim
+
+        raise ValidationError(f"Reward claim {claim_id} not found")
+
+    async def consume_claim(self, claim_id: str) -> RewardClaim:
+        """Marque une réclamation comme consommée.
+
+        Alias pour mark_claim_used pour la cohérence de l'API.
+
+        Args:
+            claim_id: ID de la réclamation
+
+        Returns:
+            RewardClaim marqué comme consommé
+        """
+        claim = await self.mark_claim_used(claim_id)
+        # Mettre à jour le statut en "consumed" si différent de "used"
+        if claim.status == RewardClaimStatus.USED:
+            claim.status = RewardClaimStatus.CONSUMED
+            await self.storage.save_reward_claim(claim)
+        return claim
+
+    async def get_all_claims(
+        self,
+        child_id: str = None,
+        status: str = None,
+    ) -> List[RewardClaim]:
+        """Récupère les réclamations avec filtres optionnels.
+
+        Args:
+            child_id: Filtrer par enfant (optionnel)
+            status: Filtrer par statut (optionnel)
+
+        Returns:
+            Liste des réclamations filtrées
+        """
+        claims = await self.storage.load_reward_claims()
+
+        # Filtrer par child_id
+        if child_id:
+            claims = [c for c in claims if c.child_id == child_id]
+
+        # Filtrer par status
+        if status:
+            try:
+                status_enum = RewardClaimStatus(status)
+                claims = [c for c in claims if c.status == status_enum]
+            except ValueError:
+                _LOGGER.warning(f"Invalid status filter: {status}")
+
+        return claims

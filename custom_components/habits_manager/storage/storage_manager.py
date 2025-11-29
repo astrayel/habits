@@ -177,6 +177,7 @@ class StorageManager:
                     avatar=avatar,
                     badges=child_data.get("badges", []),
                     owned_cosmetics=child_data.get("owned_cosmetics", []),
+                    equipped_cosmetics=child_data.get("equipped_cosmetics", []),
                     points_history=points_history,
                     created_at=datetime.fromisoformat(child_data["created_at"]),
                     updated_at=datetime.fromisoformat(child_data["updated_at"]),
@@ -438,6 +439,11 @@ class StorageManager:
                     validator_id=instance_data.get("validator_id"),
                     validation_note=instance_data.get("validation_note", ""),
                     is_penalty_applied=instance_data.get("is_penalty_applied", False),
+                    cancelled_at=datetime.fromisoformat(instance_data["cancelled_at"]) if instance_data.get("cancelled_at") else None,
+                    cancel_reason=instance_data.get("cancel_reason"),
+                    rescheduled_at=datetime.fromisoformat(instance_data["rescheduled_at"]) if instance_data.get("rescheduled_at") else None,
+                    rescheduled_from=date.fromisoformat(instance_data["rescheduled_from"]) if instance_data.get("rescheduled_from") else None,
+                    photo_url=instance_data.get("photo_url"),
                 )
                 instances.append(instance)
             except Exception as err:
@@ -445,9 +451,57 @@ class StorageManager:
 
         return instances
 
+    async def delete_task_instance(self, instance_id: str) -> None:
+        """Supprime une instance de tâche.
+
+        Args:
+            instance_id: ID de l'instance
+        """
+        data = await self.load_json(FILE_TASK_INSTANCES)
+        if instance_id in data:
+            del data[instance_id]
+            await self.save_json(FILE_TASK_INSTANCES, data)
+
     # ========================================================================
     # HABIT STREAKS
     # ========================================================================
+
+    async def load_habit_streaks(self) -> List[HabitStreak]:
+        """Charge tous les streaks d'habitudes.
+
+        Returns:
+            Liste des streaks
+        """
+        data = await self.load_json(FILE_HABIT_STREAKS)
+        streaks = []
+
+        for streak_id, streak_data in data.items():
+            try:
+                from ..core.models import StreakHistoryEntry
+
+                history = [
+                    StreakHistoryEntry(
+                        date=date.fromisoformat(entry["date"]),
+                        completed=entry["completed"]
+                    )
+                    for entry in streak_data.get("streak_history", [])
+                ]
+
+                streak = HabitStreak(
+                    id=streak_data["id"],
+                    habit_id=streak_data["habit_id"],
+                    child_id=streak_data["child_id"],
+                    current_streak=streak_data.get("current_streak", 0),
+                    longest_streak=streak_data.get("longest_streak", 0),
+                    last_completed=date.fromisoformat(streak_data["last_completed"]) if streak_data.get("last_completed") else None,
+                    total_completions=streak_data.get("total_completions", 0),
+                    streak_history=history,
+                )
+                streaks.append(streak)
+            except Exception as err:
+                _LOGGER.error(f"Failed to load habit streak {streak_id}: {err}")
+
+        return streaks
 
     async def save_habit_streak(self, streak: HabitStreak) -> None:
         """Sauvegarde un streak d'habitude.

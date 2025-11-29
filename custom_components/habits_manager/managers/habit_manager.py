@@ -116,6 +116,28 @@ class HabitManager:
         """
         return await self.storage.load_habits()
 
+    async def get_habits(self, child_id: Optional[str] = None, active_only: bool = False) -> List[Habit]:
+        """Récupère les habitudes avec filtres optionnels.
+
+        Args:
+            child_id: Filtrer par enfant assigné (optionnel)
+            active_only: Si True, ne retourne que les habitudes actives
+
+        Returns:
+            Liste des habitudes filtrées
+        """
+        habits = await self.get_all_habits()
+
+        # Filtrer par enfant si spécifié
+        if child_id:
+            habits = [h for h in habits if child_id in h.assigned_to]
+
+        # Filtrer par actif si demandé
+        if active_only:
+            habits = [h for h in habits if h.active]
+
+        return habits
+
     async def update_habit(self, habit: Habit) -> Habit:
         """Met à jour une habitude.
 
@@ -315,3 +337,94 @@ class HabitManager:
                 longest = streak.longest_streak
 
         return longest
+
+    async def get_habit_history(self, habit_id: str, child_id: str, days: int = 30) -> dict:
+        """Récupère l'historique des complétions d'une habitude.
+
+        Args:
+            habit_id: ID de l'habitude
+            child_id: ID de l'enfant
+            days: Nombre de jours d'historique (défaut: 30)
+
+        Returns:
+            Dictionnaire avec history, current_streak, completion_rate
+        """
+        # Vérifier que l'habitude existe
+        await self.get_habit(habit_id)
+
+        # Charger le streak
+        streak = await self.get_streak(habit_id, child_id)
+
+        if streak is None:
+            return {
+                "history": [],
+                "current_streak": 0,
+                "longest_streak": 0,
+                "completion_rate": 0.0,
+                "total_completions": 0,
+            }
+
+        # Filtrer l'historique aux N derniers jours
+        from datetime import timedelta
+        today = date.today()
+        cutoff_date = today - timedelta(days=days)
+
+        history = [
+            {"date": entry.date.isoformat(), "completed": entry.completed}
+            for entry in streak.streak_history
+            if entry.date >= cutoff_date
+        ]
+
+        # Calculer le taux de complétion
+        completed_count = sum(1 for entry in history if entry["completed"])
+        completion_rate = (completed_count / days * 100) if days > 0 else 0.0
+
+        return {
+            "history": history,
+            "current_streak": streak.current_streak,
+            "longest_streak": streak.longest_streak,
+            "completion_rate": round(completion_rate, 1),
+            "total_completions": streak.total_completions,
+        }
+
+    async def reset_streak(self, habit_id: str, child_id: str, reason: str = None) -> dict:
+        """Réinitialise le streak d'une habitude pour un enfant.
+
+        Args:
+            habit_id: ID de l'habitude
+            child_id: ID de l'enfant
+            reason: Raison de la réinitialisation (optionnel)
+
+        Returns:
+            Dictionnaire avec streak_reset, new_streak, previous_streak
+        """
+        # Vérifier que l'habitude existe
+        await self.get_habit(habit_id)
+
+        # Charger le streak
+        streak = await self.get_streak(habit_id, child_id)
+
+        if streak is None:
+            return {
+                "streak_reset": False,
+                "new_streak": 0,
+                "previous_streak": 0,
+                "reason": reason,
+            }
+
+        previous_streak = streak.current_streak
+
+        # Réinitialiser le streak (garde l'historique)
+        streak.current_streak = 0
+
+        # Sauvegarder
+        await self.storage.save_habit_streak(streak)
+
+        _LOGGER.info(f"Streak reset for habit {habit_id}, child {child_id}. Previous: {previous_streak}. Reason: {reason}")
+
+        return {
+            "streak_reset": True,
+            "new_streak": 0,
+            "previous_streak": previous_streak,
+            "reason": reason,
+        }

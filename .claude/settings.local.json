@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(/home/mirese/venv/bin/python -m pytest tests/test_child_services.py::TestChildServices::test_delete_child -v)",
+      "Bash(/home/mirese/venv/bin/python -m pytest:*)",
+      "Bash(source venv/bin/activate)",
+      "Bash(pytest:*)",
+      "Bash(bash -c \"source venv/bin/activate && pytest tests/test_child_services.py::TestChildServices::test_add_experience -v 2>&1 | head -50\")",
+      "Bash(./venv/bin/pytest tests/test_child_services.py::TestChildServices::test_add_experience -v)",
+      "Bash(venvScriptspython.exe -m pytest tests/test_child_services.py::TestChildServices::test_add_experience -v)",
+      "Bash(python -m pytest tests/test_habit_services.py::TestHabitServices::test_mark_habit_completed -v)",
+      "Bash(.venvScriptspython.exe -m pytest:*)",
+      "Bash(sort:*)",
+      "Bash(find:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

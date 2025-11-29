@@ -43,6 +43,7 @@ class TaskInstanceStatus(Enum):
     VALIDATED = "validated"
     REFUSED = "refused"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class HabitFrequency(Enum):
@@ -70,7 +71,9 @@ class RewardClaimStatus(Enum):
     """Statut d'une réclamation."""
     PENDING = "pending"
     APPROVED = "approved"
+    REFUSED = "refused"
     USED = "used"
+    CONSUMED = "consumed"
     EXPIRED = "expired"
 
 
@@ -195,6 +198,7 @@ class Child:
     avatar: Avatar = field(default_factory=lambda: Avatar(photo_url=""))
     badges: List[str] = field(default_factory=list)
     owned_cosmetics: List[str] = field(default_factory=list)
+    equipped_cosmetics: List[str] = field(default_factory=list)
     points_history: List[PointsHistoryEntry] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
@@ -224,6 +228,7 @@ class Child:
             "avatar": self.avatar.to_dict(),
             "badges": self.badges,
             "owned_cosmetics": self.owned_cosmetics,
+            "equipped_cosmetics": self.equipped_cosmetics,
             "points_history": [entry.to_dict() for entry in self.points_history],
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
@@ -361,6 +366,13 @@ class TaskInstance:
     validator_id: Optional[str] = None
     validation_note: str = ""
     is_penalty_applied: bool = False
+    # Champs pour cancel/reschedule
+    cancelled_at: Optional[datetime] = None
+    cancel_reason: Optional[str] = None
+    rescheduled_at: Optional[datetime] = None
+    rescheduled_from: Optional[date] = None
+    # Preuve photo (optionnel)
+    photo_url: Optional[str] = None
 
     def to_dict(self) -> dict:
         """Convertit en dictionnaire."""
@@ -375,6 +387,11 @@ class TaskInstance:
             "validator_id": self.validator_id,
             "validation_note": self.validation_note,
             "is_penalty_applied": self.is_penalty_applied,
+            "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
+            "cancel_reason": self.cancel_reason,
+            "rescheduled_at": self.rescheduled_at.isoformat() if self.rescheduled_at else None,
+            "rescheduled_from": self.rescheduled_from.isoformat() if self.rescheduled_from else None,
+            "photo_url": self.photo_url,
         }
 
 

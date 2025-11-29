@@ -1,0 +1,2 @@
+# Dependencies for Habits Manager integration
+aiofiles==24.1.0

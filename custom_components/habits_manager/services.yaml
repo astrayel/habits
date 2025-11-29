@@ -389,6 +389,13 @@ mark_task_completed:
       example: "child_123abc"
       selector:
         text:
+    photo_url:
+      name: Preuve photo
+      description: URL de la photo servant de preuve (optionnel)
+      required: false
+      example: "/local/proofs/chambre_rangee.jpg"
+      selector:
+        text:
 
 # ========================================================================
 # SERVICES HABITUDES
@@ -501,7 +508,7 @@ mark_habit_completed:
         text:
     completion_date:
       name: Date de complétion
-      description: Date de complétion (défaut: aujourd'hui, format ISO 8601)
+      description: "Date de complétion (défaut: aujourd'hui, format ISO 8601)"
       required: false
       example: "2025-11-27"
       selector:

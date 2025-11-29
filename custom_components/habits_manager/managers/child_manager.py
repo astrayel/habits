@@ -50,6 +50,12 @@ class ChildManager:
         if not person_entity or not person_entity.startswith("person."):
             raise ValidationError("Entité person invalide")
 
+        # Vérifier qu'aucun enfant n'existe déjà avec cette person_entity
+        existing_children = await self.storage.load_children()
+        for existing_child in existing_children:
+            if existing_child.person_entity == person_entity:
+                raise ValidationError(f"Un enfant existe déjà avec l'entité {person_entity}")
+
         # Générer ID unique
         child_id = f"child_{uuid.uuid4().hex[:8]}"
 
@@ -380,14 +386,16 @@ class ChildManager:
         child_id: str,
         points: int = 0,
         coins: int = 0,
+        xp: int = 0,
         reason: str = ""
     ) -> Child:
-        """Ajoute des points/pièces manuellement avec historique.
+        """Ajoute des points/pièces/XP manuellement avec historique.
 
         Args:
             child_id: ID de l'enfant
             points: Points à ajouter
             coins: Pièces à ajouter
+            xp: Expérience à ajouter
             reason: Raison de l'ajout
 
         Returns:
@@ -400,6 +408,10 @@ class ChildManager:
             child.points += points
         if coins != 0:
             child.coins += coins
+        if xp != 0:
+            child.experience += xp
+            # Vérifier et appliquer le level-up si nécessaire
+            await self._check_level_up(child)
 
         await self.update_child(child)
 
@@ -411,7 +423,7 @@ class ChildManager:
             action_type=HistoryActionType.MANUAL_ADJUSTMENT,
             points_delta=points,
             coins_delta=coins,
-            experience_delta=0,
+            experience_delta=xp,
             description=reason or "Ajustement manuel",
             related_entity_type="manual",
             related_entity_id="",
@@ -419,6 +431,113 @@ class ChildManager:
         )
         await self.add_points_history(child_id, history_entry)
 
-        _LOGGER.info(f"Manual currency adjustment for {child.name}: {points:+d} pts, {coins:+d} coins - {reason}")
+        _LOGGER.info(f"Manual currency adjustment for {child.name}: {points:+d} pts, {coins:+d} coins, {xp:+d} XP - {reason}")
 
         return child
+
+    async def set_level(
+        self,
+        child_id: str,
+        level: int,
+        reason: str = ""
+    ) -> Child:
+        """Définit directement le niveau d'un enfant (administratif).
+
+        Args:
+            child_id: ID de l'enfant
+            level: Nouveau niveau à définir
+            reason: Raison du changement
+
+        Returns:
+            Child mis à jour
+
+        Raises:
+            ValueError: Si le niveau est invalide
+        """
+        child = await self.get_child(child_id)
+
+        # Validation
+        if level < 1:
+            raise ValueError("Le niveau doit être >= 1")
+        if level > 100:
+            raise ValueError("Le niveau ne peut pas dépasser 100")
+
+        old_level = child.level
+        child.level = level
+
+        # Calculer l'XP pour le nouveau niveau
+        # (réinitialiser à 0 pour éviter des incohérences)
+        child.experience = self._calculate_xp_for_level(level)
+        child.experience_to_next_level = self._calculate_xp_for_level(level + 1)
+
+        await self.update_child(child)
+
+        _LOGGER.info(f"Level set for {child.name}: {old_level} → {level} (reason: {reason})")
+
+        return child
+
+    def _calculate_xp_for_level(self, level: int) -> int:
+        """Calcule l'XP minimum requis pour atteindre un niveau.
+
+        Args:
+            level: Niveau cible
+
+        Returns:
+            XP requis pour atteindre ce niveau
+        """
+        if level <= 1:
+            return 0
+
+        # Formule: base_xp * sum(multiplier^(i-1)) pour i de 1 à level-1
+        # Cela crée une progression exponentielle douce
+        base_xp = 100
+        multiplier = 1.2
+
+        total_xp = 0
+        for lvl in range(1, level):
+            total_xp += int(base_xp * (multiplier ** (lvl - 1)))
+
+        return total_xp
+
+    async def _check_level_up(self, child: Child) -> bool:
+        """Vérifie et applique le level-up si nécessaire.
+
+        Args:
+            child: L'enfant à vérifier
+
+        Returns:
+            True si level-up effectué, False sinon
+        """
+        # Calculer l'XP nécessaire pour le prochain niveau
+        xp_needed = self._calculate_xp_for_level(child.level + 1)
+
+        # Vérifier si l'enfant a assez d'XP pour monter de niveau
+        if child.experience >= xp_needed:
+            child.level += 1
+            child.experience_to_next_level = self._calculate_xp_for_level(child.level + 1)
+
+            # Émettre événement level-up
+            from ..const import DOMAIN
+            self.storage.hass.bus.async_fire(
+                f"{DOMAIN}_level_up",
+                {
+                    "child_id": child.id,
+                    "child_name": child.name,
+                    "new_level": child.level,
+                    "xp": child.experience,
+                    "xp_for_next_level": child.experience_to_next_level,
+                }
+            )
+
+            _LOGGER.info(f"🎉 {child.name} leveled up to level {child.level}!")
+
+            # Vérifier si un autre level-up est possible (rare mais possible)
+            if child.experience >= self._calculate_xp_for_level(child.level + 1):
+                await self._check_level_up(child)
+
+            return True
+
+        # Mettre à jour xp_for_next_level même si pas de level-up
+        child.experience_to_next_level = xp_needed
+
+        return False
